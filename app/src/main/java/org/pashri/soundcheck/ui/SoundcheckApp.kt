@@ -12,14 +12,20 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import org.pashri.soundcheck.di.AppContainer
 import org.pashri.soundcheck.ui.components.ManuscriptNavBar
 import org.pashri.soundcheck.ui.components.NotYetBuiltScreen
 import org.pashri.soundcheck.ui.components.Tab
+import org.pashri.soundcheck.ui.metronome.MetronomeRoute
 import org.pashri.soundcheck.ui.theme.Manuscript
 
-/** The whole app: the current tool above the tab bar. */
+/**
+ * The whole app: the current tool above the tab bar.
+ *
+ * @param container shared dependencies.
+ */
 @Composable
-fun SoundcheckApp() {
+fun SoundcheckApp(container: AppContainer) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
     val current = Tab.entries.firstOrNull { it.route == entry?.destination?.route }
@@ -31,7 +37,9 @@ fun SoundcheckApp() {
             modifier = Modifier.weight(1f),
         ) {
             composable(Tab.Tuner.route) { NotYetBuiltScreen(title = "Tuner") }
-            composable(Tab.Metronome.route) { NotYetBuiltScreen(title = "Metronome") }
+            composable(Tab.Metronome.route) {
+                MetronomeRoute(factory = container.metronomeViewModelFactory)
+            }
             composable(Tab.WarmUp.route) { NotYetBuiltScreen(title = "Warm-up") }
         }
         ManuscriptNavBar(current = current, onSelect = { navController.openTab(it) })
