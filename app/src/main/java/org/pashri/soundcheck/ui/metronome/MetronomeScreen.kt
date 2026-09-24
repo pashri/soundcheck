@@ -151,8 +151,13 @@ private fun BeatRow(beats: Int, playing: Int?, beatIndex: Long?) {
     var flashing by remember { mutableStateOf(false) }
     LaunchedEffect(beatIndex) {
         if (beats == 1 && beatIndex != null) {
-            flashing = true
-            delay(BEAT_FLASH_MS)
+            try {
+                flashing = true
+                delay(BEAT_FLASH_MS)
+            } finally {
+                flashing = false
+            }
+        } else {
             flashing = false
         }
     }
