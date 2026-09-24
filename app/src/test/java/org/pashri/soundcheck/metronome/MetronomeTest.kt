@@ -177,4 +177,50 @@ class MetronomeTest {
         runFor(1_000)
         assertTrue(output.scheduled.isEmpty())
     }
+
+    @Test
+    fun `a beat inside the reschedule margin survives a tempo change`() = runTest {
+        val output = fakeOutput()
+        val metronome = metronomeWith(output)
+        metronome.start(bpm = 120, accentEvery = 4)
+        // Beat index 1 lands at frame 28_800 (600 ms). At 590 ms (frame 28_320) it is
+        // 480 frames (10 ms) away, inside RESCHEDULE_MARGIN_MS (20 ms = 960 frames).
+        runFor(590)
+        metronome.setTempo(60)
+        val survivors = output.scheduled.filter { it.frame == 28_800L }
+        assertEquals(1, survivors.size)
+        assertEquals(click, survivors.single().id)
+        // The next beat is anchored one new-tempo beat (48_000 frames) after the one kept,
+        // at frame 76_800 (1_600 ms); it enters the schedule once the loop's lookahead
+        // (150 ms) reaches it, at 1_450 ms — a little over 860 ms after the 590 ms mark
+        // already elapsed, rounding up to the next 25 ms tick.
+        runFor(900)
+        assertEquals(listOf(4_800L, 28_800L, 76_800L), output.frames)
+        assertTrue(output.lateSchedules.isEmpty())
+    }
+
+    @Test
+    fun `a slider drag speeding up steadily never goes silent`() = runTest {
+        val output = fakeOutput()
+        val metronome = metronomeWith(output)
+        metronome.start(bpm = 120, accentEvery = null)
+        val stepMs = 16L
+        val steps = 90
+        repeat(steps) { i ->
+            runFor(stepMs)
+            val bpm = (120 + i * 2).coerceAtMost(MAX_BPM)
+            metronome.setTempo(bpm)
+        }
+        val dragFrames = msToFrames(steps * stepMs)
+        val inDrag = output.frames.filter { it in 0..dragFrames }
+        // The drag starts at 120 bpm, the slowest tempo touched, 24_000 frames apart.
+        // A scheduler that never falls silent fits at least dragFrames / 24_000 further
+        // beats after the first one (already scheduled at start()), so at least
+        // 1 + dragFrames / 24_000 beats land inside the drag window. A scheduler that
+        // goes silent during the drag (the bug under test) produces only the first beat.
+        val minBeats = 1 + (dragFrames / framesPerBeat(120)).toInt()
+        assertTrue("expected at least $minBeats beats, got ${inDrag.size}", inDrag.size >= minBeats)
+        assertTrue(output.frames.zipWithNext { a, b -> b - a }.all { it >= framesPerBeat(MAX_BPM) })
+        assertTrue(output.lateSchedules.isEmpty())
+    }
 }

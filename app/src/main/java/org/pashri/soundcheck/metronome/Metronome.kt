@@ -143,10 +143,18 @@ class Metronome(private val output: SoundOutput, private val scope: CoroutineSco
         _beat.value = pending.firstOrNull()?.takeIf { it.frame <= now }
     }
 
-    /** Cancels beats that haven't sounded; returns the last one that has, if any. */
+    /**
+     * Cancels beats that haven't sounded; returns the last one that has, or is committed to.
+     *
+     * A beat inside [RESCHEDULE_MARGIN_MS] of [now] is kept rather than cancelled: the
+     * native mixer drains its commands per audio block and can already be part-way into
+     * starting that beat's voice by the time [SoundOutput.cancelFrom] takes effect, so
+     * treating it as still cancellable would let it be rescheduled and played twice.
+     */
     private fun cancelPending(now: Long): Beat? {
-        output.cancelFrom(now + 1)
-        pending.removeAll { it.frame > now }
+        val commit = now + msToFrames(RESCHEDULE_MARGIN_MS)
+        output.cancelFrom(commit)
+        pending.removeAll { it.frame >= commit }
         val last = pending.lastOrNull()
         nextIndex = (last?.index ?: -1) + 1
         return last
