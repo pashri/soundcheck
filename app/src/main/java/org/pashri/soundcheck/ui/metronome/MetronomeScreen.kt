@@ -28,7 +28,11 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +56,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
@@ -108,7 +113,11 @@ fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
             ) {
                 TempoReadout(state)
                 Spacer(Modifier.height(26.dp))
-                BeatRow(beats = state.beatsInBar, playing = state.beatInBar)
+                BeatRow(
+                    beats = state.beatsInBar,
+                    playing = state.beatInBar,
+                    beatIndex = state.beatIndex,
+                )
                 Spacer(Modifier.height(26.dp))
                 TempoControls(bpm = state.bpm, actions = actions)
                 Spacer(Modifier.height(22.dp))
@@ -135,8 +144,18 @@ private fun TempoReadout(state: MetronomeUiState) {
 }
 
 @Composable
-private fun BeatRow(beats: Int, playing: Int?) {
+private fun BeatRow(beats: Int, playing: Int?, beatIndex: Long?) {
     val description = playing?.let { "Beat ${it + 1} of $beats" } ?: "$beats beats per bar"
+    // With one notehead and no per-beat position (accent off), flash it briefly on every
+    // beat instead, so a single mark still gives a visible pulse.
+    var flashing by remember { mutableStateOf(false) }
+    LaunchedEffect(beatIndex) {
+        if (beats == 1 && beatIndex != null) {
+            flashing = true
+            delay(BEAT_FLASH_MS)
+            flashing = false
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -145,7 +164,10 @@ private fun BeatRow(beats: Int, playing: Int?) {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.Bottom,
     ) {
-        repeat(beats) { i -> BeatMark(accented = i == 0 && beats > 1, playing = i == playing) }
+        repeat(beats) { i ->
+            val lit = if (beats == 1) flashing else i == playing
+            BeatMark(accented = i == 0 && beats > 1, playing = lit)
+        }
     }
 }
 
@@ -335,3 +357,6 @@ private val ACCENT_CHOICES: List<Int?> = listOf(null, 2, 3, 4, 5, 6, 7, 8)
 private const val CHOICES_PER_ROW = 4
 private const val NOTEHEAD_TILT = -20f
 private val BPM_NUMBER_SIZE = 180.dp
+
+/** How long the single notehead stays lit when the accent is off. */
+private const val BEAT_FLASH_MS = 120L

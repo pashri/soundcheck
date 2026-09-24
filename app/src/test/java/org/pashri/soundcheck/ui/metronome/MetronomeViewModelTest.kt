@@ -164,4 +164,23 @@ class MetronomeViewModelTest {
         assertEquals(1, current.beatsInBar)
         assertEquals("NO ACCENT", current.accentLabel)
     }
+
+    @Test
+    fun `with the accent off the beat index still advances beat to beat`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.setAccent(null)
+            viewModel.setBpm(120)
+            viewModel.toggle()
+            advanceTimeBy(100)
+            val first = state(viewModel).beatIndex
+            advanceTimeBy(500)
+            val second = state(viewModel).beatIndex
+            advanceTimeBy(500)
+            val third = state(viewModel).beatIndex
+            assertEquals(0L, first)
+            assertEquals(1L, second)
+            assertEquals(2L, third)
+            viewModel.stop()
+        }
 }

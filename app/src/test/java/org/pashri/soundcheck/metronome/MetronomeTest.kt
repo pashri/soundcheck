@@ -140,12 +140,15 @@ class MetronomeTest {
         runFor(700)
         metronome.start(bpm = 120, accentEvery = 4)
         runFor(2_000)
-        val expected = listOf(4_800L, 28_800L, 38_400L, 62_400L, 86_400L, 110_400L, 134_400L)
+        // Restarting silences the output, clearing the earlier clicks from the schedule
+        // (see "stopping silences the output leaving nothing scheduled"), so only the
+        // beats scheduled after the restart remain.
+        val expected = listOf(38_400L, 62_400L, 86_400L, 110_400L, 134_400L)
         assertEquals(expected, output.frames)
     }
 
     @Test
-    fun `stopping cancels pending clicks and stops the output`() = runTest {
+    fun `stopping silences the output leaving nothing scheduled`() = runTest {
         val output = fakeOutput()
         val metronome = metronomeWith(output)
         metronome.start(bpm = 120, accentEvery = 4)
@@ -154,7 +157,7 @@ class MetronomeTest {
         runFor(1_000)
         assertFalse(output.running)
         assertNull(metronome.beat.value)
-        assertEquals(listOf(4_800L, 28_800L), output.frames)
+        assertTrue(output.frames.isEmpty())
     }
 
     @Test
@@ -219,8 +222,13 @@ class MetronomeTest {
         // 1 + dragFrames / 24_000 beats land inside the drag window. A scheduler that
         // goes silent during the drag (the bug under test) produces only the first beat.
         val minBeats = 1 + (dragFrames / framesPerBeat(120)).toInt()
-        assertTrue("expected at least $minBeats beats, got ${inDrag.size}", inDrag.size >= minBeats)
-        assertTrue(output.frames.zipWithNext { a, b -> b - a }.all { it >= framesPerBeat(MAX_BPM) })
+        assertTrue(
+            "expected at least $minBeats beats, got ${inDrag.size}",
+            inDrag.size >= minBeats,
+        )
+        assertTrue(
+            output.frames.zipWithNext { a, b -> b - a }.all { it >= framesPerBeat(MAX_BPM) },
+        )
         assertTrue(output.lateSchedules.isEmpty())
     }
 }

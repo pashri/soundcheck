@@ -35,7 +35,7 @@ class MetronomeViewModel(
     /** Everything the screen shows. */
     val uiState: StateFlow<MetronomeUiState> =
         combine(settings, metronome.beat) { state, beat ->
-            state.copy(beatInBar = beat?.positionInBar)
+            state.copy(beatInBar = beat?.positionInBar, beatIndex = beat?.index)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, MetronomeUiState())
 
     override fun setBpm(bpm: Int) {

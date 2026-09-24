@@ -11,12 +11,15 @@ import org.pashri.soundcheck.metronome.TempoMarking
  * @property accentEvery beats per bar, or null with the accent off.
  * @property running whether it is clicking.
  * @property beatInBar which beat of the bar is sounding, or null when silent.
+ * @property beatIndex beats since clicking started, or null when silent; changes on every
+ *   beat regardless of accent, so a single notehead can still pulse with the accent off.
  */
 data class MetronomeUiState(
     val bpm: Int = DEFAULT_BPM,
     val accentEvery: Int? = DEFAULT_ACCENT,
     val running: Boolean = false,
     val beatInBar: Int? = null,
+    val beatIndex: Long? = null,
 ) {
     /** The Italian tempo marking, e.g. "Andante". */
     val tempoMarking: String get() = TempoMarking.forBpm(bpm)

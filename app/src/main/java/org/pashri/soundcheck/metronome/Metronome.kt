@@ -101,7 +101,7 @@ class Metronome(private val output: SoundOutput, private val scope: CoroutineSco
         job?.cancel()
         job = null
         if (grid != null) {
-            output.cancelFrom(output.framePosition())
+            output.silence()
             output.stop()
         }
         grid = null
@@ -149,7 +149,9 @@ class Metronome(private val output: SoundOutput, private val scope: CoroutineSco
      * A beat inside [RESCHEDULE_MARGIN_MS] of [now] is kept rather than cancelled: the
      * native mixer drains its commands per audio block and can already be part-way into
      * starting that beat's voice by the time [SoundOutput.cancelFrom] takes effect, so
-     * treating it as still cancellable would let it be rescheduled and played twice.
+     * treating it as still cancellable would let it be rescheduled and played twice. This
+     * margin assumes the engine's audio block is no longer than [RESCHEDULE_MARGIN_MS] (960
+     * frames at 48 kHz); a longer block could let a cancelled beat start anyway.
      */
     private fun cancelPending(now: Long): Beat? {
         val commit = now + msToFrames(RESCHEDULE_MARGIN_MS)
