@@ -27,6 +27,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,8 +61,9 @@ import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SoundcheckTheme
 
 /**
- * The Metronome tab, wired to its view model. Stops the Metronome when the app leaves the
- * screen, until background playback arrives with the playback service.
+ * The Metronome tab, wired to its view model. Stops the Metronome when its screen leaves
+ * composition (switching tabs) or the app leaves the foreground, but not on a configuration
+ * change, until background playback arrives with the playback service.
  *
  * @param factory builds the [MetronomeViewModel].
  */
@@ -74,6 +76,12 @@ fun MetronomeRoute(factory: ViewModelProvider.Factory) {
     // app is actually leaving the screen, not being recreated in place.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         if (activity?.isChangingConfigurations != true) viewModel.stop()
+    }
+    // popUpTo(start) { saveState = true } keeps this entry (Metronome is the start
+    // destination) on the back stack across tab switches, and the outgoing destination is
+    // normally removed from composition before ON_STOP is delivered, so also stop here.
+    DisposableEffect(viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.stop() }
     }
     MetronomeScreen(state = state, actions = viewModel)
 }
@@ -130,8 +138,11 @@ private fun TempoReadout(state: MetronomeUiState) {
 private fun BeatRow(beats: Int, playing: Int?) {
     val description = playing?.let { "Beat ${it + 1} of $beats" } ?: "$beats beats per bar"
     Row(
-        modifier = Modifier.height(56.dp).semantics { contentDescription = description },
-        horizontalArrangement = Arrangement.spacedBy(if (beats > 5) 12.dp else 30.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .semantics { contentDescription = description },
+        horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.Bottom,
     ) {
         repeat(beats) { i -> BeatMark(accented = i == 0 && beats > 1, playing = i == playing) }
@@ -234,7 +245,7 @@ private fun AccentChip(
     val shape = RoundedCornerShape(6.dp)
     Box(
         modifier = modifier
-            .height(46.dp)
+            .heightIn(min = 48.dp)
             .clip(shape)
             .background(if (selected) colors.ink else Color.Transparent)
             .border(1.dp, if (selected) colors.ink else colors.faint, shape)
@@ -261,7 +272,7 @@ private fun TransportButtons(running: Boolean, actions: MetronomeActions) {
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(56.dp)
+                .heightIn(min = 56.dp)
                 .clip(shape)
                 .border(1.dp, colors.ink, shape)
                 .clickable(role = Role.Button, onClick = actions::tap),
@@ -272,7 +283,7 @@ private fun TransportButtons(running: Boolean, actions: MetronomeActions) {
         Row(
             modifier = Modifier
                 .weight(1f)
-                .height(56.dp)
+                .heightIn(min = 56.dp)
                 .clip(shape)
                 .background(colors.accent)
                 .clickable(role = Role.Button, onClick = actions::toggle),
