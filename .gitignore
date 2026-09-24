@@ -1,0 +1,17 @@
+# Dot-directories are ignored wholesale; whitelist the ones that belong
+.*/
+!.github/
+
+# Dot-files are not covered by the rule above
+.DS_Store
+
+# Android / Gradle build output
+build/
+/captures
+*.iml
+local.properties
+
+# Local signing config and keystores, never committed
+keystore.properties
+*.jks
+*.keystore
