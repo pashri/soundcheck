@@ -1,6 +1,7 @@
 package org.pashri.soundcheck.tuner
 
 import kotlin.math.abs
+import org.pashri.soundcheck.music.midiOf
 
 /** Recent estimates the median is taken over. */
 const val MEDIAN_FRAMES: Int = 5

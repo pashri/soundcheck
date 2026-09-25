@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.warmup
 
+import org.pashri.soundcheck.music.Pitch
+
 /**
  * The lowest and highest notes a Pattern sings, in half-steps from its root.
  *

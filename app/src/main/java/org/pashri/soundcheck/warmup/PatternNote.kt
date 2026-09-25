@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.warmup
 
+import org.pashri.soundcheck.music.HALF_STEPS_PER_OCTAVE
+
 /**
  * Raises or lowers a Pattern note from the major scale.
  *

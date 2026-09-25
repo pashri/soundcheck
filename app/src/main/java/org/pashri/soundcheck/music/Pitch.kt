@@ -1,7 +1,16 @@
-package org.pashri.soundcheck.warmup
+package org.pashri.soundcheck.music
 
 /** Half-steps in one octave. */
 const val HALF_STEPS_PER_OCTAVE: Int = 12
+
+/**
+ * The conventional name of a note's pitch class, the same in every key: C, D♭, D, E♭, E,
+ * F, F♯, G, A♭, A, B♭ or B.
+ *
+ * @param midi any MIDI note number; numbers outside 0–127 wrap by octaves.
+ * @return the name without its octave, e.g. "E♭".
+ */
+fun pitchClassNameOf(midi: Int): String = PITCH_CLASS_NAMES[midi.mod(HALF_STEPS_PER_OCTAVE)]
 
 /**
  * A piano key, identified by its MIDI note number; middle C is C4, MIDI 60.
@@ -19,7 +28,7 @@ value class Pitch(val midi: Int) : Comparable<Pitch> {
 
     /** The note name without its octave, e.g. "E♭". */
     val pitchClassName: String
-        get() = PITCH_CLASS_NAMES[midi % HALF_STEPS_PER_OCTAVE]
+        get() = pitchClassNameOf(midi)
 
     /** The scientific octave: 4 from middle C up to the B above it. */
     val octave: Int

@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.music.Pitch
 
 class RangeTest {
     private val tenor = VoiceType.TENOR.range

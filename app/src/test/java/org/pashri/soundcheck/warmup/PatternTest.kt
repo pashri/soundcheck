@@ -3,6 +3,7 @@ package org.pashri.soundcheck.warmup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import org.pashri.soundcheck.music.Pitch
 
 class PatternTest {
     private fun note(

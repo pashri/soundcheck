@@ -1,4 +1,4 @@
-package org.pashri.soundcheck.warmup
+package org.pashri.soundcheck.music
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows

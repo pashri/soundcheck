@@ -4,9 +4,9 @@ import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.pashri.soundcheck.music.midiOf
 import org.pashri.soundcheck.tuner.MicStatus
 import org.pashri.soundcheck.tuner.NoteReading
-import org.pashri.soundcheck.tuner.midiOf
 
 class TunerUiStateTest {
     private val listening = TunerUiState(access = MicAccess.Granted, mic = MicStatus.Listening)

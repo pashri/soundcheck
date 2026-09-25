@@ -3,6 +3,7 @@ package org.pashri.soundcheck.warmup
 import org.pashri.soundcheck.audio.msToFrames
 import org.pashri.soundcheck.metronome.BeatGrid
 import org.pashri.soundcheck.metronome.framesPerBeat
+import org.pashri.soundcheck.music.Pitch
 
 /** Silence between the Announcement and the Demo, so the voice stands apart from the piano. */
 const val ANNOUNCEMENT_GAP_MS: Long = 500L

@@ -2,6 +2,7 @@ package org.pashri.soundcheck.warmup
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.pashri.soundcheck.music.Pitch
 
 class KeyChordTest {
     @Test
