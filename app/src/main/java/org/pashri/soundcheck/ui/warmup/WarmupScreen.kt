@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,12 +31,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -89,7 +92,7 @@ fun WarmupScreen(state: WarmupUiState, actions: WarmupActions) {
             ) {
                 Column {
                     StepHeading(state)
-                    state.iterations?.let { IterationPanel(it) }
+                    state.iterations?.let { IterationPanel(view = it, active = state.active) }
                     NextStep(state)
                 }
                 Transport(state = state, actions = actions)
@@ -111,7 +114,7 @@ private fun StepHeading(state: WarmupUiState) {
 }
 
 @Composable
-private fun IterationPanel(view: IterationView) {
+private fun IterationPanel(view: IterationView, active: Boolean) {
     val colors = Manuscript.colors
     val keySize = with(LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
     Spacer(Modifier.height(24.dp))
@@ -124,18 +127,43 @@ private fun IterationPanel(view: IterationView) {
             text = view.keyLabel,
             style = ManuscriptType.displayNumber.copy(fontSize = keySize),
             color = colors.ink,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .clearAndSetSemantics { contentDescription = spokenKeyLabel(view.keyLabel) },
         )
-        Text(text = view.progressLabel, style = ManuscriptType.label, color = colors.muted)
+        Text(
+            text = view.progressLabel,
+            style = ManuscriptType.label,
+            color = colors.muted,
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = spokenProgress(view, active)
+            },
+        )
     }
     Spacer(Modifier.height(12.dp))
     IterationCells(view)
     Spacer(Modifier.height(8.dp))
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        listOf(view.startLabel, view.turnLabel, view.endLabel).forEach {
-            Text(text = it, style = ManuscriptType.label, color = colors.muted)
-        }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics { contentDescription = spokenTurn(view) },
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        TurnLabel(text = view.startLabel, align = TextAlign.Start)
+        TurnLabel(text = view.turnLabel, align = TextAlign.Center)
+        TurnLabel(text = view.endLabel, align = TextAlign.End)
     }
+}
+
+@Composable
+private fun RowScope.TurnLabel(text: String, align: TextAlign) {
+    Text(
+        text = text,
+        style = ManuscriptType.label,
+        color = Manuscript.colors.muted,
+        textAlign = align,
+        modifier = Modifier.weight(1f),
+    )
 }
 
 @Composable
@@ -226,6 +254,9 @@ private fun Transport(state: WarmupUiState, actions: WarmupActions) {
                     text = state.playLabel,
                     style = ManuscriptType.button.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.onAccent,
+                    softWrap = false,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f, fill = false),
                 )
             }
             SkipButton(

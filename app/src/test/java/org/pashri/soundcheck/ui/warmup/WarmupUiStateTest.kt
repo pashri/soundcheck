@@ -114,4 +114,32 @@ class WarmupUiStateTest {
             KeyChord.entries.map { keyLabel(key = eFlat, chord = it) },
         )
     }
+
+    @Test
+    fun `a key label is spoken with its symbols spelled out`() {
+        assertEquals("E flat major", spokenKeyLabel("E♭ major"))
+        assertEquals("E flat", spokenKeyLabel("E♭"))
+        assertEquals("C major", spokenKeyLabel("C major"))
+        assertEquals("F sharp7", spokenKeyLabel("F♯7"))
+    }
+
+    @Test
+    fun `progress is spoken as an Iteration, a direction, the Demo or not started`() {
+        val playing = checkNotNull(state(stepIndex = 2, iteration = 3).iterations)
+        assertEquals("Iteration 4 of 19, going up", spokenProgress(playing, active = true))
+        val homeward = checkNotNull(state(stepIndex = 2, iteration = 12).iterations)
+        assertEquals("Iteration 13 of 19, going down", spokenProgress(homeward, active = true))
+        val demo = checkNotNull(state(stepIndex = 2, iteration = null).iterations)
+        assertEquals("Demo", spokenProgress(demo, active = true))
+        val notStarted = checkNotNull(state(stepIndex = null, iteration = null).iterations)
+        assertEquals("not started", spokenProgress(notStarted, active = false))
+    }
+
+    @Test
+    fun `the turn labels are spoken as one sentence`() {
+        val view = checkNotNull(state(stepIndex = 2, iteration = 3).iterations)
+        assertEquals("Starts C3, turns at A3, back to C3", spokenTurn(view))
+        val highStart = checkNotNull(state(stepIndex = 3, iteration = 0).iterations)
+        assertEquals("Starts D4, turns at C3, back to D4", spokenTurn(highStart))
+    }
 }

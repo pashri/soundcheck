@@ -23,6 +23,7 @@ import org.pashri.soundcheck.warmup.nextStep
  * @property startLabel where the trip starts and which way, e.g. "C3 ↑".
  * @property turnLabel where it turns, e.g. "TURN AT A3".
  * @property endLabel which way it comes back and where it ends, e.g. "↓ C3".
+ * @property arrowUp whether the shown arrow points up, or null before the first Iteration.
  */
 data class IterationView(
     val keyLabel: String,
@@ -33,6 +34,7 @@ data class IterationView(
     val startLabel: String,
     val turnLabel: String,
     val endLabel: String,
+    val arrowUp: Boolean?,
 )
 
 /**
@@ -160,8 +162,58 @@ fun iterationView(
         startLabel = "${trip.startKey.name} $outward",
         turnLabel = "TURN AT ${trip.turnKey.name}",
         endLabel = "$homeward ${trip.startKey.name}",
+        arrowUp = now?.let { arrow == UP },
     )
 }
+
+/**
+ * A key label read aloud, with its symbols spelled out: a bundled font glyph such as "♭"
+ * doesn't always speak.
+ *
+ * @param label a key label from [keyLabel], e.g. "E♭ major" or "E♭".
+ * @return the label with "♭" read as " flat" and "♯" as " sharp", e.g. "E flat major".
+ */
+internal fun spokenKeyLabel(label: String): String {
+    val letter = label.take(1)
+    val rest = label.drop(1)
+    return when {
+        rest.startsWith("♭") -> "$letter flat${rest.drop(1)}"
+        rest.startsWith("♯") -> "$letter sharp${rest.drop(1)}"
+        else -> "$letter$rest"
+    }
+}
+
+/**
+ * The Iteration count and direction read aloud, for TalkBack.
+ *
+ * @param view the key and progress shown.
+ * @param active whether a Programme is playing or paused.
+ * @return "Iteration 4 of 19, going up" (or "going down"), "Demo" during the Demo, or
+ *     "not started" before anything plays.
+ */
+internal fun spokenProgress(view: IterationView, active: Boolean): String {
+    val now = view.now
+    return when {
+        now != null -> "Iteration ${now + 1} of ${view.count}, going ${directionWord(view)}"
+        active -> "Demo"
+        else -> "not started"
+    }
+}
+
+/**
+ * The round trip's ends and turn read aloud as one sentence.
+ *
+ * @param view the key and progress shown.
+ * @return e.g. "Starts C3, turns at A3, back to C3".
+ */
+internal fun spokenTurn(view: IterationView): String {
+    val start = view.startLabel.substringBefore(" ")
+    val turn = view.turnLabel.removePrefix("TURN AT ")
+    val end = view.endLabel.substringAfterLast(" ")
+    return "Starts $start, turns at $turn, back to $end"
+}
+
+private fun directionWord(view: IterationView): String = if (view.arrowUp == true) "up" else "down"
 
 /**
  * A key and its chord as a singer reads them.
