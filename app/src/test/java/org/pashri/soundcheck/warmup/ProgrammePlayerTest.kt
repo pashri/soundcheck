@@ -64,7 +64,11 @@ class ProgrammePlayerTest {
     private val FakeSoundOutput.frames: List<Long> get() = scheduled.map { it.frame }
 
     private fun announcement(sound: SoundId, frame: Long): Scheduled =
-        Scheduled(announcements.clipOf(sound).id, frame, ProgrammePlayer.ANNOUNCEMENT_GAIN)
+        Scheduled(
+            id = announcements.clipOf(sound).id,
+            frame = frame,
+            gain = ProgrammePlayer.ANNOUNCEMENT_GAIN,
+        )
 
     private fun at(step: Int, iteration: Int?, playing: Boolean): Playback = Playback(
         programme = programme,
@@ -177,6 +181,7 @@ class ProgrammePlayerTest {
             val before = rig.output.scheduled.size
             assertTrue(rig.player.resume())
             runCurrent()
+            assertEquals(1, rig.player.playback.value?.iteration)
             val chord = listOf(61, 65, 68).map { rig.piano.keyFor(Pitch(it)) }
             val expected = chord.map {
                 Scheduled(
@@ -355,8 +360,30 @@ class ProgrammePlayerTest {
             rig.player.pause()
             runUntil(1_050)
             rig.player.pause(fade = false)
+            assertFalse(rig.output.running)
             rig.output.start()
             runUntil(1_250)
             assertTrue(rig.output.running)
         }
+
+    @Test
+    fun `pause without fade leaves an already-finished tail alone`() = runTest {
+        val rig = rig()
+        rig.player.play(programme, range)
+        runUntil(1_000)
+        rig.player.pause()
+        runUntil(1_300)
+        rig.output.start()
+        rig.player.pause(fade = false)
+        assertTrue(rig.output.running)
+    }
+
+    @Test
+    fun `stop cancels the announcement preparation started by play`() = runTest {
+        val rig = rig()
+        rig.player.play(programme, range)
+        rig.player.stop()
+        runCurrent()
+        assertTrue(announcements.prepared.isEmpty())
+    }
 }

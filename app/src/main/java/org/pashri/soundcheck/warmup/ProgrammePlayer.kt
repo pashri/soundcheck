@@ -55,6 +55,7 @@ class ProgrammePlayer(
 
     private var loop: Job? = null
     private var tail: Job? = null
+    private var preparing: Job? = null
     private var resumeAt: ResumePoint? = null
     private val segments = ArrayDeque<Segment>()
 
@@ -68,7 +69,8 @@ class ProgrammePlayer(
      */
     fun play(programme: Programme, range: Range): Boolean {
         val first = programme.firstStep(range) ?: return false
-        scope.launch { prepareAnnouncements(programme = programme, range = range) }
+        preparing?.cancel()
+        preparing = scope.launch { prepareAnnouncements(programme = programme, range = range) }
         val start = Playback(
             programme = programme,
             range = range,
@@ -127,6 +129,7 @@ class ProgrammePlayer(
 
     /** Stops at once and releases the device output. */
     fun stop() {
+        preparing?.cancel()
         if (_playback.value == null) return
         halt(fade = false)
         resumeAt = null
@@ -155,6 +158,7 @@ class ProgrammePlayer(
             tail = scope.launch {
                 delay(PAUSE_TAIL_MS)
                 output.stop()
+                tail = null
             }
         } else {
             output.silence()
@@ -168,7 +172,7 @@ class ProgrammePlayer(
      * started it. Cancels that tail and, if one was pending, silences and stops at once.
      */
     private fun cancelPendingTail() {
-        val pending = tail ?: return
+        val pending = tail?.takeIf { it.isActive } ?: return
         pending.cancel()
         tail = null
         output.silence()
@@ -355,5 +359,6 @@ private class Segment(
     val endFrame: Long
         get() = origin + prepared.timeline.lengthFrames
 
-    fun iterationAt(now: Long): Int? = prepared.timeline.iterationAt(now - origin)?.index
+    fun iterationAt(now: Long): Int? =
+        prepared.timeline.iterationAt(maxOf(now - origin, from))?.index
 }
