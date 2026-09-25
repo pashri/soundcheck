@@ -1,0 +1,10 @@
+Piano samples: Salamander Grand Piano V3 by Alexander Holm (a Yamaha C5),
+velocity layer 8, licensed under Creative Commons Attribution 3.0:
+https://creativecommons.org/licenses/by/3.0/
+
+Source: FreePats, https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html
+(SalamanderGrandPiano-SFZ+FLAC-V3+20200602.tar.gz).
+
+Changes: each sample was mixed to mono, cut to 4.5 seconds with a half-second
+fade-out and stored as 16-bit WAV at 48 kHz. Soundcheck retunes each key at
+playback using the cents from the package's "Retuned" SFZ.
