@@ -55,8 +55,10 @@ class TunerViewModel(
 
     /**
      * The screen became visible; listens if the microphone is allowed and the Tuner has not
-     * given way to a Warm-up. While it has, this only rechecks the permission, so ON_START
-     * firing again on screen off/on or rotation never pauses a Programme the user resumed.
+     * given way to a Warm-up. While the Warm-up (or another tool) still holds the slot, this
+     * only rechecks the permission, so ON_START firing again on screen off/on or rotation
+     * never pauses a Programme the user resumed. Once nothing holds the slot, the Tuner stops
+     * giving way and listens, which can't pause anything.
      *
      * @param granted whether Soundcheck holds the microphone permission right now.
      */
@@ -67,6 +69,7 @@ class TunerViewModel(
         } else if (access.value == MicAccess.Granted) {
             access.value = MicAccess.Unknown
         }
+        if (yielded.value && arbiter.current == null) yielded.value = false
         if (!yielded.value) listenIfAllowed()
     }
 

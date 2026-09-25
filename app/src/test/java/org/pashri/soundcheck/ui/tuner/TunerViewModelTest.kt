@@ -483,4 +483,38 @@ class TunerViewModelTest {
             assertEquals(Tool.TUNER, arbiter.current)
             viewModel.stop()
         }
+
+    @Test
+    fun `a Tuner that yielded listens again on re-show once nothing holds the slot`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            hops(1)
+            arbiter.claim(Tool.WARM_UP, onEvicted = {})
+            viewModel.stop()
+            arbiter.release(Tool.WARM_UP)
+            viewModel.onShown(granted = true)
+            hops(1)
+            assertEquals(TunerMode.Listening, state(viewModel).mode)
+            assertEquals(Tool.TUNER, arbiter.current)
+            viewModel.stop()
+        }
+
+    @Test
+    fun `a Tuner that yielded stays yielded on re-show while a paused Warm-up holds the slot`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            hops(1)
+            var evicted = false
+            arbiter.claim(Tool.WARM_UP, onEvicted = { evicted = true })
+            viewModel.stop()
+            viewModel.onShown(granted = true)
+            hops(1)
+            assertEquals(TunerMode.Yielded, state(viewModel).mode)
+            assertEquals(0, mic.openNow)
+            assertFalse(evicted)
+            assertEquals(Tool.WARM_UP, arbiter.current)
+            viewModel.stop()
+        }
 }
