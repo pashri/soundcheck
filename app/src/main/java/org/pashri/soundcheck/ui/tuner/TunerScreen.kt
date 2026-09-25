@@ -2,6 +2,7 @@ package org.pashri.soundcheck.ui.tuner
 
 import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -127,7 +128,11 @@ private fun Activity.hasMicPermission(): Boolean =
 
 private fun Activity.openAppSettings() {
     val uri = Uri.fromParts("package", packageName, null)
-    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri))
+    try {
+        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri))
+    } catch (_: ActivityNotFoundException) {
+        // No Settings app to open on this device; nothing more to do.
+    }
 }
 
 /**
@@ -187,22 +192,46 @@ private fun TunerFace(state: TunerUiState) {
 @Composable
 private fun NoteOnStaff(note: NoteReading?) {
     val colors = Manuscript.colors
-    val description = note?.let { "${it.name} ${it.octave}" } ?: "No note"
+    val description = note?.let { "${spokenNoteName(it.name)} ${it.octave}" }
+    val semanticsModifier = if (description != null) {
+        Modifier.semantics { contentDescription = description }
+    } else {
+        Modifier
+    }
     Box(
         modifier = Modifier
             .widthIn(max = STAFF_WIDTH)
             .fillMaxWidth()
             .heightIn(min = STAFF_HEIGHT)
-            .semantics { contentDescription = description },
+            .then(semanticsModifier),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxSize()) {
+        Canvas(Modifier.matchParentSize()) {
+            // Anchored to the box's vertical centre, not its top, so the middle line stays
+            // under the letter's centre even as heightIn(min) lets the box grow taller.
+            val middle = size.height / 2
             STAFF_LINES_Y.forEach { y ->
-                val top = y.toPx()
+                val top = middle + (y - STAFF_MIDDLE_LINE_Y).toPx()
                 drawLine(colors.rule, Offset(0f, top), Offset(size.width, top), 1.2.dp.toPx())
             }
         }
         if (note != null) NoteName(note)
+    }
+}
+
+/**
+ * The note's name in words, for screen readers: a bundled font glyph such as "♭" doesn't
+ * always speak, so it is spelled out.
+ *
+ * @param name the note's letter and optional accidental, e.g. "B♭".
+ * @return the letter followed by "flat" or "sharp" when there is an accidental.
+ */
+private fun spokenNoteName(name: String): String {
+    val letter = name.take(1)
+    return when (val symbol = name.drop(1)) {
+        "♭" -> "$letter flat"
+        "♯" -> "$letter sharp"
+        else -> letter + symbol
     }
 }
 
@@ -245,11 +274,11 @@ private fun Needle(degrees: Float?) {
     val measurer = rememberTextMeasurer()
     val signStyle = serifDp(SIGN_SIZE, density).copy(color = colors.muted)
     Canvas(
+        // Decorative: the reading and advice lines below already speak the value.
         Modifier
             .widthIn(max = DIAL_WIDTH)
             .fillMaxWidth()
-            .aspectRatio(DIAL_WIDTH / DIAL_HEIGHT)
-            .semantics { contentDescription = "Sharp or flat needle" },
+            .aspectRatio(DIAL_WIDTH / DIAL_HEIGHT),
     ) {
         // Draw in the mockup's own coordinates, scaled down on a narrow phone.
         val unit = size.width / DIAL_WIDTH.toPx()
@@ -369,6 +398,7 @@ private val ADVICE_STYLE = TextStyle(fontFamily = SansFamily, fontSize = 14.sp)
 private val STAFF_WIDTH = 342.dp
 private val STAFF_HEIGHT = 230.dp
 private val STAFF_LINES_Y = listOf(75.dp, 95.dp, 115.dp, 135.dp, 155.dp)
+private val STAFF_MIDDLE_LINE_Y = 115.dp
 private val LETTER_SIZE = 200.dp
 private val ACCIDENTAL_SIZE = 96.dp
 private val OCTAVE_SIZE = 52.dp
