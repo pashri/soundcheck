@@ -12,7 +12,12 @@ class FakeFocusGate(var grant: Boolean = true) : FocusGate {
     var held: Boolean = false
         private set
 
+    /** How many times [acquire] was called, granted or not. */
+    var acquireCount: Int = 0
+        private set
+
     override fun acquire(onLost: () -> Unit): Boolean {
+        acquireCount++
         if (!grant) return false
         this.onLost = onLost
         held = true

@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.ui
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import org.pashri.soundcheck.ui.components.NotYetBuiltScreen
 import org.pashri.soundcheck.ui.components.Tab
 import org.pashri.soundcheck.ui.metronome.MetronomeRoute
 import org.pashri.soundcheck.ui.theme.Manuscript
+import org.pashri.soundcheck.ui.tuner.TunerRoute
 
 /**
  * The whole app: the current tool above the tab bar.
@@ -35,8 +38,17 @@ fun SoundcheckApp(container: AppContainer) {
             navController = navController,
             startDestination = Tab.Metronome.route,
             modifier = Modifier.weight(1f),
+            // No transition animation: the default fade kept the outgoing tab composed (and
+            // its view model running, e.g. the Metronome still clicking) while the incoming
+            // tab had already started, instead of handing tabs over at once.
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None },
         ) {
-            composable(Tab.Tuner.route) { NotYetBuiltScreen(title = "Tuner") }
+            composable(Tab.Tuner.route) {
+                TunerRoute(factory = container.tunerViewModelFactory)
+            }
             composable(Tab.Metronome.route) {
                 MetronomeRoute(factory = container.metronomeViewModelFactory)
             }
