@@ -15,8 +15,9 @@ import org.pashri.soundcheck.ui.theme.SoundcheckTheme
 
 /**
  * The single activity hosting every Soundcheck screen. Tapping the playback notification
- * reuses this activity (it is `singleTop`) and asks it to open the Warm-up tab, whether the
- * app is already running or not.
+ * (its intent carries `FLAG_ACTIVITY_SINGLE_TOP` and `FLAG_ACTIVITY_CLEAR_TOP`) delivers
+ * [onNewIntent] to the running instance instead of starting a second one, and asks it to
+ * open the Warm-up tab.
  */
 class MainActivity : ComponentActivity() {
     private var openTab by mutableStateOf<Tab?>(null)
@@ -24,14 +25,21 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        openTab = tabForRoute(intent.getStringExtra(EXTRA_OPEN_TAB))
+        // Only a fresh instance should act on the extra; a recreation (rotation, dark mode,
+        // a font or locale change) must not re-open the Warm-up over whatever tab was showing.
+        if (savedInstanceState == null) {
+            openTab = tabForRoute(intent.getStringExtra(EXTRA_OPEN_TAB))
+        }
         val container = (application as SoundcheckApplication).container
         setContent {
             SoundcheckTheme {
                 SoundcheckApp(
                     container = container,
                     openTab = openTab,
-                    onTabOpened = { openTab = null },
+                    onTabOpened = {
+                        openTab = null
+                        intent.removeExtra(EXTRA_OPEN_TAB)
+                    },
                 )
             }
         }

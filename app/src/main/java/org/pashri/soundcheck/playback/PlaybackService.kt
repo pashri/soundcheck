@@ -65,12 +65,15 @@ class PlaybackService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) {
+            container.warmup.stop()
+            return START_NOT_STICKY
+        }
         val playback = container.warmup.playback.value
         showInForeground(playback)
         when (intent?.action) {
             ACTION_TOGGLE -> container.warmup.toggle()
             ACTION_NEXT -> container.warmup.next()
-            ACTION_STOP -> container.warmup.stop()
         }
         if (playback == null) stopSelf()
         return START_NOT_STICKY
