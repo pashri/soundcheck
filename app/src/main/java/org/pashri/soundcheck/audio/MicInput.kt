@@ -110,8 +110,14 @@ private class AudioRecordSession(private val record: AudioRecord) : MicSession {
         closed = true
         try {
             record.stop()
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "The microphone was not recording when closed", e)
         } finally {
             record.release()
         }
+    }
+
+    private companion object {
+        const val TAG = "AudioRecordSession"
     }
 }

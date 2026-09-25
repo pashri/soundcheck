@@ -95,6 +95,21 @@ class PitchDetectorTest {
         assertNull(detector.detect(Signals.sine(2_500.0)))
     }
 
+    @Test
+    fun `a tone just below the lowest pitch is not reported`() {
+        assertNull(detector.detect(Signals.sine(58.0)))
+    }
+
+    @Test
+    fun `a noisy tone just below the lowest pitch is not read as 60 Hz`() {
+        listOf(57.0, 58.0, 59.0).forEach { hz ->
+            (1..20).forEach { seed ->
+                val noisy = Signals.mix(Signals.sine(hz), Signals.noise(0.05, seed))
+                assertNull("$hz Hz, seed $seed", detector.detect(noisy))
+            }
+        }
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun `a window of the wrong size is refused`() {
         detector.detect(FloatArray(100))

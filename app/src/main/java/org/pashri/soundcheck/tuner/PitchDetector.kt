@@ -86,7 +86,8 @@ class PitchDetector(private val sampleRate: Int = SAMPLE_RATE) {
     /**
      * The first key maximum within [PEAK_THRESHOLD] of the highest. A key maximum is the
      * highest point of each positive lobe after the first negative dip; the lobe around
-     * lag 0 is skipped because every signal matches itself there.
+     * lag 0 is skipped because every signal matches itself there. A lobe still rising at
+     * the last lag has its peak beyond the range, so it has no key maximum.
      */
     private fun choosePeak(): Int? {
         var lag = 1
@@ -109,7 +110,8 @@ class PitchDetector(private val sampleRate: Int = SAMPLE_RATE) {
                 if (best < 0 || nsdf[lag] > nsdf[best]) best = lag
                 lag++
             }
-            if (best > 0) action(best)
+            val risingAtEdge = best == maxLag && nsdf[maxLag + 1] >= nsdf[maxLag]
+            if (best > 0 && !risingAtEdge) action(best)
         }
     }
 
