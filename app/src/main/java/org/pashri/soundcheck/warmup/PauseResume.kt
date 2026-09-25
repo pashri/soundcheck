@@ -33,4 +33,14 @@ fun StepTimeline.resumeFrame(pausedAtFrame: Long): Long =
  * @return every event that starts at or after [frame], in order.
  */
 fun StepTimeline.eventsFrom(frame: Long): List<TimelineEvent> =
-    events.filter { it.startFrame >= frame }
+    eventsBetween(from = frame, until = Long.MAX_VALUE)
+
+/**
+ * The events that start inside a window of the Step, for scheduling a little at a time.
+ *
+ * @param from the window's first frame, counted from the start of the Step.
+ * @param until the first frame after the window.
+ * @return every event with [from] ≤ start < [until], in order.
+ */
+fun StepTimeline.eventsBetween(from: Long, until: Long): List<TimelineEvent> =
+    events.filter { it.startFrame >= from && it.startFrame < until }
