@@ -44,8 +44,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -160,16 +162,26 @@ private fun StepHeading(state: WarmupUiState) {
 @Composable
 private fun IterationPanel(view: IterationView, active: Boolean) {
     val colors = Manuscript.colors
-    val keySize = with(LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
+    val density = LocalDensity.current
+    val keySize = with(density) { KEY_LABEL_SIZE.toSp() }
+    val keyRowMinHeight = with(density) { keySize.toDp() }
     Spacer(Modifier.height(24.dp))
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = keyRowMinHeight),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(
             text = view.keyLabel,
-            style = ManuscriptType.displayNumber.copy(fontSize = keySize),
+            style = ManuscriptType.displayNumber.copy(
+                fontSize = keySize,
+                lineHeight = keySize,
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.None,
+                ),
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+            ),
             color = colors.ink,
             modifier = Modifier
                 .weight(1f, fill = false)
