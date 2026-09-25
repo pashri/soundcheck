@@ -348,7 +348,7 @@ private fun MessagePanel(message: TunerMessage, state: TunerUiState, actions: Tu
     Spacer(Modifier.height(24.dp))
     val onClick: () -> Unit = when (state.mode) {
         TunerMode.OpenSettings -> actions::openSettings
-        TunerMode.MicUnavailable -> actions::retry
+        TunerMode.MicUnavailable, TunerMode.Yielded -> actions::retry
         else -> actions::allowMicrophone
     }
     val shape = RoundedCornerShape(6.dp)

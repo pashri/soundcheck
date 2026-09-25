@@ -10,6 +10,7 @@ import org.pashri.soundcheck.audio.FocusGate
 import org.pashri.soundcheck.audio.MicInput
 import org.pashri.soundcheck.audio.NativeAudioEngine
 import org.pashri.soundcheck.audio.SoundOutput
+import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
 
@@ -27,9 +28,17 @@ class AppContainer(context: Context) {
     /** Audio focus for tools that make sound. */
     val audioFocus: FocusGate = AndroidAudioFocus(context)
 
+    /** Keeps one tool making sound or listening at a time. */
+    val toolArbiter: ToolArbiter = ToolArbiter()
+
     /** Builds the Metronome screen's view model. */
     val metronomeViewModelFactory: ViewModelProvider.Factory by lazy {
-        MetronomeViewModel.Factory(soundOutput, audioFocus, SystemClock::elapsedRealtime)
+        MetronomeViewModel.Factory(
+            output = soundOutput,
+            focus = audioFocus,
+            clockMs = SystemClock::elapsedRealtime,
+            arbiter = toolArbiter,
+        )
     }
 
     /** The microphone, for the Tuner; it never goes through [soundOutput]. */
@@ -43,6 +52,11 @@ class AppContainer(context: Context) {
 
     /** Builds the Tuner screen's view model; pitch detection runs on the default pool. */
     val tunerViewModelFactory: ViewModelProvider.Factory by lazy {
-        TunerViewModel.Factory(micInput, tunerFocus, Dispatchers.Default)
+        TunerViewModel.Factory(
+            mic = micInput,
+            focus = tunerFocus,
+            worker = Dispatchers.Default,
+            arbiter = toolArbiter,
+        )
     }
 }

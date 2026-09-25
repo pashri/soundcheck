@@ -13,32 +13,40 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.pashri.soundcheck.audio.FocusGate
 import org.pashri.soundcheck.audio.MicInput
+import org.pashri.soundcheck.audio.Tool
+import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.tuner.MicStatus
 import org.pashri.soundcheck.tuner.Tuner
 
 /**
  * Runs the Tuner screen: listens while the screen is shown and the microphone is allowed,
- * holding audio focus meanwhile so a podcast pauses and resumes afterwards.
+ * holding audio focus meanwhile so a podcast pauses and resumes afterwards. Listening takes
+ * the one sound-or-listening slot, so it pauses a Warm-up; a Warm-up starting makes the
+ * Tuner give way, and it does not reclaim the slot on its own — only [retry] asks to listen
+ * again, so returning to a screen the Warm-up already took over never pauses it back.
  *
  * @param mic the microphone.
  * @param focus audio focus, held while listening.
  * @param worker where reading and pitch detection run, off the main thread.
+ * @param arbiter keeps one tool sounding or listening at a time.
  */
 class TunerViewModel(
     mic: MicInput,
     private val focus: FocusGate,
     worker: CoroutineDispatcher,
+    private val arbiter: ToolArbiter,
 ) : ViewModel() {
     private val tuner = Tuner(mic, viewModelScope, worker)
     private val access = MutableStateFlow(MicAccess.Unknown)
+    private val yielded = MutableStateFlow(false)
     private var shown = false
     private var askedOnOpen = false
     private val wantsToListen = MutableStateFlow(false)
 
     /** Everything the screen shows. */
     val uiState: StateFlow<TunerUiState> =
-        combine(access, tuner.state) { access, heard ->
-            TunerUiState(access = access, mic = heard.mic, note = heard.note)
+        combine(access, tuner.state, yielded) { access, heard, gaveWay ->
+            TunerUiState(access = access, mic = heard.mic, note = heard.note, yielded = gaveWay)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, TunerUiState())
 
     init {
@@ -46,7 +54,9 @@ class TunerViewModel(
     }
 
     /**
-     * The screen became visible; listens if the microphone is allowed.
+     * The screen became visible; listens if the microphone is allowed and the Tuner has not
+     * given way to a Warm-up. While it has, this only rechecks the permission, so ON_START
+     * firing again on screen off/on or rotation never pauses a Programme the user resumed.
      *
      * @param granted whether Soundcheck holds the microphone permission right now.
      */
@@ -57,7 +67,7 @@ class TunerViewModel(
         } else if (access.value == MicAccess.Granted) {
             access.value = MicAccess.Unknown
         }
-        listenIfAllowed()
+        if (!yielded.value) listenIfAllowed()
     }
 
     /**
@@ -83,8 +93,9 @@ class TunerViewModel(
         return true
     }
 
-    /** Tries the microphone again after it was unavailable. */
+    /** Tries the microphone again after it was unavailable, or after giving way. */
     fun retry() {
+        yielded.value = false
         listenIfAllowed()
     }
 
@@ -105,6 +116,8 @@ class TunerViewModel(
     }
 
     private fun startListening() {
+        yielded.value = false
+        arbiter.claim(Tool.TUNER, onEvicted = ::giveWay)
         wantsToListen.value = true
         tuner.start()
     }
@@ -112,6 +125,12 @@ class TunerViewModel(
     private fun stopListening() {
         wantsToListen.value = false
         tuner.stop()
+        arbiter.release(Tool.TUNER)
+    }
+
+    private fun giveWay() {
+        yielded.value = true
+        stopListening()
     }
 
     /**
@@ -139,14 +158,16 @@ class TunerViewModel(
      * @param mic the microphone.
      * @param focus audio focus, held while listening.
      * @param worker where reading and pitch detection run.
+     * @param arbiter keeps one tool sounding or listening at a time.
      */
     class Factory(
         private val mic: MicInput,
         private val focus: FocusGate,
         private val worker: CoroutineDispatcher,
+        private val arbiter: ToolArbiter,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            TunerViewModel(mic, focus, worker) as T
+            TunerViewModel(mic, focus, worker = worker, arbiter = arbiter) as T
     }
 }

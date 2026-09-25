@@ -56,6 +56,9 @@ enum class TunerMode {
 
     /** The microphone couldn't be opened; offers to try again. */
     MicUnavailable,
+
+    /** A Warm-up started, so the Tuner stopped listening; offers to listen instead. */
+    Yielded,
 }
 
 /**
@@ -87,17 +90,20 @@ private const val MAX_CENTS = 50.0
  * @property access whether the microphone may be used.
  * @property mic what the microphone is doing.
  * @property note the note heard, or null when there is none to show.
+ * @property yielded whether the Tuner gave way to a Warm-up that started playing.
  */
 data class TunerUiState(
     val access: MicAccess = MicAccess.Unknown,
     val mic: MicStatus = MicStatus.Off,
     val note: NoteReading? = null,
+    val yielded: Boolean = false,
 ) {
     /** Which face to show. */
     val mode: TunerMode
         get() = when {
             access == MicAccess.Blocked -> TunerMode.OpenSettings
             access != MicAccess.Granted -> TunerMode.AskPermission
+            yielded -> TunerMode.Yielded
             mic == MicStatus.Unavailable -> TunerMode.MicUnavailable
             else -> TunerMode.Listening
         }
@@ -123,6 +129,7 @@ data class TunerUiState(
             TunerMode.AskPermission -> ASK_MESSAGE
             TunerMode.OpenSettings -> SETTINGS_MESSAGE
             TunerMode.MicUnavailable -> UNAVAILABLE_MESSAGE
+            TunerMode.Yielded -> YIELDED_MESSAGE
         }
 
     private companion object {
@@ -140,6 +147,11 @@ data class TunerUiState(
             title = "The microphone isn't available",
             body = "Another app may be using it.",
             button = "Try again",
+        )
+        val YIELDED_MESSAGE = TunerMessage(
+            title = "The Warm-up is playing",
+            body = "The Tuner stops listening while a Programme plays.",
+            button = "Listen instead",
         )
     }
 }

@@ -17,6 +17,8 @@ import org.junit.Before
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
 import org.pashri.soundcheck.audio.FakeSoundOutput
+import org.pashri.soundcheck.audio.Tool
+import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
 
@@ -26,6 +28,7 @@ class MetronomeViewModelTest {
     private val clock = { dispatcher.scheduler.currentTime }
     private val output = FakeSoundOutput(clockMs = clock)
     private val focus = FakeFocusGate()
+    private val arbiter = ToolArbiter()
 
     @Before
     fun setUp() {
@@ -37,7 +40,8 @@ class MetronomeViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = MetronomeViewModel(output, focus, clockMs = clock)
+    private fun viewModel() =
+        MetronomeViewModel(output, focus, clockMs = clock, arbiter = arbiter)
 
     private fun TestScope.state(viewModel: MetronomeViewModel): MetronomeUiState {
         runCurrent()
@@ -183,4 +187,26 @@ class MetronomeViewModelTest {
             assertEquals(2L, third)
             viewModel.stop()
         }
+
+    @Test
+    fun `starting the metronome stops the tool that was running`() = runTest(dispatcher) {
+        var evicted = false
+        arbiter.claim(Tool.WARM_UP, onEvicted = { evicted = true })
+        val viewModel = viewModel()
+        viewModel.toggle()
+        assertTrue(evicted)
+        assertEquals(Tool.METRONOME, arbiter.current)
+        viewModel.stop()
+    }
+
+    @Test
+    fun `another tool starting stops the metronome`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+        viewModel.toggle()
+        runCurrent()
+        arbiter.claim(Tool.TUNER, onEvicted = {})
+        assertFalse(state(viewModel).running)
+        assertFalse(output.running)
+        assertEquals(Tool.TUNER, arbiter.current)
+    }
 }

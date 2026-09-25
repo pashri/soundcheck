@@ -11,9 +11,11 @@ interface FocusGate {
      * Requests audio focus.
      *
      * @param onLost called on the main thread if another app takes focus away.
+     * @param onRegained called on the main thread when focus comes back after a temporary
+     *     loss, such as a phone call ending.
      * @return whether focus was granted.
      */
-    fun acquire(onLost: () -> Unit): Boolean
+    fun acquire(onLost: () -> Unit, onRegained: () -> Unit = {}): Boolean
 
     /** Hands focus back so paused apps can resume. Safe to call when not held. */
     fun release()
@@ -30,6 +32,14 @@ fun focusChangeStopsPlayback(change: Int): Boolean =
     change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
 
 /**
+ * Whether a focus change gives focus back after a temporary loss.
+ *
+ * @param change an `AudioManager.AUDIOFOCUS_*` value from a focus listener.
+ * @return true when focus has returned.
+ */
+fun focusChangeRestoresPlayback(change: Int): Boolean = change == AudioManager.AUDIOFOCUS_GAIN
+
+/**
  * [FocusGate] on Android's audio focus, requested as transient so a paused podcast
  * resumes when Soundcheck stops.
  *
@@ -40,11 +50,16 @@ class AndroidAudioFocus(context: Context) : FocusGate {
         checkNotNull(context.getSystemService(AudioManager::class.java))
     private var request: AudioFocusRequest? = null
 
-    override fun acquire(onLost: () -> Unit): Boolean {
+    override fun acquire(onLost: () -> Unit, onRegained: () -> Unit): Boolean {
         release()
         val built = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
             .setAudioAttributes(ATTRIBUTES)
-            .setOnAudioFocusChangeListener { if (focusChangeStopsPlayback(it)) onLost() }
+            .setOnAudioFocusChangeListener { change ->
+                when {
+                    focusChangeStopsPlayback(change) -> onLost()
+                    focusChangeRestoresPlayback(change) -> onRegained()
+                }
+            }
             .build()
         request = built
         return audioManager.requestAudioFocus(built) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED

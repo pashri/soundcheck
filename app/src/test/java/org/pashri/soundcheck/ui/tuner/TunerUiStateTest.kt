@@ -73,4 +73,18 @@ class TunerUiStateTest {
             Locale.setDefault(default)
         }
     }
+
+    @Test
+    fun `a Tuner that gave way to a Warm-up offers to listen instead`() {
+        val state = TunerUiState(access = MicAccess.Granted, yielded = true)
+        assertEquals(TunerMode.Yielded, state.mode)
+        assertEquals("The Warm-up is playing", state.message?.title)
+        assertEquals("Listen instead", state.message?.button)
+    }
+
+    @Test
+    fun `the microphone permission still comes first when the Tuner has given way`() {
+        val state = TunerUiState(access = MicAccess.Blocked, yielded = true)
+        assertEquals(TunerMode.OpenSettings, state.mode)
+    }
 }
