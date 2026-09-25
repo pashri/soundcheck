@@ -276,6 +276,12 @@ private fun Needle(degrees: Float?) {
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
     val signStyle = serifDp(SIGN_SIZE, density).copy(color = colors.muted)
+    // Pre-measured: drawText(measurer, text, ...) lays text out against the unscaled
+    // DrawScope size minus its offset, which goes negative once the dial is narrower than
+    // the mockup and crashes. Measuring unconstrained and drawing the TextLayoutResult
+    // sidesteps that constraint while keeping the same position and size.
+    val flat = remember(signStyle, measurer) { measurer.measure("♭", signStyle) }
+    val sharp = remember(signStyle, measurer) { measurer.measure("♯", signStyle) }
     Canvas(
         // Decorative: the reading and advice lines below already speak the value.
         Modifier
@@ -289,8 +295,8 @@ private fun Needle(degrees: Float?) {
             val pivot = Offset(DIAL_WIDTH.toPx() / 2, PIVOT_Y.toPx())
             val radius = DIAL_RADIUS.toPx()
             drawTicks(pivot, radius, colors.ink, colors.faint)
-            drawText(measurer, "♭", Offset(12.dp.toPx(), 124.dp.toPx()), signStyle)
-            drawText(measurer, "♯", Offset(296.dp.toPx(), 124.dp.toPx()), signStyle)
+            drawText(flat, topLeft = Offset(12.dp.toPx(), 124.dp.toPx()))
+            drawText(sharp, topLeft = Offset(296.dp.toPx(), 124.dp.toPx()))
             val needleColor = if (degrees == null) colors.faint else colors.accent
             val tip = pointOnDial(pivot, radius - NEEDLE_SHORTFALL.toPx(), degrees ?: 0f)
             drawLine(needleColor, pivot, tip, 2.2.dp.toPx(), cap = StrokeCap.Round)
