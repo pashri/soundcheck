@@ -51,6 +51,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -68,8 +69,8 @@ import org.pashri.soundcheck.warmup.VoiceType
 /**
  * The Warm-up tab, wired to its view model. Unlike the Metronome and the Tuner, leaving the
  * tab or the app doesn't stop anything: a Programme keeps playing in the background. On
- * Android 13 and later, starting a Programme first asks to show notifications, for the
- * lock-screen controls; playback goes ahead whatever the answer.
+ * Android 13 and later, the first Start ever asks to show notifications, for the lock-screen
+ * controls; playback goes ahead whatever the answer, and the question is never repeated.
  *
  * @param factory builds the [WarmupViewModel].
  */
@@ -83,7 +84,7 @@ fun WarmupRoute(factory: ViewModelProvider.Factory) {
     val actions = remember(viewModel, notifications, context) {
         object : WarmupActions by viewModel {
             override fun playPause() {
-                if (!viewModel.uiState.value.active && needsNotificationPermission(context)) {
+                if (!viewModel.uiState.value.active && shouldAskForNotifications(context)) {
                     notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 viewModel.playPause()
@@ -93,10 +94,25 @@ fun WarmupRoute(factory: ViewModelProvider.Factory) {
     WarmupScreen(state = state, actions = actions)
 }
 
+/**
+ * True once ever, on Android 13 and later without the notification permission: a flag in
+ * [PROMPT_PREFS] remembers that the question was asked, across launches.
+ */
+private fun shouldAskForNotifications(context: Context): Boolean {
+    if (!needsNotificationPermission(context)) return false
+    val prefs = context.getSharedPreferences(PROMPT_PREFS, Context.MODE_PRIVATE)
+    if (prefs.getBoolean(ASKED_NOTIFICATIONS, false)) return false
+    prefs.edit { putBoolean(ASKED_NOTIFICATIONS, true) }
+    return true
+}
+
 private fun needsNotificationPermission(context: Context): Boolean =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
         PackageManager.PERMISSION_GRANTED
+
+private const val PROMPT_PREFS = "permission_prompts"
+private const val ASKED_NOTIFICATIONS = "asked_notifications"
 
 /**
  * The playing Programme in the Manuscript design: the Sound, the key, the Iterations, the

@@ -67,6 +67,9 @@ class PlaybackService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) {
             container.warmup.stop()
+            // A Stop that recreated the service finds nothing to stop; show() never runs
+            // stopSelf() for a service that was never in the foreground.
+            if (container.warmup.playback.value == null) stopSelf()
             return START_NOT_STICKY
         }
         val playback = container.warmup.playback.value

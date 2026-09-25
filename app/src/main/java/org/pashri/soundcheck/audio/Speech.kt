@@ -38,7 +38,7 @@ interface SpeechSynth {
 class AndroidSpeech(context: Context) : SpeechSynth {
     private val appContext = context.applicationContext
     private val mutex = Mutex()
-    private var engine: TextToSpeech? = null
+    private var tts: TextToSpeech? = null
 
     override suspend fun speak(text: String): FloatArray? = mutex.withLock {
         val tts = engine() ?: return@withLock null
@@ -48,7 +48,7 @@ class AndroidSpeech(context: Context) : SpeechSynth {
     }
 
     private suspend fun engine(): TextToSpeech? {
-        engine?.let { return it }
+        tts?.let { return it }
         val ready = CompletableDeferred<Boolean>()
         val created = withContext(Dispatchers.Main) {
             TextToSpeech(appContext) { status -> ready.complete(status == TextToSpeech.SUCCESS) }
@@ -58,7 +58,7 @@ class AndroidSpeech(context: Context) : SpeechSynth {
             created.shutdown()
             return null
         }
-        engine = created
+        tts = created
         return created
     }
 
