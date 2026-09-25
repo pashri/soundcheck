@@ -1,13 +1,16 @@
 # Soundcheck
 
 A Tuner and a Metronome for any instrument, and a hands-free vocal Warm-up, for Android.
-The Metronome works today; the Tuner and Warm-up are on the way.
+The Tuner and the Metronome work today; the Warm-up is on the way.
 
 ## How it's built
 
 - Kotlin and Jetpack Compose, one activity, one `:app` module.
 - All sound goes through a small C++ mixer on Google's Oboe library, scheduled to the exact
   sample, so the Metronome never drifts or stutters.
+- The Tuner listens through Android's `AudioRecord`, not the mixer, and finds the pitch in
+  Kotlin with the McLeod Pitch Method. It listens only while its tab is open, and nothing
+  it hears is recorded or kept.
 
 ## Building
 
