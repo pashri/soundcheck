@@ -53,5 +53,6 @@ object PatternNotation {
 
     private val WHITESPACE = Regex("\\s+")
 
+    // Degrees 1–99, matching [MAX_DEGREE] in PatternNote.kt.
     private val NOTE = Regex("([♭♯]?)([1-9][0-9]?)([eqhw]?)")
 }

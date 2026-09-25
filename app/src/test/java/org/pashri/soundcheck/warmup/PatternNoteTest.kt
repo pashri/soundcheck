@@ -46,4 +46,11 @@ class PatternNoteTest {
         }
         assertThrows(IllegalArgumentException::class.java) { majorScaleHalfSteps(0) }
     }
+
+    @Test
+    fun `a degree past MAX_DEGREE is rejected`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            PatternNote(degree = MAX_DEGREE + 1, length = NoteLength.QUARTER)
+        }
+    }
 }

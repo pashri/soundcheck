@@ -37,6 +37,9 @@ enum class NoteLength(val eighths: Int, val code: Char) {
     WHOLE(eighths = 8, code = 'w'),
 }
 
+/** The highest scale degree [PatternNote] accepts; kept in step with [PatternNotation]'s regex. */
+const val MAX_DEGREE: Int = 99
+
 /**
  * One note of a Pattern.
  *
@@ -50,7 +53,9 @@ data class PatternNote(
     val accidental: Accidental = Accidental.NATURAL,
 ) {
     init {
-        require(degree >= 1) { "Scale degrees start at 1, not $degree" }
+        require(degree in 1..MAX_DEGREE) {
+            "Scale degrees must be between 1 and $MAX_DEGREE, not $degree"
+        }
     }
 
     /** Half-steps from the root to this note. */

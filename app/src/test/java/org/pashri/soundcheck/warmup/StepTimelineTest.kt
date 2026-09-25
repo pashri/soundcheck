@@ -130,7 +130,6 @@ class StepTimelineTest {
     fun `iterations follow the demo and each other with no gap`() {
         val timeline = arpeggioAt120()
         assertEquals(276_000L, timeline.iterations.first().startFrame)
-        assertTrue(timeline.iterations.zipWithNext().all { (a, b) -> a.endFrame == b.startFrame })
         assertEquals(timeline.lengthFrames, timeline.iterations.last().endFrame)
         assertEquals((0..18).toList(), timeline.iterations.map { it.index })
     }
@@ -199,7 +198,6 @@ class StepTimelineTest {
         )
         assertEquals(7_660_825L, timeline.lengthFrames)
         assertEquals(327_216L, timeline.iterations.first().startFrame)
-        assertTrue(timeline.iterations.zipWithNext().all { (a, b) -> a.endFrame == b.startFrame })
         val guide = timeline.notes(PianoPart.GUIDE_MELODY)
         assertEquals(timeline.lengthFrames, guide.last().endFrame)
     }

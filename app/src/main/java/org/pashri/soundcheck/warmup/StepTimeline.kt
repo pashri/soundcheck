@@ -108,18 +108,7 @@ fun buildStepTimeline(step: Step, range: Range, announcementFrames: Long): StepT
     val trip = step.roundTrip(range) as? RoundTrip.Fits ?: return null
     val demoStart = announcementFrames + msToFrames(ANNOUNCEMENT_GAP_MS)
     val builder = TimelineBuilder(step = step, demoStartFrame = demoStart)
-    val announcement = AnnouncementEvent(
-        soundId = step.soundId,
-        startFrame = 0L,
-        lengthFrames = announcementFrames,
-    )
-    val iterations = trip.keys.mapIndexed(builder::iterationSpan)
-    val notes = builder.demo(trip.startKey) + trip.keys.flatMapIndexed(builder::iterationNotes)
-    return StepTimeline(
-        events = listOf<TimelineEvent>(announcement) + notes,
-        iterations = iterations,
-        lengthFrames = iterations.last().endFrame,
-    )
+    return builder.timeline(trip = trip, announcementFrames = announcementFrames)
 }
 
 private const val EIGHTHS_PER_BEAT = 2
@@ -139,10 +128,32 @@ private class TimelineBuilder(private val step: Step, demoStartFrame: Long) {
     private val patternEighths = step.pattern.lengthInEighths
     private val iterationEighths = KEY_CHORD_EIGHTHS + patternEighths
 
-    fun demo(key: Pitch): List<PianoNoteEvent> =
+    /**
+     * Builds the full [StepTimeline] for [trip]: the Announcement, the Demo, then one
+     * Iteration per round-trip key.
+     *
+     * @param trip the Step's Pattern once it fits the Range.
+     * @param announcementFrames how long the Announcement lasts.
+     */
+    fun timeline(trip: RoundTrip.Fits, announcementFrames: Long): StepTimeline {
+        val announcement = AnnouncementEvent(
+            soundId = step.soundId,
+            startFrame = 0L,
+            lengthFrames = announcementFrames,
+        )
+        val iterations = trip.keys.mapIndexed(::iterationSpan)
+        val notes = demo(trip.startKey) + trip.keys.flatMapIndexed(::iterationNotes)
+        return StepTimeline(
+            events = listOf<TimelineEvent>(announcement) + notes,
+            iterations = iterations,
+            lengthFrames = iterations.last().endFrame,
+        )
+    }
+
+    private fun demo(key: Pitch): List<PianoNoteEvent> =
         melody(key = key, fromEighth = 0, part = PianoPart.DEMO)
 
-    fun iterationSpan(index: Int, key: Pitch): IterationSpan {
+    private fun iterationSpan(index: Int, key: Pitch): IterationSpan {
         val start = iterationStartEighth(index)
         return IterationSpan(
             index = index,
@@ -152,7 +163,7 @@ private class TimelineBuilder(private val step: Step, demoStartFrame: Long) {
         )
     }
 
-    fun iterationNotes(index: Int, key: Pitch): List<PianoNoteEvent> {
+    private fun iterationNotes(index: Int, key: Pitch): List<PianoNoteEvent> {
         val start = iterationStartEighth(index)
         val chord = chordNotes(key = key, fromEighth = start)
         val melodyStart = start + KEY_CHORD_EIGHTHS
