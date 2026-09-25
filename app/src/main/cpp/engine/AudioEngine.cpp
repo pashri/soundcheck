@@ -16,12 +16,15 @@ bool AudioEngine::start() {
     std::lock_guard<std::mutex> lock(controlLock_);
     wantRunning_ = true;
     if (stream_) return true;
-    return openAndStart() == oboe::Result::OK;
+    const bool started = openAndStart() == oboe::Result::OK;
+    failed_.store(!started, std::memory_order_release);
+    return started;
 }
 
 void AudioEngine::stop() {
     std::lock_guard<std::mutex> lock(controlLock_);
     wantRunning_ = false;
+    failed_.store(false, std::memory_order_release);
     if (!stream_) return;
     stream_->stop();
     stream_->close();
@@ -40,6 +43,8 @@ bool AudioEngine::push(const Command& command) {
 
 int64_t AudioEngine::framePosition() const { return mixer_.framePosition(); }
 
+bool AudioEngine::hasFailed() const { return failed_.load(std::memory_order_acquire); }
+
 oboe::DataCallbackResult AudioEngine::onAudioReady(oboe::AudioStream* stream, void* audioData,
                                                    int32_t numFrames) {
     mixer_.render(static_cast<float*>(audioData), numFrames, stream->getChannelCount());
@@ -52,7 +57,9 @@ void AudioEngine::onErrorAfterClose(oboe::AudioStream* stream, oboe::Result erro
     std::lock_guard<std::mutex> lock(controlLock_);
     if (stream != stream_.get()) return;
     stream_.reset();
-    if (wantRunning_) openAndStart();
+    if (!wantRunning_) return;
+    const bool reopened = openAndStart() == oboe::Result::OK;
+    failed_.store(!reopened, std::memory_order_release);
 }
 
 oboe::Result AudioEngine::openAndStart() {

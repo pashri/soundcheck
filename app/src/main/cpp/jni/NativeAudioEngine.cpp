@@ -40,8 +40,10 @@ Java_org_pashri_soundcheck_audio_NativeAudioEngine_nativeLoadSample(
 
 JNIEXPORT jboolean JNICALL
 Java_org_pashri_soundcheck_audio_NativeAudioEngine_nativeSchedule(
-        JNIEnv*, jobject, jlong handle, jint id, jlong frame, jfloat gain) {
-    return toJni(engineFrom(handle)->push({Command::Type::Schedule, frame, id, gain}));
+        JNIEnv*, jobject, jlong handle, jint id, jlong frame, jfloat gain, jfloat rate,
+        jlong lengthFrames) {
+    return toJni(engineFrom(handle)->push(
+            {Command::Type::Schedule, frame, id, gain, rate, lengthFrames}));
 }
 
 JNIEXPORT void JNICALL
@@ -53,6 +55,17 @@ Java_org_pashri_soundcheck_audio_NativeAudioEngine_nativeCancelFrom(
 JNIEXPORT void JNICALL
 Java_org_pashri_soundcheck_audio_NativeAudioEngine_nativeSilence(JNIEnv*, jobject, jlong handle) {
     engineFrom(handle)->push({Command::Type::Silence, 0, 0, 0.0f});
+}
+
+JNIEXPORT void JNICALL
+Java_org_pashri_soundcheck_audio_NativeAudioEngine_nativeFadeOut(JNIEnv*, jobject, jlong handle) {
+    engineFrom(handle)->push({Command::Type::FadeOut, 0, 0, 0.0f});
+}
+
+JNIEXPORT jboolean JNICALL
+Java_org_pashri_soundcheck_audio_NativeAudioEngine_nativeHasFailed(
+        JNIEnv*, jobject, jlong handle) {
+    return toJni(engineFrom(handle)->hasFailed());
 }
 
 JNIEXPORT jlong JNICALL

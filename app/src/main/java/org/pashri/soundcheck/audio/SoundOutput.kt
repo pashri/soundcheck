@@ -3,6 +3,9 @@ package org.pashri.soundcheck.audio
 /** Frames per second of every sound Soundcheck plays; the engine resamples to the device. */
 const val SAMPLE_RATE: Int = 48_000
 
+/** A [SoundOutput.schedule] length that plays the whole sample. */
+const val WHOLE_SAMPLE: Long = 0L
+
 /**
  * Identifies a sample slot in a [SoundOutput].
  *
@@ -11,13 +14,49 @@ const val SAMPLE_RATE: Int = 48_000
 @JvmInline
 value class SampleId(val value: Int)
 
-/** Sample slots reserved by each tool. Slots 0–15 belong to the Metronome. */
+/**
+ * Sample slots reserved by each tool: 0–15 the Metronome, 16–47 Announcements (one per
+ * Sound) and 64–95 the piano.
+ */
 object SampleIds {
     /** The Metronome's ordinary click. */
     val METRONOME_CLICK: SampleId = SampleId(0)
 
     /** The Metronome's accented click. */
     val METRONOME_ACCENT: SampleId = SampleId(1)
+
+    /** How many Sounds can have an Announcement loaded. */
+    const val ANNOUNCEMENT_SLOTS: Int = 32
+
+    /** How many piano samples there is room for. */
+    const val PIANO_SLOTS: Int = 32
+
+    /**
+     * The slot for a Sound's Announcement.
+     *
+     * @param index the Sound's position in the library, from 0.
+     * @return its slot.
+     * @throws IllegalArgumentException if [index] is outside 0 until [ANNOUNCEMENT_SLOTS].
+     */
+    fun announcement(index: Int): SampleId {
+        require(index in 0 until ANNOUNCEMENT_SLOTS) { "No Announcement slot $index" }
+        return SampleId(FIRST_ANNOUNCEMENT + index)
+    }
+
+    /**
+     * The slot for a piano sample.
+     *
+     * @param index the sample's position, lowest key first, from 0.
+     * @return its slot.
+     * @throws IllegalArgumentException if [index] is outside 0 until [PIANO_SLOTS].
+     */
+    fun piano(index: Int): SampleId {
+        require(index in 0 until PIANO_SLOTS) { "No piano slot $index" }
+        return SampleId(FIRST_PIANO + index)
+    }
+
+    private const val FIRST_ANNOUNCEMENT = 16
+    private const val FIRST_PIANO = 64
 }
 
 /**
@@ -29,9 +68,9 @@ object SampleIds {
  */
 interface SoundOutput {
     /**
-     * Starts rendering audio.
+     * Starts rendering audio. Starting a running output does nothing.
      *
-     * @return whether the device output started.
+     * @return whether the device output is running.
      */
     fun start(): Boolean
 
@@ -48,14 +87,25 @@ interface SoundOutput {
     fun loadSample(id: SampleId, pcm: FloatArray): Boolean
 
     /**
-     * Plays sample [id] starting at [frame]; a frame already rendered plays at once.
+     * Plays sample [id] starting at [frame]; a frame already rendered plays at once. The
+     * sound waits without using a voice until its frame arrives.
      *
      * @param id the sample to play.
      * @param frame the frame to start on.
      * @param gain loudness multiplier, 1 for as recorded.
+     * @param rate playback speed: 1 as recorded, 2 an octave higher; see
+     *     [org.pashri.soundcheck.music.frequencyRatio].
+     * @param lengthFrames frames to hold it before it fades out over 100 ms, or
+     *     [WHOLE_SAMPLE] to play it to its end.
      * @return false if the engine's queue is full and the sound was dropped.
      */
-    fun schedule(id: SampleId, frame: Long, gain: Float): Boolean
+    fun schedule(
+        id: SampleId,
+        frame: Long,
+        gain: Float,
+        rate: Float = 1f,
+        lengthFrames: Long = WHOLE_SAMPLE,
+    ): Boolean
 
     /**
      * Cancels every sound that has not started and starts at or after [frame].
@@ -66,6 +116,17 @@ interface SoundOutput {
 
     /** Stops every playing and scheduled sound at once. */
     fun silence()
+
+    /** Fades every playing sound out over 100 ms and drops every sound not yet started. */
+    fun fadeOut()
+
+    /**
+     * Whether the device output closed (headphones unplugged, Bluetooth gone) and could not
+     * be reopened. The next successful [start] clears it.
+     *
+     * @return true while the output is silently down.
+     */
+    fun hasFailed(): Boolean
 
     /**
      * The frame the output will render next.
