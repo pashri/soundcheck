@@ -51,6 +51,11 @@ class PitchDetectorTest {
     }
 
     @Test
+    fun `a faint but clear tone below the silence gate has no pitch`() {
+        assertNull(detector.detect(Signals.sine(110.0, amplitude = 0.002)))
+    }
+
+    @Test
     fun `a tone over steady background noise reads the right pitch on every frame`() {
         listOf(82.41, 196.0, 440.0).forEach { hz ->
             (1..10).forEach { seed ->
