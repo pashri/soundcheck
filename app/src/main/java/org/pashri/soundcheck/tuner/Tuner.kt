@@ -4,12 +4,14 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.audio.MicInput
 import org.pashri.soundcheck.audio.MicSession
 
@@ -40,12 +42,10 @@ data class TunerState(val mic: MicStatus = MicStatus.Off, val note: NoteReading?
  * with [PitchDetector] and steadies it with [PitchSmoother]. Call [start] and [stop] from
  * one thread; the listening itself runs on [worker].
  *
- * The 2048-sample window, the hop buffer and the NSDF are allocated once per session, so
- * a garbage-collection pause in steady listening comes from something else. Each hop still
- * allocates: the switch to [kotlinx.coroutines.Dispatchers.IO] for the blocking read, the
- * boxed `Double?` results passing through [PitchDetector] and [PitchSmoother], and the
- * [TunerState] published to the screen, whose [MutableStateFlow] assignment briefly takes an
- * internal lock. What the loop never does is log or touch the filesystem.
+ * The window, hop buffer and NSDF are allocated once per session. Each hop still
+ * allocates small objects (boxed pitch results, the published TunerState), and
+ * publishing briefly takes StateFlow's internal lock. The loop never logs or does
+ * file I/O.
  *
  * @param mic the microphone.
  * @param scope owns the listening loop; cancelling it stops listening.
@@ -65,13 +65,16 @@ class Tuner(
 
     /**
      * Starts listening. Does nothing if already listening. After a [stop], the new session
-     * waits for the old one to release the microphone, so two are never open at once.
+     * waits for the old one to release the microphone, so two are never open at once. That
+     * wait can't itself be cut short by a further stop: it always runs to completion before
+     * the microphone opens again.
      */
     fun start() {
         if (job?.isActive == true) return
         val previous = job
         job = scope.launch(worker) {
-            previous?.join()
+            withContext(NonCancellable) { previous?.join() }
+            ensureActive()
             listen()
         }
     }

@@ -108,7 +108,10 @@ private class AudioRecordSession(private val record: AudioRecord) : MicSession {
     override fun close() {
         if (closed) return
         closed = true
-        record.stop()
-        record.release()
+        try {
+            record.stop()
+        } finally {
+            record.release()
+        }
     }
 }

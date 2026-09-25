@@ -122,6 +122,33 @@ class TunerTest {
     }
 
     @Test
+    fun `three quick stop-starts inside one hop never hold two microphones`() = runTest {
+        val tuner = tuner()
+        tuner.start()
+        advanceTimeBy(2 * HOP_MS + 5)
+        runCurrent()
+        tuner.stop()
+        tuner.start()
+        runCurrent()
+        tuner.stop()
+        tuner.start()
+        runCurrent()
+        hops(3)
+        assertEquals(1, mic.mostOpenAtOnce)
+    }
+
+    @Test
+    fun `stopping from within a hop callback never leaves a note showing`() = runTest {
+        val tuner = tuner()
+        tuner.start()
+        mic.play(tone(110.0, hops = 12))
+        hops(11)
+        mic.onHop = { tuner.stop() }
+        hops(1)
+        assertEquals(TunerState(), tuner.state.value)
+    }
+
+    @Test
     fun `a microphone that will not open is reported unavailable`() = runTest {
         mic.available = false
         val tuner = tuner()

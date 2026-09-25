@@ -56,12 +56,16 @@ class FakeMicInput : MicInput {
         broken = true
     }
 
+    /** Called once at the end of each [Session.read], after it checks cancellation. */
+    var onHop: (() -> Unit)? = null
+
     private inner class Session : MicSession {
         private var closed = false
 
         override suspend fun read(buffer: FloatArray): Int {
             withContext(NonCancellable) { delay(HOP_MS) }
             currentCoroutineContext().ensureActive()
+            onHop?.invoke()
             if (broken) return -1
             val next = queued.removeFirstOrNull()
             if (next == null) buffer.fill(0f) else next.copyInto(buffer)
