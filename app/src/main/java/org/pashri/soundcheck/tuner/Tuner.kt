@@ -10,6 +10,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.audio.MicInput
@@ -71,7 +72,6 @@ class Tuner(
      */
     fun start() {
         if (job?.isActive == true) return
-        if (_state.value.mic == MicStatus.Unavailable) _state.value = TunerState()
         val previous = job
         job = scope.launch(worker) {
             withContext(NonCancellable) { previous?.join() }
@@ -88,6 +88,10 @@ class Tuner(
 
     private suspend fun listen() {
         val session = mic.open()
+        if (!currentCoroutineContext().isActive) {
+            session?.close()
+            return
+        }
         if (session == null) {
             _state.value = TunerState(mic = MicStatus.Unavailable)
             return
@@ -95,6 +99,7 @@ class Tuner(
         _state.value = TunerState(mic = MicStatus.Listening)
         try {
             hearUntilSilenced(session)
+            currentCoroutineContext().ensureActive()
             _state.value = TunerState(mic = MicStatus.Unavailable)
         } catch (e: CancellationException) {
             _state.value = TunerState()

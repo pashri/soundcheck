@@ -149,6 +149,27 @@ class TunerTest {
     }
 
     @Test
+    fun `stopping while the microphone opens leaves it off and closed`() = runTest {
+        val tuner = tuner()
+        mic.onOpen = { tuner.stop() }
+        tuner.start()
+        runCurrent()
+        assertEquals(TunerState(), tuner.state.value)
+        assertEquals(0, mic.openNow)
+    }
+
+    @Test
+    fun `stopping while a refusing microphone opens does not report it unavailable`() =
+        runTest {
+            mic.available = false
+            val tuner = tuner()
+            mic.onOpen = { tuner.stop() }
+            tuner.start()
+            runCurrent()
+            assertEquals(TunerState(), tuner.state.value)
+        }
+
+    @Test
     fun `a microphone that will not open is reported unavailable`() = runTest {
         mic.available = false
         val tuner = tuner()

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.pashri.soundcheck.audio.FocusGate
@@ -32,7 +33,7 @@ class TunerViewModel(
     private val access = MutableStateFlow(MicAccess.Unknown)
     private var shown = false
     private var askedOnOpen = false
-    private var holdingFocus = false
+    private val wantsToListen = MutableStateFlow(false)
 
     /** Everything the screen shows. */
     val uiState: StateFlow<TunerUiState> =
@@ -41,9 +42,7 @@ class TunerViewModel(
         }.stateIn(viewModelScope, SharingStarted.Eagerly, TunerUiState())
 
     init {
-        viewModelScope.launch {
-            tuner.state.collect { if (it.mic == MicStatus.Unavailable) releaseFocus() }
-        }
+        viewModelScope.launch { holdFocusWhileListening() }
     }
 
     /**
@@ -97,6 +96,8 @@ class TunerViewModel(
 
     override fun onCleared() {
         stopListening()
+        // viewModelScope is cancelled before onCleared runs, so the focus collector is gone.
+        focus.release()
     }
 
     private fun listenIfAllowed() {
@@ -104,22 +105,26 @@ class TunerViewModel(
     }
 
     private fun startListening() {
-        if (!holdingFocus) {
-            holdingFocus = true
-            // A refusal only means other audio keeps playing; the Tuner still tunes.
-            focus.acquire(onLost = ::onFocusLost)
-        }
+        wantsToListen.value = true
         tuner.start()
     }
 
     private fun stopListening() {
+        wantsToListen.value = false
         tuner.stop()
-        releaseFocus()
     }
 
-    private fun releaseFocus() {
-        holdingFocus = false
-        focus.release()
+    /**
+     * Holds audio focus exactly while the screen wants to listen and the microphone is
+     * actually listening, so a microphone that won't open never pauses a podcast. A refused
+     * request only means other audio keeps playing; the Tuner still tunes.
+     */
+    private suspend fun holdFocusWhileListening() {
+        combine(wantsToListen, tuner.state) { wants, heard ->
+            wants && heard.mic == MicStatus.Listening
+        }.distinctUntilChanged().collect { listening ->
+            if (listening) focus.acquire(onLost = ::onFocusLost) else focus.release()
+        }
     }
 
     /**

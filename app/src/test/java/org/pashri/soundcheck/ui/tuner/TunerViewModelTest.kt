@@ -324,6 +324,46 @@ class TunerViewModelTest {
     }
 
     @Test
+    fun `a microphone that will not open never takes focus, even on retry`() =
+        runTest(dispatcher) {
+            mic.available = false
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            runCurrent()
+            assertEquals(0, focus.acquireCount)
+            viewModel.retry()
+            runCurrent()
+            assertEquals(0, focus.acquireCount)
+            assertEquals(TunerMode.MicUnavailable, state(viewModel).mode)
+        }
+
+    @Test
+    fun `allowing the microphone in the dialog takes focus`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+        viewModel.onShown(granted = false)
+        viewModel.onPermissionResult(granted = true, canAskAgain = false)
+        hops(1)
+        assertTrue(focus.held)
+        assertEquals(1, focus.acquireCount)
+        viewModel.stop()
+    }
+
+    @Test
+    fun `hiding and showing the screen again takes focus again`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+        viewModel.onShown(granted = true)
+        hops(1)
+        viewModel.stop()
+        hops(1)
+        assertFalse(focus.held)
+        viewModel.onShown(granted = true)
+        hops(1)
+        assertTrue(focus.held)
+        assertEquals(2, focus.acquireCount)
+        viewModel.stop()
+    }
+
+    @Test
     fun `closing the view model hands focus back and releases the microphone`() =
         runTest(dispatcher) {
             val store = ViewModelStore()

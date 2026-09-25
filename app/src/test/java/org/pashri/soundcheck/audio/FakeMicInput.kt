@@ -31,7 +31,14 @@ class FakeMicInput : MicInput {
     var mostOpenAtOnce: Int = 0
         private set
 
+    /**
+     * Called at the start of each [open], before it succeeds or fails, as if something
+     * happened on another thread while the microphone was opening.
+     */
+    var onOpen: (() -> Unit)? = null
+
     override fun open(): MicSession? {
+        onOpen?.invoke()
         if (!available) return null
         timesOpened++
         openNow++
