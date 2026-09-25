@@ -192,7 +192,7 @@ private fun TunerFace(state: TunerUiState) {
 @Composable
 private fun NoteOnStaff(note: NoteReading?) {
     val colors = Manuscript.colors
-    val description = note?.let { "${spokenNoteName(it.name)} ${it.octave}" }
+    val description = note?.let { spokenNoteName(it.name, it.octave) }
     val semanticsModifier = if (description != null) {
         Modifier.semantics { contentDescription = description }
     } else {
@@ -220,19 +220,22 @@ private fun NoteOnStaff(note: NoteReading?) {
 }
 
 /**
- * The note's name in words, for screen readers: a bundled font glyph such as "♭" doesn't
- * always speak, so it is spelled out.
+ * The note in words, for screen readers: a bundled font glyph such as "♭" doesn't always
+ * speak, so it is spelled out.
  *
  * @param name the note's letter and optional accidental, e.g. "B♭".
- * @return the letter followed by "flat" or "sharp" when there is an accidental.
+ * @param octave the note's octave number.
+ * @return the letter, then "flat" or "sharp" when there is an accidental, then the octave,
+ *   e.g. "B flat 4".
  */
-private fun spokenNoteName(name: String): String {
+internal fun spokenNoteName(name: String, octave: Int): String {
     val letter = name.take(1)
-    return when (val symbol = name.drop(1)) {
+    val spoken = when (val symbol = name.drop(1)) {
         "♭" -> "$letter flat"
         "♯" -> "$letter sharp"
         else -> letter + symbol
     }
+    return "$spoken $octave"
 }
 
 @Composable

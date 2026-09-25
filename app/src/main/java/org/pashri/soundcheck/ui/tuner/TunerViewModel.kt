@@ -67,7 +67,7 @@ class TunerViewModel(
      * @param canAskAgain whether Android would show the dialog again.
      */
     fun onPermissionResult(granted: Boolean, canAskAgain: Boolean) {
-        access.value = micAccessAfterRequest(granted, canAskAgain)
+        access.value = micAccessAfterRequest(access.value, granted, canAskAgain)
         listenIfAllowed()
     }
 

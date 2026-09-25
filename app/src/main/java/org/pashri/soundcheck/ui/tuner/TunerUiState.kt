@@ -23,14 +23,23 @@ enum class MicAccess {
 /**
  * Where the answer to a microphone permission request leaves access.
  *
+ * On Android 11+, dismissing the very first dialog (tapping outside it) also reports "can't
+ * ask again", although the dialog would still show. So a first answer of that kind reads as
+ * [MicAccess.Denied]; only a refusal after an earlier one reads as [MicAccess.Blocked].
+ *
+ * @param previous access before the request; [MicAccess.Unknown] if never answered.
  * @param granted whether the user allowed the microphone.
  * @param canAskAgain whether Android would show its dialog again, from
  *   `shouldShowRequestPermissionRationale`.
  * @return the new access.
  */
-fun micAccessAfterRequest(granted: Boolean, canAskAgain: Boolean): MicAccess = when {
+fun micAccessAfterRequest(
+    previous: MicAccess,
+    granted: Boolean,
+    canAskAgain: Boolean,
+): MicAccess = when {
     granted -> MicAccess.Granted
-    canAskAgain -> MicAccess.Denied
+    canAskAgain || previous == MicAccess.Unknown -> MicAccess.Denied
     else -> MicAccess.Blocked
 }
 

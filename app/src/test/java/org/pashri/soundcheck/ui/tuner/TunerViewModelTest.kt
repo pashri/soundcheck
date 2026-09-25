@@ -123,6 +123,7 @@ class TunerViewModelTest {
         runTest(dispatcher) {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
+            viewModel.onPermissionResult(granted = false, canAskAgain = true)
             viewModel.onPermissionResult(granted = false, canAskAgain = false)
             assertEquals(TunerMode.OpenSettings, state(viewModel).mode)
             viewModel.stop()
@@ -136,6 +137,7 @@ class TunerViewModelTest {
         runTest(dispatcher) {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
+            viewModel.onPermissionResult(granted = false, canAskAgain = true)
             viewModel.onPermissionResult(granted = false, canAskAgain = false)
             viewModel.stop()
             viewModel.onShown(granted = true)
@@ -226,12 +228,37 @@ class TunerViewModelTest {
 
     @Test
     fun `the answer to a permission request maps to access`() {
-        assertEquals(MicAccess.Granted, micAccessAfterRequest(granted = true, canAskAgain = true))
-        assertEquals(MicAccess.Granted, micAccessAfterRequest(granted = true, canAskAgain = false))
-        assertEquals(MicAccess.Denied, micAccessAfterRequest(granted = false, canAskAgain = true))
-        val blocked = micAccessAfterRequest(granted = false, canAskAgain = false)
-        assertEquals(MicAccess.Blocked, blocked)
+        val answers = listOf(
+            Triple(MicAccess.Unknown, true, true) to MicAccess.Granted,
+            Triple(MicAccess.Denied, true, false) to MicAccess.Granted,
+            Triple(MicAccess.Unknown, false, true) to MicAccess.Denied,
+            Triple(MicAccess.Denied, false, true) to MicAccess.Denied,
+            Triple(MicAccess.Denied, false, false) to MicAccess.Blocked,
+            Triple(MicAccess.Blocked, false, false) to MicAccess.Blocked,
+        )
+        answers.forEach { (asked, expected) ->
+            val (previous, granted, canAskAgain) = asked
+            val access = micAccessAfterRequest(previous, granted, canAskAgain)
+            assertEquals("$asked", expected, access)
+        }
     }
+
+    @Test
+    fun `a dismissed first dialog maps to denied, not blocked`() {
+        val access = micAccessAfterRequest(MicAccess.Unknown, granted = false, canAskAgain = false)
+        assertEquals(MicAccess.Denied, access)
+    }
+
+    @Test
+    fun `dismissing the very first dialog offers it again rather than settings`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = false)
+            viewModel.onPermissionResult(granted = false, canAskAgain = false)
+            assertEquals(TunerMode.AskPermission, state(viewModel).mode)
+            viewModel.onPermissionResult(granted = false, canAskAgain = false)
+            assertEquals(TunerMode.OpenSettings, state(viewModel).mode)
+        }
 
     @Test
     fun `nothing is heard before the screen is shown`() = runTest(dispatcher) {
