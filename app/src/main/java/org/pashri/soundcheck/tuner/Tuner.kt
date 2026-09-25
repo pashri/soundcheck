@@ -71,6 +71,7 @@ class Tuner(
      */
     fun start() {
         if (job?.isActive == true) return
+        if (_state.value.mic == MicStatus.Unavailable) _state.value = TunerState()
         val previous = job
         job = scope.launch(worker) {
             withContext(NonCancellable) { previous?.join() }
