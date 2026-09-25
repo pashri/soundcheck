@@ -1,11 +1,17 @@
 package org.pashri.soundcheck.di
 
 import android.content.Context
+import android.content.Intent
 import android.os.SystemClock
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import org.pashri.soundcheck.audio.AndroidAudioFocus
 import org.pashri.soundcheck.audio.AndroidMic
 import org.pashri.soundcheck.audio.AndroidSpeech
@@ -17,6 +23,7 @@ import org.pashri.soundcheck.audio.SpeechSynth
 import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
+import org.pashri.soundcheck.playback.PlaybackService
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
@@ -112,7 +119,7 @@ class AppContainer(context: Context) {
             focus = warmupFocus,
             arbiter = toolArbiter,
             scope = appScope,
-        )
+        ).also(::keepServiceWhilePlaying)
     }
 
     /** Builds the Warm-up screen's view model. */
@@ -123,5 +130,23 @@ class AppContainer(context: Context) {
             range = warmupRange,
             sounds = sounds,
         )
+    }
+
+    /**
+     * Starts the playback service whenever a Programme is loaded; the service stops itself
+     * when it is unloaded. A Programme is only ever loaded by a tap on the Warm-up screen,
+     * so the app is in the foreground and may start a foreground service.
+     */
+    private fun keepServiceWhilePlaying(controller: WarmupController) {
+        appScope.launch {
+            controller.playback
+                .map { it != null }
+                .distinctUntilChanged()
+                .filter { it }
+                .collect {
+                    val intent = Intent(appContext, PlaybackService::class.java)
+                    ContextCompat.startForegroundService(appContext, intent)
+                }
+        }
     }
 }

@@ -1,5 +1,11 @@
 package org.pashri.soundcheck.ui.warmup
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,10 +31,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -59,7 +67,9 @@ import org.pashri.soundcheck.warmup.VoiceType
 
 /**
  * The Warm-up tab, wired to its view model. Unlike the Metronome and the Tuner, leaving the
- * tab or the app doesn't stop anything: a Programme keeps playing in the background.
+ * tab or the app doesn't stop anything: a Programme keeps playing in the background. On
+ * Android 13 and later, starting a Programme first asks to show notifications, for the
+ * lock-screen controls; playback goes ahead whatever the answer.
  *
  * @param factory builds the [WarmupViewModel].
  */
@@ -67,8 +77,26 @@ import org.pashri.soundcheck.warmup.VoiceType
 fun WarmupRoute(factory: ViewModelProvider.Factory) {
     val viewModel: WarmupViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    WarmupScreen(state = state, actions = viewModel)
+    val context = LocalContext.current
+    val notifications =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val actions = remember(viewModel, notifications, context) {
+        object : WarmupActions by viewModel {
+            override fun playPause() {
+                if (!viewModel.uiState.value.active && needsNotificationPermission(context)) {
+                    notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                viewModel.playPause()
+            }
+        }
+    }
+    WarmupScreen(state = state, actions = actions)
 }
+
+private fun needsNotificationPermission(context: Context): Boolean =
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+        PackageManager.PERMISSION_GRANTED
 
 /**
  * The playing Programme in the Manuscript design: the Sound, the key, the Iterations, the
