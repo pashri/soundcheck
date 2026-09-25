@@ -18,6 +18,7 @@ import org.pashri.soundcheck.ui.components.NotYetBuiltScreen
 import org.pashri.soundcheck.ui.components.Tab
 import org.pashri.soundcheck.ui.metronome.MetronomeRoute
 import org.pashri.soundcheck.ui.theme.Manuscript
+import org.pashri.soundcheck.ui.tuner.TunerRoute
 
 /**
  * The whole app: the current tool above the tab bar.
@@ -36,7 +37,9 @@ fun SoundcheckApp(container: AppContainer) {
             startDestination = Tab.Metronome.route,
             modifier = Modifier.weight(1f),
         ) {
-            composable(Tab.Tuner.route) { NotYetBuiltScreen(title = "Tuner") }
+            composable(Tab.Tuner.route) {
+                TunerRoute(factory = container.tunerViewModelFactory)
+            }
             composable(Tab.Metronome.route) {
                 MetronomeRoute(factory = container.metronomeViewModelFactory)
             }
