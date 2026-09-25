@@ -7,4 +7,4 @@ Source: FreePats, https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html
 
 Changes: each sample was mixed to mono, cut to 4.5 seconds with a half-second
 fade-out and stored as 16-bit WAV at 48 kHz. Soundcheck retunes each key at
-playback using the cents from the package's "Retuned" SFZ.
+playback using the cents from the package's "Retuned" SFZ mapping by Markus Fiedler.
