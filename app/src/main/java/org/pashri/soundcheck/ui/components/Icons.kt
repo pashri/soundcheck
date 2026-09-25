@@ -24,6 +24,15 @@ object ManuscriptIcons {
 
     /** A filled stop square. */
     val Stop: ImageVector = fillIcon("Stop", "M6 6h12v12H6z")
+
+    /** Two filled bars: pause. */
+    val Pause: ImageVector = fillIcon("Pause", "M6 5h4v14H6zM14 5h4v14h-4z")
+
+    /** A left-pointing triangle against a bar: previous. */
+    val Previous: ImageVector = fillIcon("Previous", "M18 6l-9 6 9 6zM5 6h2v12H5z")
+
+    /** A right-pointing triangle against a bar: next. */
+    val Next: ImageVector = fillIcon("Next", "M6 6l9 6-9 6zM17 6h2v12h-2z")
 }
 
 private fun strokeIcon(name: String, vararg paths: String): ImageVector =

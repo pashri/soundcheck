@@ -16,11 +16,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import org.pashri.soundcheck.di.AppContainer
 import org.pashri.soundcheck.ui.components.ManuscriptNavBar
-import org.pashri.soundcheck.ui.components.NotYetBuiltScreen
 import org.pashri.soundcheck.ui.components.Tab
 import org.pashri.soundcheck.ui.metronome.MetronomeRoute
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.tuner.TunerRoute
+import org.pashri.soundcheck.ui.warmup.WarmupRoute
 
 /**
  * The whole app: the current tool above the tab bar.
@@ -52,7 +52,9 @@ fun SoundcheckApp(container: AppContainer) {
             composable(Tab.Metronome.route) {
                 MetronomeRoute(factory = container.metronomeViewModelFactory)
             }
-            composable(Tab.WarmUp.route) { NotYetBuiltScreen(title = "Warm-up") }
+            composable(Tab.WarmUp.route) {
+                WarmupRoute(factory = container.warmupViewModelFactory)
+            }
         }
         ManuscriptNavBar(current = current, onSelect = { navController.openTab(it) })
     }
