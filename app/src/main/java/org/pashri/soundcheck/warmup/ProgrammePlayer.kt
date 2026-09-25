@@ -57,6 +57,7 @@ class ProgrammePlayer(
     private var tail: Job? = null
     private var preparing: Job? = null
     private var resumeAt: ResumePoint? = null
+    private var startedAt: ResumePoint? = null
     private val segments = ArrayDeque<Segment>()
 
     /**
@@ -127,11 +128,19 @@ class ProgrammePlayer(
         startAt(base = current, point = ResumePoint(step = target, frame = 0L))
     }
 
-    /** Stops at once and releases the device output. */
+    /**
+     * Stops at once. A playing Programme silences and releases the device output; a paused
+     * one leaves it alone, since another tool may be sounding through it now.
+     */
     fun stop() {
         preparing?.cancel()
-        if (_playback.value == null) return
-        halt(fade = false)
+        val current = _playback.value ?: return
+        if (current.playing) {
+            halt(fade = false)
+        } else {
+            cancelPendingTail()
+            cancelLoop()
+        }
         resumeAt = null
         _playback.value = null
     }
@@ -146,6 +155,7 @@ class ProgrammePlayer(
             return false
         }
         resumeAt = null
+        startedAt = point
         _playback.value = target
         loop = scope.launch { run(base = target, point = point) }
         return true
@@ -268,10 +278,13 @@ class ProgrammePlayer(
      * Where a pause now resumes: the sounding Iteration's first frame, the Step's start, or
      * the next Step when paused in the gap; null when paused after the last Step ended.
      * Never earlier than the frame the segment resumed from, so a pause inside the start
-     * margin doesn't slip back an Iteration.
+     * margin doesn't slip back an Iteration. Before the first tick schedules anything (the
+     * piano or an Announcement still loading), the point playback started from.
      */
     private fun pausePoint(current: Playback): ResumePoint? {
-        if (segments.isEmpty()) return ResumePoint(step = current.stepIndex, frame = 0L)
+        if (segments.isEmpty()) {
+            return startedAt ?: ResumePoint(step = current.stepIndex, frame = 0L)
+        }
         val now = output.framePosition()
         val segment = currentSegment(now)
         val timeline = segment.prepared.timeline

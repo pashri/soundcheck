@@ -207,6 +207,7 @@ class MetronomeViewModelTest {
         arbiter.claim(Tool.TUNER, onEvicted = {})
         assertFalse(state(viewModel).running)
         assertFalse(output.running)
+        assertFalse(focus.held)
         assertEquals(Tool.TUNER, arbiter.current)
     }
 }

@@ -209,6 +209,21 @@ class ProgrammePlayerTest {
     }
 
     @Test
+    fun `pausing before a resumed Programme first schedules keeps the Iteration`() = runTest {
+        val rig = rig()
+        rig.player.play(programme, range)
+        runUntil(10_600)
+        rig.player.pause()
+        runUntil(20_000)
+        rig.player.resume()
+        rig.player.pause()
+        assertEquals(at(step = 0, iteration = 1, playing = false), rig.player.playback.value)
+        rig.player.resume()
+        runCurrent()
+        assertEquals(1, rig.player.playback.value?.iteration)
+    }
+
+    @Test
     fun `pausing during the Demo resumes the whole Step from its Announcement`() = runTest {
         val rig = rig()
         rig.player.play(programme, range)

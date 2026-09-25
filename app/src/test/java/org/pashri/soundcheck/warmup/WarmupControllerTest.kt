@@ -196,4 +196,48 @@ class WarmupControllerTest {
             runCurrent()
             assertTrue(rig.output.running)
         }
+
+    @Test
+    fun `stopping a Programme paused by the Metronome leaves the Metronome sounding`() =
+        runTest {
+            // The notification's Stop can reach a Programme another tool paused; the shared
+            // output now belongs to that tool.
+            val rig = rig()
+            rig.controller.play(programme, range)
+            runUntil(1_000)
+            val metronome = Metronome(rig.output, backgroundScope)
+            arbiter.claim(Tool.METRONOME, onEvicted = { metronome.stop() })
+            rig.output.start()
+            metronome.start(bpm = 120, accentEvery = 4)
+            runCurrent()
+            rig.controller.stop()
+            val before = rig.output.scheduled.size
+            runUntil(3_000)
+            assertTrue(rig.output.running)
+            assertTrue(rig.output.scheduled.size > before)
+            assertEquals(Tool.METRONOME, arbiter.current)
+        }
+
+    @Test
+    fun `stopping a playing Programme silences and stops the output`() = runTest {
+        val rig = rig()
+        rig.controller.play(programme, range)
+        runUntil(1_000)
+        rig.controller.stop()
+        assertFalse(rig.output.running)
+        assertTrue(rig.output.scheduled.isEmpty())
+    }
+
+    @Test
+    fun `a call-paused Programme stays paused when the Tuner took the slot during the call`() =
+        runTest {
+            val rig = rig()
+            rig.controller.play(programme, range)
+            runUntil(10_600)
+            focus.loseFocus()
+            arbiter.claim(Tool.TUNER, onEvicted = {})
+            focus.regainFocus()
+            assertEquals(false, rig.playback?.playing)
+            assertEquals(Tool.TUNER, arbiter.current)
+        }
 }
