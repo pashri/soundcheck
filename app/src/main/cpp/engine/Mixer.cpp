@@ -87,7 +87,7 @@ void Mixer::startDue(int64_t blockEnd) {
 
 void Mixer::startVoice(const Command& command) {
     const Sample* sample = bank_.get(command.sampleId);
-    if (sample == nullptr || sample->frames.empty() || command.rate <= 0.0f) return;
+    if (sample == nullptr || sample->frames.empty() || !(command.rate > 0.0f)) return;
     const int64_t release =
             command.lengthFrames > 0 ? command.frame + command.lengthFrames : kNever;
     voiceToUse() = Voice{sample, command.frame, release, 0.0, command.gain, command.rate, true};

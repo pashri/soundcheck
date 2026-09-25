@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <vector>
 
 #include "Mixer.h"
@@ -221,4 +222,16 @@ TEST_F(MixerTest, CancelFromDropsOnlyTheWaitingSoundsFromItsFrame) {
 TEST_F(MixerTest, ARateOfZeroIsIgnoredRatherThanPlayingForever) {
     mixer.push(note(0, kOnes, 0.0f, 0));
     EXPECT_EQ(render(1)[0], 0.0f);
+}
+
+TEST_F(MixerTest, ARateOfNaNIsIgnoredRatherThanCorruptingTheCursor) {
+    mixer.push(note(0, kOnes, std::numeric_limits<float>::quiet_NaN(), 0));
+    EXPECT_EQ(render(1)[0], 0.0f);
+}
+
+TEST_F(MixerTest, CancelFromDropsAWaitingSoundScheduledExactlyOnItsFrame) {
+    mixer.push(schedule(100, kOnes));
+    mixer.push(cancelFrom(100));
+    auto out = render(101);
+    EXPECT_EQ(out[100], 0.0f);
 }

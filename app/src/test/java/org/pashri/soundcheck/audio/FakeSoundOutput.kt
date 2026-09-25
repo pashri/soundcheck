@@ -45,19 +45,30 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
     /** What the next [start] returns; set false to simulate a device that won't open. */
     var startResult: Boolean = true
 
-    /** Set true to act like an output that closed and could not reopen; [start] clears it. */
+    /**
+     * Set true to act like an output that failed to start or closed and could not reopen;
+     * [start] clears it. Setting it true freezes [framePosition] at its current value, like
+     * [stop], but leaves [running] alone.
+     */
     var failed: Boolean = false
+        set(value) {
+            if (value && !field) framesBeforeStart = framePosition()
+            field = value
+        }
 
     /** How many times [fadeOut] was called. */
     var fadeOuts: Int = 0
         private set
 
     override fun start(): Boolean {
-        if (!startResult) return false
-        failed = false
-        if (running) return true
+        if (!startResult) {
+            failed = true
+            return false
+        }
+        if (running && !failed) return true
         startedAtMs = clockMs()
         running = true
+        failed = false
         return true
     }
 
@@ -78,7 +89,13 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
         rate: Float,
         lengthFrames: Long,
     ): Boolean {
-        val scheduled = Scheduled(id, frame, gain, rate, lengthFrames)
+        val scheduled = Scheduled(
+            id = id,
+            frame = frame,
+            gain = gain,
+            rate = rate,
+            lengthFrames = lengthFrames,
+        )
         if (frame < framePosition()) _lateSchedules.add(scheduled)
         return _scheduled.add(scheduled)
     }
@@ -100,5 +117,9 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
     override fun hasFailed(): Boolean = failed
 
     override fun framePosition(): Long =
-        if (running) framesBeforeStart + msToFrames(clockMs() - startedAtMs) else framesBeforeStart
+        if (running && !failed) {
+            framesBeforeStart + msToFrames(clockMs() - startedAtMs)
+        } else {
+            framesBeforeStart
+        }
 }

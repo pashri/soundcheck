@@ -97,7 +97,9 @@ interface SoundOutput {
      *     [org.pashri.soundcheck.music.frequencyRatio].
      * @param lengthFrames frames to hold it before it fades out over 100 ms, or
      *     [WHOLE_SAMPLE] to play it to its end.
-     * @return false if the engine's queue is full and the sound was dropped.
+     * @return false if the engine's queue is full and the sound was dropped. A full pending
+     *     list (256 sounds already waiting to start) drops it too, silently, even though this
+     *     still returns true.
      */
     fun schedule(
         id: SampleId,
@@ -121,8 +123,8 @@ interface SoundOutput {
     fun fadeOut()
 
     /**
-     * Whether the device output closed (headphones unplugged, Bluetooth gone) and could not
-     * be reopened. The next successful [start] clears it.
+     * Whether the output failed to start, or closed (headphones unplugged, Bluetooth gone)
+     * and could not be reopened. The next successful [start] clears it.
      *
      * @return true while the output is silently down.
      */

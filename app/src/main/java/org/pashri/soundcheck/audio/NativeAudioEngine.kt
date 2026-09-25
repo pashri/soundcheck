@@ -23,7 +23,14 @@ class NativeAudioEngine : SoundOutput {
         gain: Float,
         rate: Float,
         lengthFrames: Long,
-    ): Boolean = nativeSchedule(handle, id.value, frame, gain, rate, lengthFrames)
+    ): Boolean = nativeSchedule(
+        handle = handle,
+        id = id.value,
+        frame = frame,
+        gain = gain,
+        rate = rate,
+        lengthFrames = lengthFrames,
+    )
 
     override fun cancelFrom(frame: Long) {
         nativeCancelFrom(handle, frame)
