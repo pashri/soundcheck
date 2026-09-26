@@ -170,6 +170,32 @@ class LibraryEditsTest {
     }
 
     @Test
+    fun `a Sound's clip can be set, replaced and taken away, and a rename keeps it`() {
+        val first = RecordedClip(name = ClipName("first.wav"), lengthMs = 600)
+        val second = RecordedClip(name = ClipName("second.wav"), lengthMs = 900)
+        val recorded = library.withClip(id = StarterSounds.MIM.id, clip = first)
+        assertEquals(first, recorded.sound(StarterSounds.MIM.id)?.clip)
+        assertNull(recorded.sound(StarterSounds.HUM.id)?.clip)
+        val replaced = recorded.withClip(id = StarterSounds.MIM.id, clip = second)
+        assertEquals(second, replaced.sound(StarterSounds.MIM.id)?.clip)
+        val renamed = replaced.renameSound(id = StarterSounds.MIM.id, label = "mmm")
+        assertEquals(second, renamed.sound(StarterSounds.MIM.id)?.clip)
+        val phoneVoice = renamed.withClip(id = StarterSounds.MIM.id, clip = null)
+        assertNull(phoneVoice.sound(StarterSounds.MIM.id)?.clip)
+    }
+
+    @Test
+    fun `the clip names are every clip the Sounds use`() {
+        val a = RecordedClip(name = ClipName("a.wav"), lengthMs = 600)
+        val b = RecordedClip(name = ClipName("b.wav"), lengthMs = 700)
+        val edited = library
+            .withClip(id = StarterSounds.MIM.id, clip = a)
+            .withClip(id = StarterSounds.HUM.id, clip = b)
+        assertEquals(setOf(ClipName("a.wav"), ClipName("b.wav")), edited.clipNames())
+        assertEquals(emptySet<ClipName>(), library.clipNames())
+    }
+
+    @Test
     fun `moved moves one item and keeps the rest in order`() {
         val letters = listOf("a", "b", "c", "d")
         assertEquals(listOf("a", "d", "b", "c"), letters.moved(from = 3, to = 1))

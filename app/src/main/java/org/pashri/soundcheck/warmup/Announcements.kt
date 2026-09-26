@@ -41,24 +41,29 @@ interface Announcements {
 }
 
 /**
- * Announcements spoken by the phone's voice reading each Sound's current label. A clip is
- * made once per label and kept in one of the engine's [SampleIds.ANNOUNCEMENT_SLOTS] slots;
- * when every slot is taken, the clip used longest ago gives up its slot. A renamed Sound is
- * spoken afresh. Recorded clips replace these in a later plan.
+ * Each Sound's Announcement: its recorded clip when it has one, otherwise the phone's voice
+ * reading its current label. A clip is loaded once per recording (by its file name) or per
+ * label and kept in one of the engine's [SampleIds.ANNOUNCEMENT_SLOTS] slots; when every
+ * slot is taken, the clip used longest ago gives up its slot. A renamed or re-recorded Sound
+ * is loaded afresh. A recording that can't be read (its file is missing or damaged) is
+ * replaced by the phone's voice, so a Step never loses its Announcement to a bad file.
  *
  * @param output the engine the clips are loaded into.
- * @param speech the voice.
- * @param labelOf a Sound's label now, or null for a Sound that isn't in the library.
+ * @param speech the phone's voice.
+ * @param loadClip reads a recorded clip's audio, or null if it can't be read.
+ * @param soundOf a Sound as the library has it now, or null for one that isn't in it.
  */
-class SpokenAnnouncements(
+class LibraryAnnouncements(
     private val output: SoundOutput,
     private val speech: SpeechSynth,
-    private val labelOf: (SoundId) -> String?,
+    private val loadClip: suspend (ClipName) -> FloatArray?,
+    private val soundOf: (SoundId) -> Sound?,
 ) : Announcements {
     private val accessOrder = true
 
-    /** Clips by label, least recently used first. */
-    private val clips = LinkedHashMap<String, Clip>(INITIAL_CAPACITY, LOAD_FACTOR, accessOrder)
+    /** Loaded clips by where they came from, least recently used first. */
+    private val loaded =
+        LinkedHashMap<Source, Loaded>(INITIAL_CAPACITY, LOAD_FACTOR, accessOrder)
     private val freeSlots =
         ArrayDeque((0 until SampleIds.ANNOUNCEMENT_SLOTS).map(SampleIds::announcement))
     private val mutex = Mutex()
@@ -68,54 +73,86 @@ class SpokenAnnouncements(
 
     override suspend fun prepare(soundId: SoundId, fallbackLabel: String?): Clip? =
         mutex.withLock {
-            val label = labelOf(soundId) ?: fallbackLabel ?: return@withLock null
-            clips[label] ?: speak(label)?.also { clips[label] = it }
+            val sound = soundOf(soundId)
+            val label = sound?.label ?: fallbackLabel ?: return@withLock null
+            sound?.clip?.let { recorded(name = it.name, label = label) } ?: spoken(label)
         }
 
     override fun keep(labels: Set<String>) {
         pinned = labels
     }
 
-    private suspend fun speak(label: String): Clip? {
+    private suspend fun recorded(name: ClipName, label: String): Clip? =
+        cached(source = Source.Recorded(name), label = label) { loadClip(name) }
+
+    private suspend fun spoken(label: String): Clip? =
+        cached(source = Source.Spoken(label), label = label) { speakTrimmed(label) }
+
+    private suspend fun cached(
+        source: Source,
+        label: String,
+        pcm: suspend () -> FloatArray?,
+    ): Clip? {
+        loaded[source]?.let { return it.clip }
+        val frames = pcm()?.takeIf { it.isNotEmpty() } ?: return null
+        val clip = load(frames) ?: return null
+        loaded[source] = Loaded(clip = clip, label = label)
+        return clip
+    }
+
+    private suspend fun speakTrimmed(label: String): FloatArray? {
         val pcm = speech.speak(label) ?: return null
         val margin = msToFrames(TRIM_MARGIN_MS).toInt()
-        val trimmed =
-            trimSilence(frames = pcm, threshold = SILENCE_THRESHOLD, marginFrames = margin)
-        if (trimmed.isEmpty()) return null
+        return trimSilence(frames = pcm, threshold = SILENCE_THRESHOLD, marginFrames = margin)
+    }
+
+    private fun load(frames: FloatArray): Clip? {
         val slot = freeSlots.removeFirstOrNull() ?: giveUpOldest() ?: return null
-        val loaded = try {
+        val stored = try {
             output.loadSample(
                 id = slot,
-                pcm = normalizePeak(frames = trimmed, peak = ANNOUNCEMENT_PEAK),
+                pcm = normalizePeak(frames = frames, peak = ANNOUNCEMENT_PEAK),
             )
         } catch (error: RuntimeException) {
             freeSlots.addFirst(slot)
             throw error
         }
-        if (!loaded) {
+        if (!stored) {
             freeSlots.addFirst(slot)
             return null
         }
-        return Clip(id = slot, lengthFrames = trimmed.size.toLong())
+        return Clip(id = slot, lengthFrames = frames.size.toLong())
     }
 
     /**
-     * The slot of the clip used longest ago among those not in [pinned].
+     * The slot of the clip used longest ago whose label is not in [pinned].
      *
      * @return the slot, or null if every clip is pinned (nothing safe to overwrite).
      */
     private fun giveUpOldest(): SampleId? {
-        val oldest = clips.entries.firstOrNull { it.key !in pinned } ?: return null
-        clips.remove(oldest.key)
-        return oldest.value.id
+        val oldest = loaded.entries.firstOrNull { it.value.label !in pinned } ?: return null
+        loaded.remove(oldest.key)
+        return oldest.value.clip.id
     }
+
+    /** Where a loaded clip came from. */
+    private sealed interface Source {
+        /** The phone's voice reading [label]. */
+        data class Spoken(val label: String) : Source
+
+        /** The recording in file [name]. */
+        data class Recorded(val name: ClipName) : Source
+    }
+
+    /** A clip in the engine and the label it announces, for pinning. */
+    private class Loaded(val clip: Clip, val label: String)
 
     /** How Announcements are cleaned up. */
     companion object {
         /** The level the loudest moment of an Announcement is scaled to. */
         const val ANNOUNCEMENT_PEAK: Float = 0.7f
 
-        /** Below this level, 0 to 1, a frame at either end counts as silence. */
+        /** Below this level, 0 to 1, a frame at either end of speech counts as silence. */
         const val SILENCE_THRESHOLD: Float = 0.02f
 
         /** Quiet kept before and after the speech, so soft starts and ends survive. */

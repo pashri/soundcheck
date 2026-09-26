@@ -2,6 +2,7 @@ package org.pashri.soundcheck.ui.step
 
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
+import org.pashri.soundcheck.ui.components.announcementDetail
 import org.pashri.soundcheck.ui.programme.fitWarning
 import org.pashri.soundcheck.ui.programme.signed
 import org.pashri.soundcheck.warmup.Direction
@@ -14,9 +15,6 @@ import org.pashri.soundcheck.warmup.RoundTrip
 import org.pashri.soundcheck.warmup.SavedProgramme
 import org.pashri.soundcheck.warmup.StepRef
 
-/** What a Sound's card says until Plan 6 records clips: the phone's voice reads it. */
-const val PHONE_VOICE: String = "phone voice"
-
 /**
  * Everything the Step editor shows.
  *
@@ -26,7 +24,7 @@ const val PHONE_VOICE: String = "phone voice"
  * @property patternName e.g. "Arpeggio 8-hold".
  * @property patternDetail its degrees and Key Chord, e.g. "1 3 5 8 8 8 8 5 3 1 · major".
  * @property soundLabel e.g. "mim".
- * @property soundDetail how the Announcement sounds, e.g. "phone voice".
+ * @property soundDetail how the Announcement sounds: "your recording · 0.6 s" or "phone voice".
  * @property bpm e.g. "100 bpm".
  * @property canSlower false at 30 bpm.
  * @property canFaster false at 300 bpm.
@@ -136,7 +134,8 @@ private fun build(
     val step = library.stepToPlay(saved)
     val offset = saved.rangeOffset
     val trip = step.roundTrip(range)
-    val sound = library.sound(saved.soundId)?.label ?: saved.soundId.value
+    val chosenSound = library.sound(saved.soundId)
+    val sound = chosenSound?.label ?: saved.soundId.value
     return StepEditorUiState(
         title = sound,
         stepLabel = "STEP ${index + 1} OF ${programme.steps.size}",
@@ -145,7 +144,7 @@ private fun build(
         patternDetail = "${PatternNotation.degrees(step.pattern.notes)} · " +
             step.pattern.keyChord.label,
         soundLabel = sound,
-        soundDetail = PHONE_VOICE,
+        soundDetail = announcementDetail(chosenSound),
         bpm = "${saved.bpm} bpm",
         canSlower = saved.bpm > MIN_BPM,
         canFaster = saved.bpm < MAX_BPM,

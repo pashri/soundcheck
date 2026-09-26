@@ -43,6 +43,19 @@ fun micAccessAfterRequest(
     else -> MicAccess.Blocked
 }
 
+/**
+ * What the microphone access is when a screen comes into view.
+ *
+ * @param previous the access before.
+ * @param granted whether Android says the permission is granted now.
+ * @return Granted when granted; Unknown if it was Granted and isn't any more; else [previous].
+ */
+fun micAccessOnShown(previous: MicAccess, granted: Boolean): MicAccess = when {
+    granted -> MicAccess.Granted
+    previous == MicAccess.Granted -> MicAccess.Unknown
+    else -> previous
+}
+
 /** Which face the Tuner screen shows. */
 enum class TunerMode {
     /** The note, needle and cents. */

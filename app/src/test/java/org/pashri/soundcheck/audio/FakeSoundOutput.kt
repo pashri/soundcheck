@@ -45,6 +45,9 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
     /** What the next [start] returns; set false to simulate a device that won't open. */
     var startResult: Boolean = true
 
+    /** What [loadSample] returns; set false to simulate a slot the engine refuses to fill. */
+    var loadResult: Boolean = true
+
     /**
      * Set true to act like an output that failed to start or closed and could not reopen;
      * [start] clears it. Setting it true freezes [framePosition] at its current value, like
@@ -78,6 +81,7 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
     }
 
     override fun loadSample(id: SampleId, pcm: FloatArray): Boolean {
+        if (!loadResult) return false
         _loaded[id] = pcm
         return true
     }

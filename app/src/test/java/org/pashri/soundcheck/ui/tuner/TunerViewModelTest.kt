@@ -21,6 +21,8 @@ import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
 import org.pashri.soundcheck.audio.FakeMicInput
 import org.pashri.soundcheck.audio.FakeMicInput.Companion.HOP_MS
+import org.pashri.soundcheck.audio.MIC_OPEN_RETRY_MS
+import org.pashri.soundcheck.audio.MIC_OPEN_TRIES
 import org.pashri.soundcheck.audio.Tool
 import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.tuner.HOP_SIZE
@@ -54,6 +56,12 @@ class TunerViewModelTest {
 
     private fun TestScope.hops(count: Int) {
         advanceTimeBy(count * HOP_MS)
+        runCurrent()
+    }
+
+    /** Waits out every try at opening the microphone. */
+    private fun TestScope.micGivesUp() {
+        advanceTimeBy(MIC_OPEN_RETRY_MS * (MIC_OPEN_TRIES - 1))
         runCurrent()
     }
 
@@ -209,6 +217,7 @@ class TunerViewModelTest {
             mic.available = false
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
+            micGivesUp()
             assertEquals(TunerMode.MicUnavailable, state(viewModel).mode)
             mic.available = true
             viewModel.retry()
@@ -223,9 +232,9 @@ class TunerViewModelTest {
             mic.available = false
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
-            runCurrent()
+            micGivesUp()
             viewModel.retry()
-            runCurrent()
+            micGivesUp()
             assertEquals(TunerMode.MicUnavailable, state(viewModel).mode)
             assertFalse(focus.held)
         }
@@ -325,7 +334,7 @@ class TunerViewModelTest {
         mic.available = false
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
-        runCurrent()
+        micGivesUp()
         assertEquals(TunerMode.MicUnavailable, state(viewModel).mode)
         assertFalse(focus.held)
     }
@@ -346,7 +355,7 @@ class TunerViewModelTest {
         mic.available = false
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
-        runCurrent()
+        micGivesUp()
         mic.available = true
         viewModel.retry()
         hops(1)
@@ -360,10 +369,10 @@ class TunerViewModelTest {
             mic.available = false
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
-            runCurrent()
+            micGivesUp()
             assertEquals(0, focus.acquireCount)
             viewModel.retry()
-            runCurrent()
+            micGivesUp()
             assertEquals(0, focus.acquireCount)
             assertEquals(TunerMode.MicUnavailable, state(viewModel).mode)
         }

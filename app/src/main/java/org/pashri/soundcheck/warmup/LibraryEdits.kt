@@ -170,6 +170,24 @@ fun Library.renameSound(id: SoundId, label: String): Library =
     )
 
 /**
+ * Gives a Sound a recorded clip, replaces its clip, or takes it away so the phone's voice
+ * reads its label again. The clip files themselves are never touched here.
+ *
+ * @param id the Sound.
+ * @param clip its new clip, or null for the phone's voice.
+ * @return the library with the Sound's clip changed.
+ */
+fun Library.withClip(id: SoundId, clip: RecordedClip?): Library =
+    copy(sounds = sounds.map { if (it.id == id) it.copy(clip = clip) else it })
+
+/**
+ * Every clip file the library's Sounds use.
+ *
+ * @return their names.
+ */
+fun Library.clipNames(): Set<ClipName> = sounds.mapNotNull { it.clip?.name }.toSet()
+
+/**
  * Deletes a Sound and every Step that uses it. The last Sound stays, so a
  * new Step always has one.
  *

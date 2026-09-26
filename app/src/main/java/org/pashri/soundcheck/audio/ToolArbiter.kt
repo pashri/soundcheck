@@ -11,8 +11,11 @@ enum class Tool {
     /** Plays a Programme. */
     WARM_UP,
 
-    /** Plays a Step's Demo or a Pattern once, from an editor. */
+    /** Plays a Step's Demo or a Pattern once, from an editor, or a Sound's recorded clip. */
     AUDITION,
+
+    /** Listens to the microphone to record a Sound's clip. */
+    RECORDING,
 }
 
 /**

@@ -12,6 +12,8 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeMicInput
 import org.pashri.soundcheck.audio.FakeMicInput.Companion.HOP_MS
+import org.pashri.soundcheck.audio.MIC_OPEN_RETRY_MS
+import org.pashri.soundcheck.audio.MIC_OPEN_TRIES
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TunerTest {
@@ -22,6 +24,12 @@ class TunerTest {
 
     private fun TestScope.hops(count: Int) {
         advanceTimeBy(count * HOP_MS)
+        runCurrent()
+    }
+
+    /** Waits out every try at opening the microphone. */
+    private fun TestScope.micGivesUp() {
+        advanceTimeBy(MIC_OPEN_RETRY_MS * (MIC_OPEN_TRIES - 1))
         runCurrent()
     }
 
@@ -163,9 +171,10 @@ class TunerTest {
         runTest {
             mic.available = false
             val tuner = tuner()
-            mic.onOpen = { tuner.stop() }
+            var tries = 0
+            mic.onOpen = { if (++tries == MIC_OPEN_TRIES) tuner.stop() }
             tuner.start()
-            runCurrent()
+            micGivesUp()
             assertEquals(TunerState(), tuner.state.value)
         }
 
@@ -174,7 +183,7 @@ class TunerTest {
         mic.available = false
         val tuner = tuner()
         tuner.start()
-        runCurrent()
+        micGivesUp()
         assertEquals(TunerState(mic = MicStatus.Unavailable), tuner.state.value)
     }
 
@@ -195,10 +204,26 @@ class TunerTest {
         mic.available = false
         val tuner = tuner()
         tuner.start()
-        runCurrent()
+        micGivesUp()
         mic.available = true
         tuner.start()
         hops(1)
         assertEquals(MicStatus.Listening, tuner.state.value.mic)
+    }
+
+    @Test
+    fun `the microphone is tried again while the recorder lets go of it`() = runTest {
+        mic.available = false
+        val tuner = tuner()
+        tuner.start()
+        advanceTimeBy(150)
+        runCurrent()
+        assertEquals(TunerState(), tuner.state.value)
+        mic.available = true
+        advanceTimeBy(100)
+        runCurrent()
+        assertEquals(MicStatus.Listening, tuner.state.value.mic)
+        assertEquals(1, mic.openNow)
+        tuner.stop()
     }
 }

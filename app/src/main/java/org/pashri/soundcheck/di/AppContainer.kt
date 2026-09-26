@@ -6,6 +6,7 @@ import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,9 +15,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.audio.AndroidAudioFocus
 import org.pashri.soundcheck.audio.AndroidMic
 import org.pashri.soundcheck.audio.AndroidSpeech
+import org.pashri.soundcheck.audio.ExclusiveMic
 import org.pashri.soundcheck.audio.FocusGate
 import org.pashri.soundcheck.audio.MicInput
 import org.pashri.soundcheck.audio.MixingFocusGate
@@ -24,10 +27,15 @@ import org.pashri.soundcheck.audio.NativeAudioEngine
 import org.pashri.soundcheck.audio.SoundOutput
 import org.pashri.soundcheck.audio.SpeechSynth
 import org.pashri.soundcheck.audio.ToolArbiter
+import org.pashri.soundcheck.data.AndroidSharedFiles
+import org.pashri.soundcheck.data.ClipFiles
 import org.pashri.soundcheck.data.DocumentStore
 import org.pashri.soundcheck.data.LibraryCodec
 import org.pashri.soundcheck.data.SettingsCodec
+import org.pashri.soundcheck.data.SharedFiles
 import org.pashri.soundcheck.data.Store
+import org.pashri.soundcheck.data.clipsNamedByBackups
+import org.pashri.soundcheck.data.sweepUnusedClips
 import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
 import org.pashri.soundcheck.playback.PlaybackService
@@ -43,10 +51,10 @@ import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
 import org.pashri.soundcheck.warmup.Audition
 import org.pashri.soundcheck.warmup.Library
+import org.pashri.soundcheck.warmup.LibraryAnnouncements
 import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.ProgrammePlayer
-import org.pashri.soundcheck.warmup.SpokenAnnouncements
 import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StepRef
 import org.pashri.soundcheck.warmup.WarmupController
@@ -88,8 +96,11 @@ class AppContainer(context: Context) {
         )
     }
 
-    /** The microphone, for the Tuner; it never goes through [soundOutput]. */
-    val micInput: MicInput = AndroidMic()
+    /**
+     * The microphone, for the Tuner and for recording Sounds; it never goes through
+     * [soundOutput], and only one of them can have it open at a time.
+     */
+    val micInput: MicInput = ExclusiveMic(AndroidMic())
 
     /**
      * The Tuner's own audio focus. Separate from [audioFocus] because the Metronome releases
@@ -107,12 +118,20 @@ class AppContainer(context: Context) {
         )
     }
 
+    /** When the app started, in milliseconds since the epoch; clips made since are kept. */
+    private val startedAtMs: Long = System.currentTimeMillis()
+
+    private val libraryFile = File(appContext.filesDir, LIBRARY_FILE)
+
+    /** Whether the library was saved before this start, so its clips can be swept safely. */
+    private val libraryExisted: Boolean = libraryFile.exists()
+
     /**
      * The Patterns, Sounds and Programmes, saved in the app's files. A fresh install gets the
      * starter kit.
      */
     val library: Store<Library> = DocumentStore(
-        file = File(appContext.filesDir, LIBRARY_FILE),
+        file = libraryFile,
         codec = LibraryCodec,
         seed = { StarterLibrary.LIBRARY },
         scope = appScope,
@@ -127,6 +146,29 @@ class AppContainer(context: Context) {
         scope = appScope,
         io = Dispatchers.IO,
     ).also { it.load() }
+
+    /** The Sounds' recorded clips, one WAV file each in the app's files. */
+    val clips: ClipFiles = ClipFiles(
+        directory = File(appContext.filesDir, CLIPS_DIRECTORY),
+        io = Dispatchers.IO,
+        newName = newId,
+    )
+
+    init {
+        appScope.launch {
+            sweepUnusedClips(
+                library = library,
+                readFromFile = libraryExisted,
+                clips = clips,
+                startedAtMs = startedAtMs,
+                backedUp = {
+                    withContext(context = Dispatchers.IO) {
+                        clipsNamedByBackups(libraryFile = libraryFile)
+                    }
+                },
+            )
+        }
+    }
 
     /** The sampled grand piano, loaded into [soundOutput] when a Programme first plays. */
     private val piano: Piano by lazy {
@@ -145,10 +187,11 @@ class AppContainer(context: Context) {
 
     /** Plays Programmes; it belongs to the app, not to the Warm-up screen. */
     val warmup: WarmupController by lazy {
-        val announcements = SpokenAnnouncements(
+        val announcements = LibraryAnnouncements(
             output = soundOutput,
             speech = speech,
-            labelOf = { id -> library.data.value?.sound(id)?.label },
+            loadClip = clips::load,
+            soundOf = { id -> library.data.value?.sound(id) },
         )
         val player = ProgrammePlayer(
             output = soundOutput,
@@ -179,9 +222,19 @@ class AppContainer(context: Context) {
         )
     }
 
+    /** Files the person picks with the system's file picker, for backups. */
+    private val sharedFiles: SharedFiles by lazy { AndroidSharedFiles(appContext) }
+
     /** Builds the Settings screen's view model. */
     val settingsViewModelFactory: ViewModelProvider.Factory by lazy {
-        SettingsViewModel.Factory(settings = settings)
+        SettingsViewModel.Factory(
+            settings = settings,
+            library = library,
+            files = sharedFiles,
+            today = LocalDate::now,
+            clockMs = System::currentTimeMillis,
+            worker = Dispatchers.Default,
+        )
     }
 
     /**
@@ -243,7 +296,17 @@ class AppContainer(context: Context) {
      * @return the factory.
      */
     fun soundsFactory(pickFor: StepRef?): ViewModelProvider.Factory =
-        SoundsViewModel.Factory(pickFor = pickFor, library = library, newId = newId)
+        SoundsViewModel.Factory(
+            pickFor = pickFor,
+            library = library,
+            newId = newId,
+            clips = clips,
+            audition = audition,
+            mic = micInput,
+            focus = recordingFocus,
+            arbiter = toolArbiter,
+            worker = Dispatchers.Default,
+        )
 
     /**
      * The editors' audition's own audio focus: a short transient request while a Demo or
@@ -251,6 +314,12 @@ class AppContainer(context: Context) {
      */
     private val auditionFocus: FocusGate =
         MixingFocusGate(focus = AndroidAudioFocus(context), mixing = ::playsOverOtherAudio)
+
+    /**
+     * The recorder's own audio focus: always asked for, even with "Play over other audio"
+     * on, so a podcast pauses rather than being recorded under your voice.
+     */
+    private val recordingFocus: FocusGate = AndroidAudioFocus(context)
 
     /** Plays a Step's Demo or a Pattern from the editors; it belongs to the app. */
     val audition: Audition by lazy {
@@ -287,5 +356,6 @@ class AppContainer(context: Context) {
     private companion object {
         const val LIBRARY_FILE = "library.json"
         const val SETTINGS_FILE = "settings.json"
+        const val CLIPS_DIRECTORY = "clips"
     }
 }

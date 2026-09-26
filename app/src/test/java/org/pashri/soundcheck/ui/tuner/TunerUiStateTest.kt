@@ -87,4 +87,24 @@ class TunerUiStateTest {
         val state = TunerUiState(access = MicAccess.Blocked, yielded = true)
         assertEquals(TunerMode.OpenSettings, state.mode)
     }
+
+    @Test
+    fun `coming into view grants access, or forgets a grant that was taken back`() {
+        val expected = mapOf(
+            (MicAccess.Unknown to true) to MicAccess.Granted,
+            (MicAccess.Blocked to true) to MicAccess.Granted,
+            (MicAccess.Granted to false) to MicAccess.Unknown,
+            (MicAccess.Denied to false) to MicAccess.Denied,
+            (MicAccess.Blocked to false) to MicAccess.Blocked,
+            (MicAccess.Unknown to false) to MicAccess.Unknown,
+        )
+        expected.forEach { (asked, access) ->
+            val (previous, granted) = asked
+            assertEquals(
+                "$asked",
+                access,
+                micAccessOnShown(previous = previous, granted = granted),
+            )
+        }
+    }
 }
