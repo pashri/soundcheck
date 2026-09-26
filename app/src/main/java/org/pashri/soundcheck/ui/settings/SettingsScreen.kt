@@ -103,6 +103,11 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, onBack: () 
             )
             HorizontalDivider(thickness = 1.dp, color = colors.rule)
             SectionLabel(text = "HEADPHONE BUTTON")
+            Text(
+                text = "When Play over other audio is off",
+                style = ManuscriptType.body,
+                color = colors.muted,
+            )
             PressRow(presses = "1 press", action = "Pause, or resume this Iteration")
             PressRow(presses = "2 press", action = "Next Step")
             PressRow(presses = "3 press", action = "Previous Step")

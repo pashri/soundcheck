@@ -15,7 +15,8 @@ import org.pashri.soundcheck.warmup.withLowest
 import org.pashri.soundcheck.warmup.withVoiceType
 
 /**
- * Runs the Settings screen. Every change is saved at once and applies from the next Start.
+ * Runs the Settings screen. Every change is saved at once and applies from the next Start
+ * after the Programme stops.
  *
  * @param settings the saved settings.
  */

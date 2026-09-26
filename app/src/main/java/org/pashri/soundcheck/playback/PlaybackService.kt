@@ -64,9 +64,6 @@ class PlaybackService : Service() {
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         scope.launch { container.warmup.playback.collect(::show) }
-        scope.launch {
-            container.settings.data.collect { session.isActive = takesHeadphoneButton(it) }
-        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

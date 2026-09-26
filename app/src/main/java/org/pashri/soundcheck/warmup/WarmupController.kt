@@ -10,8 +10,10 @@ import org.pashri.soundcheck.audio.ToolArbiter
 /**
  * Runs the Warm-up for the screen, the notification and the headphone button. While a
  * Programme is playing or paused it holds audio focus (so a podcast stays paused) and the
- * one sound-making slot; it hands both back when the Programme stops or ends. Call from the
- * main thread.
+ * one sound-making slot; it hands both back when the Programme stops or ends. While "Play
+ * over other audio" is on, [focus] is a `MixingFocusGate`, so "holds audio focus" instead
+ * means "is allowed to play": focus is granted at once without being requested from the
+ * system, and no podcast is paused. Call from the main thread.
  *
  * @param player plays the Programme.
  * @param focus the Warm-up's own audio focus.

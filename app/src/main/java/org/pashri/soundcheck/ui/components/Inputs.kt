@@ -159,7 +159,7 @@ fun <T> Segmented(
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .clip(ControlShape)
-            .border(1.dp, colors.ink, ControlShape)
+            .border(width = 1.dp, color = colors.ink, shape = ControlShape)
             .selectableGroup(),
     ) {
         options.forEach { option ->
@@ -208,7 +208,7 @@ fun StepperButton(symbol: String, description: String, enabled: Boolean, onClick
         modifier = Modifier
             .size(48.dp)
             .clip(ControlShape)
-            .border(1.dp, tint, ControlShape)
+            .border(width = 1.dp, color = tint, shape = ControlShape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
