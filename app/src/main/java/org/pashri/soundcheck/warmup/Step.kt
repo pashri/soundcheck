@@ -12,13 +12,44 @@ import org.pashri.soundcheck.metronome.MIN_BPM
 value class SoundId(val value: String)
 
 /**
+ * The name of a recorded clip's file in the app's clips folder, e.g. "3f2a….wav". Only
+ * letters, digits and dashes before ".wav", so a name read from a file can never point
+ * outside that folder.
+ *
+ * @property value the file name.
+ * @throws IllegalArgumentException if [value] is not such a name.
+ */
+@JvmInline
+value class ClipName(val value: String) {
+    init {
+        require(value = CLIP_NAME.matches(value)) { "\"$value\" is not a clip file name" }
+    }
+}
+
+private val CLIP_NAME = Regex("[A-Za-z0-9-]{1,64}\\.wav")
+
+/**
+ * A Sound's recorded clip: you saying it, with the silence trimmed from both ends.
+ *
+ * @property name its file in the clips folder.
+ * @property lengthMs how long it plays, in milliseconds.
+ * @throws IllegalArgumentException if [lengthMs] is not positive.
+ */
+data class RecordedClip(val name: ClipName, val lengthMs: Long) {
+    init {
+        require(value = lengthMs > 0) { "A clip of $lengthMs ms is empty" }
+    }
+}
+
+/**
  * What you sing a Step on: a syllable such as "mim" or a technique such as a lip trill.
- * Its recorded clip arrives in a later plan.
  *
  * @property id the Sound's identifier.
- * @property label what the Sound is called, and what the phone's voice reads aloud.
+ * @property label what the Sound is called, and what the phone's voice reads aloud when it
+ *     has no clip.
+ * @property clip your recording of it, or null for the phone's voice.
  */
-data class Sound(val id: SoundId, val label: String)
+data class Sound(val id: SoundId, val label: String, val clip: RecordedClip? = null)
 
 /**
  * One entry in a Programme.

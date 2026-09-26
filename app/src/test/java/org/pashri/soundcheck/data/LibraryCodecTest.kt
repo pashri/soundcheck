@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
+import org.pashri.soundcheck.warmup.ClipName
 import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Library
@@ -12,6 +13,7 @@ import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.PatternNotation
 import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.RangeOffset
+import org.pashri.soundcheck.warmup.RecordedClip
 import org.pashri.soundcheck.warmup.SavedProgramme
 import org.pashri.soundcheck.warmup.SavedStep
 import org.pashri.soundcheck.warmup.StarterLibrary
@@ -21,7 +23,15 @@ import org.pashri.soundcheck.warmup.StepKey
 
 class LibraryCodecTest {
     private val fixture: String =
+        checkNotNull(javaClass.getResource("/data/library-v2.json")).readText()
+
+    private val fixtureV1: String =
         checkNotNull(javaClass.getResource("/data/library-v1.json")).readText()
+
+    private val humClip = RecordedClip(
+        name = ClipName("0b7c9e2a-5d41-4f6e-9a3b-2c8d1e0f4a67.wav"),
+        lengthMs = 640,
+    )
 
     private val fixtureLibrary = Library(
         patterns = listOf(
@@ -33,7 +43,7 @@ class LibraryCodecTest {
                 keyChord = KeyChord.MINOR,
             ),
         ),
-        sounds = listOf(StarterSounds.HUM),
+        sounds = listOf(StarterSounds.HUM.copy(clip = humClip)),
         programmes = listOf(
             SavedProgramme(
                 id = ProgrammeId("morning"),
@@ -73,8 +83,45 @@ class LibraryCodecTest {
     }
 
     @Test
+    fun `a version 1 file reads as the same library with no clips`() {
+        val noClips = fixtureLibrary.copy(sounds = listOf(StarterSounds.HUM))
+        assertEquals(noClips, LibraryCodec.decode(fixtureV1))
+    }
+
+    @Test
+    fun `a Sound with no clip is written without one`() {
+        assertEquals(
+            Json.parseToJsonElement(fixtureV1.replace(
+                oldValue = "\"version\": 1",
+                newValue = "\"version\": 2",
+            )),
+            Json.parseToJsonElement(
+                LibraryCodec.encode(fixtureLibrary.copy(sounds = listOf(StarterSounds.HUM))),
+            ),
+        )
+    }
+
+    @Test
     fun `a file from a newer version is refused`() {
-        refuses(fixture.replace(oldValue = "\"version\": 1", newValue = "\"version\": 2"))
+        refuses(fixture.replace(oldValue = "\"version\": 2", newValue = "\"version\": 3"))
+    }
+
+    @Test
+    fun `a version 1 file with a clip is refused`() {
+        refuses(fixture.replace(oldValue = "\"version\": 2", newValue = "\"version\": 1"))
+    }
+
+    @Test
+    fun `a clip file name that could reach outside the clips folder is refused`() {
+        refuses(fixture.replace(
+            oldValue = "0b7c9e2a-5d41-4f6e-9a3b-2c8d1e0f4a67.wav",
+            newValue = "../library.json",
+        ))
+    }
+
+    @Test
+    fun `an empty clip is refused`() {
+        refuses(fixture.replace(oldValue = "\"ms\": 640", newValue = "\"ms\": 0"))
     }
 
     @Test

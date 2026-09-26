@@ -90,4 +90,19 @@ class LibraryTest {
         assertThrows(IllegalArgumentException::class.java) { firstStep.copy(bpm = 29) }
         assertThrows(IllegalArgumentException::class.java) { firstStep.copy(bpm = 301) }
     }
+
+    @Test
+    fun `a clip name is letters, digits and dashes ending in wav`() {
+        assertEquals("a-1.wav", ClipName("a-1.wav").value)
+        listOf("../library.json", "a/b.wav", "clip.mp3", ".wav", "").forEach { name ->
+            assertThrows(IllegalArgumentException::class.java) { ClipName(name) }
+        }
+    }
+
+    @Test
+    fun `an empty recorded clip is rejected`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            RecordedClip(name = ClipName("a.wav"), lengthMs = 0)
+        }
+    }
 }

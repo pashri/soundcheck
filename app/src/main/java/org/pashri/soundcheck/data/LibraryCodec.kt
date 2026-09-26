@@ -1,6 +1,7 @@
 package org.pashri.soundcheck.data
 
 import kotlinx.serialization.Serializable
+import org.pashri.soundcheck.warmup.ClipName
 import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Library
@@ -9,6 +10,7 @@ import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.PatternNotation
 import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.RangeOffset
+import org.pashri.soundcheck.warmup.RecordedClip
 import org.pashri.soundcheck.warmup.SavedProgramme
 import org.pashri.soundcheck.warmup.SavedStep
 import org.pashri.soundcheck.warmup.Sound
@@ -18,13 +20,14 @@ import org.pashri.soundcheck.warmup.StepKey
 /**
  * Reads and writes the library as JSON.
  *
- * [decode] requires the file's `version` to equal [VERSION] exactly, and unknown keys are
- * not ignored (an added or renamed field fails to parse). Adding a field therefore means a
- * new [VERSION] plus a migration from the previous version's format.
+ * [decode] reads [VERSION] and every earlier version, and refuses anything newer. Unknown
+ * keys are not ignored (an added or renamed field fails to parse), so adding a field means
+ * a new [VERSION] plus a migration from the previous version's format. Version 2 added a
+ * Sound's optional `clip`; a version 1 file is read as a library with no clips.
  */
 object LibraryCodec : TextCodec<Library> {
-    /** The format this build writes; a file with any other version is refused. */
-    const val VERSION: Int = 1
+    /** The format this build writes; a file with a newer version is refused. */
+    const val VERSION: Int = 2
 
     override fun encode(value: Library): String =
         DocumentJson.encodeToString(serializer = LibraryFile.serializer(), value = value.toFile())
@@ -34,10 +37,7 @@ object LibraryCodec : TextCodec<Library> {
             deserializer = LibraryFile.serializer(),
             string = text,
         )
-        require(value = file.version == VERSION) {
-            "Library format ${file.version} is not $VERSION"
-        }
-        return file.toLibrary()
+        return file.readLibrary()
     }
 }
 
@@ -58,7 +58,10 @@ internal data class PatternRecord(
 )
 
 @Serializable
-internal data class SoundRecord(val id: String, val label: String)
+internal data class SoundRecord(val id: String, val label: String, val clip: ClipRecord? = null)
+
+@Serializable
+internal data class ClipRecord(val file: String, val ms: Long)
 
 @Serializable
 internal data class ProgrammeRecord(
@@ -79,7 +82,32 @@ internal data class StepRecord(
     val guideMelody: Boolean,
 )
 
-private fun Library.toFile(): LibraryFile = LibraryFile(
+/** The first format that can hold a Sound's clip. */
+private const val FIRST_WITH_CLIPS: Int = 2
+
+/**
+ * The library this record holds, checked as [LibraryCodec.decode] checks a whole file.
+ *
+ * @return the library.
+ * @throws IllegalArgumentException if the record's version is newer than this build's, a
+ *     version 1 record has a clip, or the library breaks a [Library] rule.
+ */
+internal fun LibraryFile.readLibrary(): Library {
+    require(value = version in 1..LibraryCodec.VERSION) {
+        "Library format $version is not 1–${LibraryCodec.VERSION}"
+    }
+    require(value = version >= FIRST_WITH_CLIPS || sounds.all { it.clip == null }) {
+        "Library format $version can't hold clips"
+    }
+    return toLibrary()
+}
+
+/**
+ * This library as the record [LibraryCodec] writes.
+ *
+ * @return the record, at [LibraryCodec.VERSION].
+ */
+internal fun Library.toFile(): LibraryFile = LibraryFile(
     version = LibraryCodec.VERSION,
     patterns = patterns.map {
         PatternRecord(
@@ -89,7 +117,7 @@ private fun Library.toFile(): LibraryFile = LibraryFile(
             keyChord = it.keyChord.name,
         )
     },
-    sounds = sounds.map { SoundRecord(id = it.id.value, label = it.label) },
+    sounds = sounds.map { it.toRecord() },
     programmes = programmes.map { programme ->
         ProgrammeRecord(
             id = programme.id.value,
@@ -97,6 +125,18 @@ private fun Library.toFile(): LibraryFile = LibraryFile(
             steps = programme.steps.map { it.toRecord() },
         )
     },
+)
+
+private fun Sound.toRecord(): SoundRecord = SoundRecord(
+    id = id.value,
+    label = label,
+    clip = clip?.let { ClipRecord(file = it.name.value, ms = it.lengthMs) },
+)
+
+private fun SoundRecord.toSound(): Sound = Sound(
+    id = SoundId(id),
+    label = label,
+    clip = clip?.let { RecordedClip(name = ClipName(it.file), lengthMs = it.ms) },
 )
 
 private fun SavedStep.toRecord(): StepRecord = StepRecord(
@@ -119,7 +159,7 @@ private fun LibraryFile.toLibrary(): Library = Library(
             keyChord = KeyChord.valueOf(it.keyChord),
         )
     },
-    sounds = sounds.map { Sound(id = SoundId(it.id), label = it.label) },
+    sounds = sounds.map { it.toSound() },
     programmes = programmes.map { programme ->
         SavedProgramme(
             id = ProgrammeId(programme.id),
