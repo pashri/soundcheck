@@ -16,16 +16,18 @@ plugins {
  */
 val keystoreFile: File = rootProject.file("keystore.properties")
 
+/** What `keystore.properties` holds; empty when the file is missing. */
 val keystoreProperties: Properties = Properties().apply {
-    if (keystoreFile.exists()) keystoreFile.inputStream().use { load(it) }
+    if (keystoreFile.isFile) keystoreFile.inputStream().use { load(it) }
 }
 
 /**
- * The keystore's path, with a leading `~/` meaning the home folder; a relative path is read
+ * The keystore's path, with a leading `~` meaning the home folder; a relative path is read
  * from the project root, where `keystore.properties` lives.
  */
 val releaseStoreFile: String? = keystoreProperties.getProperty("storeFile")?.let { path ->
-    if (path.startsWith("~/")) System.getProperty("user.home") + path.substring(1) else path
+    val home = path == "~" || path.startsWith("~/")
+    if (home) System.getProperty("user.home") + path.substring(1) else path
 }?.let { rootProject.file(it).path }
 
 /**
@@ -36,7 +38,7 @@ val signReleaseWithDebugKey: Boolean =
     providers.gradleProperty("soundcheck.signWithDebugKey").orNull == "true"
 
 /** What keeps the release from being signed, by name; never a value from the file. */
-val releaseSigningProblems: List<String> = if (!keystoreFile.exists()) {
+val releaseSigningProblems: List<String> = if (!keystoreFile.isFile) {
     listOf("keystore.properties is missing from the project root")
 } else {
     listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
@@ -44,7 +46,7 @@ val releaseSigningProblems: List<String> = if (!keystoreFile.exists()) {
         .map { "keystore.properties has no $it" } +
         listOfNotNull(
             "the keystore that storeFile names doesn't exist"
-                .takeIf { releaseStoreFile?.let { !File(it).exists() } == true },
+                .takeIf { releaseStoreFile?.let { !File(it).isFile } == true },
         )
 }
 
@@ -101,10 +103,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = if (signReleaseWithDebugKey) {
-                signingConfigs.getByName("debug")
+            if (signReleaseWithDebugKey) {
+                versionNameSuffix = "-debugkey"
+                signingConfig = signingConfigs.getByName("debug")
             } else {
-                signingConfigs.findByName("release")
+                signingConfig = signingConfigs.findByName("release")
             }
         }
     }
@@ -128,14 +131,19 @@ android {
     }
 }
 
-/** Stops a release build that has no signing key, before anything is packaged or signed. */
+/**
+ * Stops a release build that has no signing key, before anything is packaged or signed, and
+ * warns loudly when the release is signed with the debug key.
+ */
 val checkReleaseSigning by tasks.registering {
     group = "verification"
     description = "Fails a release build that has no signing key configured."
     val problems = releaseSigningProblems
     val debugKey = signReleaseWithDebugKey
     doFirst {
-        if (!debugKey && problems.isNotEmpty()) {
+        if (debugKey) {
+            logger.lifecycle("Release signed with the DEBUG key: do not install on the phone.")
+        } else if (problems.isNotEmpty()) {
             throw GradleException(
                 "The release build needs its signing key (see the README, " +
                     "\"Release build\"):\n  " + problems.joinToString(separator = "\n  "),
@@ -144,9 +152,15 @@ val checkReleaseSigning by tasks.registering {
     }
 }
 
-// Hung on packaging, not preReleaseBuild, so release compilation and `./gradlew test` never
-// need the key.
-tasks.matching { it.name in setOf("packageRelease", "bundleRelease") }.configureEach {
+/**
+ * The tasks that write a release APK or AAB, which `checkReleaseSigning` runs before. Not
+ * `preReleaseBuild`, so release compilation and `./gradlew test` never need the key; the
+ * bundle's own tasks are listed so no unsigned AAB is written first.
+ */
+val releasePackagingTasks: Set<String> =
+    setOf("packageRelease", "bundleRelease", "packageReleaseBundle", "signReleaseBundle")
+
+tasks.named { it in releasePackagingTasks }.configureEach {
     dependsOn(checkReleaseSigning)
 }
 
