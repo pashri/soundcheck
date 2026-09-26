@@ -10,11 +10,15 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import org.pashri.soundcheck.di.AppContainer
 import org.pashri.soundcheck.ui.components.Tab
+import org.pashri.soundcheck.ui.pattern.PatternEditorRoute
+import org.pashri.soundcheck.ui.pattern.PatternListLinks
+import org.pashri.soundcheck.ui.pattern.PatternListRoute
 import org.pashri.soundcheck.ui.programme.ProgrammeEditorRoute
 import org.pashri.soundcheck.ui.programme.ProgrammeLinks
 import org.pashri.soundcheck.ui.settings.SettingsRoute
 import org.pashri.soundcheck.ui.step.StepEditorRoute
 import org.pashri.soundcheck.ui.step.StepLinks
+import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.StepKey
 import org.pashri.soundcheck.warmup.StepRef
@@ -42,6 +46,9 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
                     openPlaying = openPlaying,
                     openSettings = { navController.navigate(WarmupRoutes.SETTINGS) },
                     editProgramme = { navController.navigate(WarmupRoutes.programme(it)) },
+                    openPatterns = {
+                        navController.navigate(WarmupRoutes.patterns(pickFor = null))
+                    },
                 ),
             )
         }
@@ -87,7 +94,38 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
             )
             StepEditorRoute(
                 factory = container.stepEditorFactory(ref),
-                links = StepLinks(back = closing(WarmupRoutes.STEP)),
+                links = StepLinks(
+                    back = closing(WarmupRoutes.STEP),
+                    choosePattern = {
+                        navController.navigate(WarmupRoutes.patterns(pickFor = ref))
+                    },
+                ),
+            )
+        }
+        composable(
+            route = WarmupRoutes.PATTERNS,
+            arguments = listOf(
+                optionalArg(WarmupRoutes.ARG_PROGRAMME),
+                optionalArg(WarmupRoutes.ARG_STEP),
+            ),
+        ) { entry ->
+            PatternListRoute(
+                factory = container.patternListFactory(entry.pickFor()),
+                links = PatternListLinks(
+                    back = closing(WarmupRoutes.PATTERNS),
+                    editPattern = { navController.navigate(WarmupRoutes.pattern(it)) },
+                ),
+            )
+        }
+        composable(
+            route = WarmupRoutes.PATTERN,
+            arguments = listOf(requiredArg(WarmupRoutes.ARG_PATTERN)),
+        ) { entry ->
+            PatternEditorRoute(
+                factory = container.patternEditorFactory(
+                    PatternId(entry.requireArg(WarmupRoutes.ARG_PATTERN)),
+                ),
+                onBack = closing(WarmupRoutes.PATTERN),
             )
         }
     }
@@ -96,5 +134,16 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
 private fun requiredArg(name: String): NamedNavArgument =
     navArgument(name) { type = NavType.StringType }
 
+private fun optionalArg(name: String): NamedNavArgument = navArgument(name) {
+    type = NavType.StringType
+    nullable = true
+    defaultValue = null
+}
+
 private fun NavBackStackEntry.requireArg(name: String): String =
     checkNotNull(arguments?.getString(name)) { "The route has no $name" }
+
+private fun NavBackStackEntry.pickFor(): StepRef? = WarmupRoutes.pickFor(
+    programme = arguments?.getString(WarmupRoutes.ARG_PROGRAMME),
+    step = arguments?.getString(WarmupRoutes.ARG_STEP),
+)
