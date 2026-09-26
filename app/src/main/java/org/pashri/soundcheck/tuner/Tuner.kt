@@ -25,9 +25,15 @@ enum class MicStatus {
     /** Listening. */
     Listening,
 
+    /** Open, but Android is feeding it silence because another app is using the microphone. */
+    Silenced,
+
     /** Couldn't open the microphone, or it stopped delivering sound. */
     Unavailable,
 }
+
+/** How often, in hops, the Tuner asks whether its recording is being silenced: about 0.5 s. */
+const val SILENCE_CHECK_HOPS: Int = 24
 
 /**
  * What the Tuner hears.
@@ -102,7 +108,7 @@ class Tuner(
         }
         _state.value = TunerState(mic = MicStatus.Listening)
         try {
-            hearUntilSilenced(session)
+            hearWhileDelivering(session)
             currentCoroutineContext().ensureActive()
             _state.value = TunerState(mic = MicStatus.Unavailable)
         } catch (e: CancellationException) {
@@ -113,22 +119,33 @@ class Tuner(
         }
     }
 
-    /** Returns only if the microphone stops delivering; cancellation ends it otherwise. */
-    private suspend fun hearUntilSilenced(session: MicSession) {
+    /**
+     * Returns only if the microphone stops delivering; cancellation ends it otherwise. Every
+     * [SILENCE_CHECK_HOPS] hops it asks whether Android is silencing the recording for
+     * another app, and says so instead of a note while it is.
+     */
+    private suspend fun hearWhileDelivering(session: MicSession) {
         val detector = PitchDetector()
         val smoother = PitchSmoother()
         val window = FloatArray(WINDOW_SIZE)
         val hop = FloatArray(HOP_SIZE)
+        var hops = 0
+        var silenced = false
         while (session.read(hop) == HOP_SIZE) {
-            slide(window, hop)
+            slide(window = window, hop = hop)
             val midi = smoother.next(detector.detect(window))
             currentCoroutineContext().ensureActive()
-            _state.value = TunerState(mic = MicStatus.Listening, note = midi?.let(NoteReading::of))
+            if (hops++ % SILENCE_CHECK_HOPS == 0) silenced = session.isSilenced()
+            _state.value = if (silenced) {
+                TunerState(mic = MicStatus.Silenced)
+            } else {
+                TunerState(mic = MicStatus.Listening, note = midi?.let(NoteReading::of))
+            }
         }
     }
 
     private fun slide(window: FloatArray, hop: FloatArray) {
-        window.copyInto(window, destinationOffset = 0, startIndex = hop.size)
-        hop.copyInto(window, destinationOffset = window.size - hop.size)
+        window.copyInto(destination = window, destinationOffset = 0, startIndex = hop.size)
+        hop.copyInto(destination = window, destinationOffset = window.size - hop.size)
     }
 }

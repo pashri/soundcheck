@@ -107,7 +107,7 @@ fun TunerRoute(factory: ViewModelProvider.Factory) {
     DisposableEffect(viewModel) {
         onDispose { if (activity?.isChangingConfigurations != true) viewModel.stop() }
     }
-    val actions = remember(viewModel, activity, launcher) {
+    val actions = remember(key1 = viewModel, key2 = activity, key3 = launcher) {
         object : TunerActions {
             override fun allowMicrophone() = launcher.launch(Manifest.permission.RECORD_AUDIO)
             override fun openSettings() {
@@ -141,7 +141,11 @@ fun TunerScreen(state: TunerUiState, actions: TunerActions) {
                 verticalArrangement = Arrangement.Center,
             ) {
                 val message = state.message
-                if (message == null) TunerFace(state) else MessagePanel(message, state, actions)
+                if (message == null) {
+                    TunerFace(state)
+                } else {
+                    MessagePanel(message = message, state = state, actions = actions)
+                }
             }
         }
     }
@@ -176,7 +180,7 @@ private fun TunerFace(state: TunerUiState) {
 @Composable
 private fun NoteOnStaff(note: NoteReading?) {
     val colors = Manuscript.colors
-    val description = note?.let { spokenNoteName(it.name, it.octave) }
+    val description = note?.let { spokenNoteName(name = it.name, octave = it.octave) }
     val semanticsModifier = if (description != null) {
         Modifier.semantics { contentDescription = description }
     } else {
@@ -196,7 +200,12 @@ private fun NoteOnStaff(note: NoteReading?) {
             val middle = size.height / 2
             STAFF_LINES_Y.forEach { y ->
                 val top = middle + (y - STAFF_MIDDLE_LINE_Y).toPx()
-                drawLine(colors.rule, Offset(0f, top), Offset(size.width, top), 1.2.dp.toPx())
+                drawLine(
+                    color = colors.rule,
+                    start = Offset(x = 0f, y = top),
+                    end = Offset(x = size.width, y = top),
+                    strokeWidth = 1.2.dp.toPx(),
+                )
             }
         }
         if (note != null) NoteName(note)
@@ -229,18 +238,23 @@ private fun NoteName(note: NoteReading) {
     val letter = note.name.take(1)
     val accidental = note.name.drop(1)
     Row(verticalAlignment = Alignment.Bottom) {
-        Text(letter, style = serifDp(LETTER_SIZE, density), color = colors.ink)
+        Text(
+            text = letter,
+            style = serifDp(size = LETTER_SIZE, density = density),
+            color = colors.ink,
+        )
         if (accidental.isNotEmpty()) {
             Text(
                 text = accidental,
-                style = serifDp(ACCIDENTAL_SIZE, density),
+                style = serifDp(size = ACCIDENTAL_SIZE, density = density),
                 color = colors.ink,
                 modifier = Modifier.align(Alignment.Top).padding(top = 24.dp),
             )
         }
         Text(
             text = note.octave.toString(),
-            style = serifDp(OCTAVE_SIZE, density).copy(fontStyle = FontStyle.Italic),
+            style = serifDp(size = OCTAVE_SIZE, density = density)
+                .copy(fontStyle = FontStyle.Italic),
             color = colors.muted,
             modifier = Modifier.padding(start = 4.dp, bottom = 16.dp),
         )
@@ -259,13 +273,17 @@ private fun Needle(degrees: Float?) {
     val colors = Manuscript.colors
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
-    val signStyle = serifDp(SIGN_SIZE, density).copy(color = colors.muted)
+    val signStyle = serifDp(size = SIGN_SIZE, density = density).copy(color = colors.muted)
     // Pre-measured: drawText(measurer, text, ...) lays text out against the unscaled
     // DrawScope size minus its offset, which goes negative once the dial is narrower than
     // the mockup and crashes. Measuring unconstrained and drawing the TextLayoutResult
     // sidesteps that constraint while keeping the same position and size.
-    val flat = remember(signStyle, measurer) { measurer.measure("♭", signStyle) }
-    val sharp = remember(signStyle, measurer) { measurer.measure("♯", signStyle) }
+    val flat = remember(key1 = signStyle, key2 = measurer) {
+        measurer.measure(text = "♭", style = signStyle)
+    }
+    val sharp = remember(key1 = signStyle, key2 = measurer) {
+        measurer.measure(text = "♯", style = signStyle)
+    }
     Canvas(
         // Decorative: the reading and advice lines below already speak the value.
         Modifier
@@ -275,16 +293,32 @@ private fun Needle(degrees: Float?) {
     ) {
         // Draw in the mockup's own coordinates, scaled down on a narrow phone.
         val unit = size.width / DIAL_WIDTH.toPx()
-        withTransform({ scale(unit, unit, pivot = Offset.Zero) }) {
-            val pivot = Offset(DIAL_WIDTH.toPx() / 2, PIVOT_Y.toPx())
+        withTransform({ scale(scaleX = unit, scaleY = unit, pivot = Offset.Zero) }) {
+            val pivot = Offset(x = DIAL_WIDTH.toPx() / 2, y = PIVOT_Y.toPx())
             val radius = DIAL_RADIUS.toPx()
-            drawTicks(pivot, radius, colors.ink, colors.faint)
-            drawText(flat, topLeft = Offset(12.dp.toPx(), 124.dp.toPx()))
-            drawText(sharp, topLeft = Offset(296.dp.toPx(), 124.dp.toPx()))
+            drawTicks(pivot = pivot, radius = radius, major = colors.ink, minor = colors.faint)
+            drawText(
+                textLayoutResult = flat,
+                topLeft = Offset(x = 12.dp.toPx(), y = 124.dp.toPx()),
+            )
+            drawText(
+                textLayoutResult = sharp,
+                topLeft = Offset(x = 296.dp.toPx(), y = 124.dp.toPx()),
+            )
             val needleColor = if (degrees == null) colors.faint else colors.accent
-            val tip = pointOnDial(pivot, radius - NEEDLE_SHORTFALL.toPx(), degrees ?: 0f)
-            drawLine(needleColor, pivot, tip, 2.2.dp.toPx(), cap = StrokeCap.Round)
-            drawCircle(needleColor, 6.dp.toPx(), pivot)
+            val tip = pointOnDial(
+                pivot = pivot,
+                radius = radius - NEEDLE_SHORTFALL.toPx(),
+                degrees = degrees ?: 0f,
+            )
+            drawLine(
+                color = needleColor,
+                start = pivot,
+                end = tip,
+                strokeWidth = 2.2.dp.toPx(),
+                cap = StrokeCap.Round,
+            )
+            drawCircle(color = needleColor, radius = 6.dp.toPx(), center = pivot)
         }
     }
 }
@@ -296,8 +330,8 @@ private fun DrawScope.drawTicks(pivot: Offset, radius: Float, major: Color, mino
         val inner = radius - (if (isMajor) MAJOR_TICK else MINOR_TICK).toPx()
         drawLine(
             color = if (isMajor) major else minor,
-            start = pointOnDial(pivot, radius, degrees),
-            end = pointOnDial(pivot, inner, degrees),
+            start = pointOnDial(pivot = pivot, radius = radius, degrees = degrees),
+            end = pointOnDial(pivot = pivot, radius = inner, degrees = degrees),
             strokeWidth = (if (isMajor) 1.6.dp else 1.dp).toPx(),
             cap = StrokeCap.Round,
         )
@@ -332,7 +366,7 @@ private fun MessagePanel(message: TunerMessage, state: TunerUiState, actions: Tu
     Spacer(Modifier.height(24.dp))
     val onClick: () -> Unit = when (state.mode) {
         TunerMode.OpenSettings -> actions::openSettings
-        TunerMode.MicUnavailable, TunerMode.Yielded -> actions::retry
+        TunerMode.MicUnavailable, TunerMode.MicSilenced, TunerMode.Yielded -> actions::retry
         else -> actions::allowMicrophone
     }
     val shape = RoundedCornerShape(6.dp)
@@ -366,7 +400,14 @@ private object PreviewActions : TunerActions {
 private fun TunerDayPreview() {
     SoundcheckTheme(dark = false) {
         val note = NoteReading.of(midiOf(109.746))
-        TunerScreen(TunerUiState(MicAccess.Granted, MicStatus.Listening, note), PreviewActions)
+        TunerScreen(
+            state = TunerUiState(
+                access = MicAccess.Granted,
+                mic = MicStatus.Listening,
+                note = note,
+            ),
+            actions = PreviewActions,
+        )
     }
 }
 
@@ -375,7 +416,14 @@ private fun TunerDayPreview() {
 private fun TunerNightPreview() {
     SoundcheckTheme(dark = true) {
         val note = NoteReading.of(midiOf(466.9))
-        TunerScreen(TunerUiState(MicAccess.Granted, MicStatus.Listening, note), PreviewActions)
+        TunerScreen(
+            state = TunerUiState(
+                access = MicAccess.Granted,
+                mic = MicStatus.Listening,
+                note = note,
+            ),
+            actions = PreviewActions,
+        )
     }
 }
 
@@ -383,7 +431,7 @@ private fun TunerNightPreview() {
 @Composable
 private fun TunerPermissionPreview() {
     SoundcheckTheme(dark = false) {
-        TunerScreen(TunerUiState(access = MicAccess.Blocked), PreviewActions)
+        TunerScreen(state = TunerUiState(access = MicAccess.Blocked), actions = PreviewActions)
     }
 }
 

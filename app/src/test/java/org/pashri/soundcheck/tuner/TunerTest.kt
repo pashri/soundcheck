@@ -20,7 +20,11 @@ class TunerTest {
     private val mic = FakeMicInput()
 
     private fun TestScope.tuner(): Tuner =
-        Tuner(mic, backgroundScope, StandardTestDispatcher(testScheduler))
+        Tuner(
+            mic = mic,
+            scope = backgroundScope,
+            worker = StandardTestDispatcher(testScheduler),
+        )
 
     private fun TestScope.hops(count: Int) {
         advanceTimeBy(count * HOP_MS)
@@ -34,7 +38,7 @@ class TunerTest {
     }
 
     private fun tone(hz: Double, hops: Int): FloatArray =
-        Signals.sine(hz, size = hops * HOP_SIZE)
+        Signals.sine(hz = hz, size = hops * HOP_SIZE)
 
     @Test
     fun `it is off until started`() = runTest {
@@ -59,7 +63,7 @@ class TunerTest {
         strings.forEach { (hz, name) ->
             val tuner = tuner()
             tuner.start()
-            mic.play(tone(hz, hops = 12))
+            mic.play(tone(hz = hz, hops = 12))
             hops(12)
             val note = checkNotNull(tuner.state.value.note) { "nothing heard for $name" }
             assertEquals(name, "${note.name}${note.octave}")
@@ -73,7 +77,7 @@ class TunerTest {
     fun `an A2 a little under 110 Hz reads 5 cents flat`() = runTest {
         val tuner = tuner()
         tuner.start()
-        mic.play(tone(109.7, hops = 12))
+        mic.play(tone(hz = 109.7, hops = 12))
         hops(12)
         val note = checkNotNull(tuner.state.value.note)
         assertEquals("A", note.name)
@@ -84,7 +88,7 @@ class TunerTest {
     fun `when the sound stops the note holds and then clears`() = runTest {
         val tuner = tuner()
         tuner.start()
-        mic.play(tone(110.0, hops = 12))
+        mic.play(tone(hz = 110.0, hops = 12))
         hops(12 + HOLD_FRAMES - 2)
         assertNotNull(tuner.state.value.note)
         hops(4)
@@ -96,7 +100,7 @@ class TunerTest {
     fun `stopping releases the microphone and clears the note`() = runTest {
         val tuner = tuner()
         tuner.start()
-        mic.play(tone(110.0, hops = 12))
+        mic.play(tone(hz = 110.0, hops = 12))
         hops(12)
         tuner.stop()
         assertEquals(TunerState(), tuner.state.value)
@@ -149,7 +153,7 @@ class TunerTest {
     fun `stopping from within a hop callback never leaves a note showing`() = runTest {
         val tuner = tuner()
         tuner.start()
-        mic.play(tone(110.0, hops = 12))
+        mic.play(tone(hz = 110.0, hops = 12))
         hops(11)
         mic.onHop = { tuner.stop() }
         hops(1)
@@ -191,7 +195,7 @@ class TunerTest {
     fun `a microphone that stops working is reported unavailable and released`() = runTest {
         val tuner = tuner()
         tuner.start()
-        mic.play(tone(110.0, hops = 12))
+        mic.play(tone(hz = 110.0, hops = 12))
         hops(12)
         mic.breakMic()
         hops(1)
@@ -226,4 +230,18 @@ class TunerTest {
         assertEquals(1, mic.openNow)
         tuner.stop()
     }
+
+    @Test
+    fun `a microphone another app has taken says so, and listening comes back with it`() =
+        runTest {
+            val tuner = tuner()
+            tuner.start()
+            hops(2)
+            mic.silenced = true
+            hops(SILENCE_CHECK_HOPS + 1)
+            assertEquals(TunerState(mic = MicStatus.Silenced), tuner.state.value)
+            mic.silenced = false
+            hops(SILENCE_CHECK_HOPS + 1)
+            assertEquals(MicStatus.Listening, tuner.state.value.mic)
+        }
 }

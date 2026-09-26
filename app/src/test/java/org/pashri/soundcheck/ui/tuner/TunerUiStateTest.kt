@@ -49,7 +49,8 @@ class TunerUiStateTest {
             TunerUiState(access = MicAccess.Blocked) to TunerMode.OpenSettings,
             TunerUiState(access = MicAccess.Granted) to TunerMode.Listening,
             listening to TunerMode.Listening,
-            TunerUiState(MicAccess.Granted, MicStatus.Unavailable) to TunerMode.MicUnavailable,
+            TunerUiState(access = MicAccess.Granted, mic = MicStatus.Unavailable) to
+                TunerMode.MicUnavailable,
         )
         expected.forEach { (state, mode) -> assertEquals("$state", mode, state.mode) }
     }
@@ -58,7 +59,7 @@ class TunerUiStateTest {
     fun `each message has the button that does its job`() {
         assertEquals("Allow microphone", TunerUiState(access = MicAccess.Denied).message?.button)
         assertEquals("Open settings", TunerUiState(access = MicAccess.Blocked).message?.button)
-        val unavailable = TunerUiState(MicAccess.Granted, MicStatus.Unavailable)
+        val unavailable = TunerUiState(access = MicAccess.Granted, mic = MicStatus.Unavailable)
         assertEquals("Try again", unavailable.message?.button)
     }
 
@@ -106,5 +107,13 @@ class TunerUiStateTest {
                 micAccessOnShown(previous = previous, granted = granted),
             )
         }
+    }
+
+    @Test
+    fun `a silenced microphone says another app has it and offers to try again`() {
+        val state = TunerUiState(access = MicAccess.Granted, mic = MicStatus.Silenced)
+        assertEquals(TunerMode.MicSilenced, state.mode)
+        assertEquals("Another app is using the microphone", state.message?.title)
+        assertEquals("Try again", state.message?.button)
     }
 }
