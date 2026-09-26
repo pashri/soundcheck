@@ -57,15 +57,18 @@ data class SavedStep(
      * This Step ready to play.
      *
      * @param pattern the Pattern [patternId] names.
+     * @param soundLabel [soundId]'s label now, kept as its fallback if the Sound is later
+     *     renamed away or deleted while this Step plays.
      * @return the playable Step.
      */
-    fun toStep(pattern: Pattern): Step = Step(
+    fun toStep(pattern: Pattern, soundLabel: String): Step = Step(
         pattern = pattern,
         soundId = soundId,
         bpm = bpm,
         direction = direction,
         rangeOffset = rangeOffset,
         guideMelody = guideMelody,
+        soundLabel = soundLabel,
     )
 }
 
@@ -152,7 +155,10 @@ data class Library(
      * @throws NoSuchElementException if [step] names a Pattern this library lacks.
      */
     fun stepToPlay(step: SavedStep): Step =
-        step.toStep(pattern = patterns.first { it.id == step.patternId })
+        step.toStep(
+            pattern = patterns.first { it.id == step.patternId },
+            soundLabel = sound(step.soundId)?.label ?: step.soundId.value,
+        )
 
     /**
      * The Programme called [id], ready to play: a snapshot of its Steps and their Patterns

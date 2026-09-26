@@ -142,6 +142,54 @@ fun OutlineButton(
 }
 
 /**
+ * A 48 dp square, bordered icon button in the Manuscript design, greyed out and ignoring
+ * taps when [enabled] is false, as on a Pattern's or a Sound's delete control.
+ *
+ * @param icon the icon.
+ * @param description what TalkBack says, e.g. "Delete hum".
+ * @param onClick what a tap does.
+ * @param modifier modifier for the button.
+ * @param enabled false greys it out and ignores taps.
+ */
+@Composable
+fun OutlineIconButton(
+    icon: ImageVector,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val colors = Manuscript.colors
+    val tint = if (enabled) colors.ink else colors.faint
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .clip(ControlShape)
+            .border(width = 1.dp, color = tint, shape = ControlShape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint)
+    }
+}
+
+/**
+ * The small "CHOSEN" tag beside a row a picker has selected.
+ *
+ * @param modifier modifier for the text.
+ */
+@Composable
+fun ChosenBadge(modifier: Modifier = Modifier) {
+    Text(
+        text = "CHOSEN",
+        style = ManuscriptType.label,
+        color = Manuscript.colors.accentText,
+        modifier = modifier.padding(horizontal = 8.dp),
+    )
+}
+
+/**
  * A vermilion button such as Start.
  *
  * @param text the label.

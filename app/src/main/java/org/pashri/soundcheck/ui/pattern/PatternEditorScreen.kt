@@ -16,13 +16,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.paddingFromBaseline
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -51,6 +49,7 @@ import org.pashri.soundcheck.ui.components.EditorFrame
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
 import org.pashri.soundcheck.ui.components.NameDialog
 import org.pashri.soundcheck.ui.components.OutlineButton
+import org.pashri.soundcheck.ui.components.OutlineIconButton
 import org.pashri.soundcheck.ui.components.QuietButton
 import org.pashri.soundcheck.ui.components.SectionLabel
 import org.pashri.soundcheck.ui.components.Segmented
@@ -238,7 +237,6 @@ private fun NoteChips(notes: List<NoteChip>, onSelect: (Int) -> Unit) {
 @Composable
 private fun NoteTools(state: PatternEditorUiState, actions: PatternEditorActions) {
     val colors = Manuscript.colors
-    val tint = if (state.canDeleteNote) colors.ink else colors.faint
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = state.noteLabel,
@@ -248,21 +246,12 @@ private fun NoteTools(state: PatternEditorUiState, actions: PatternEditorActions
         )
         OutlineButton(text = "+ Note", onClick = actions::addNote)
         Spacer(Modifier.width(8.dp))
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(ControlShape)
-                .border(width = 1.dp, color = tint, shape = ControlShape)
-                .clickable(
-                    enabled = state.canDeleteNote,
-                    role = Role.Button,
-                    onClick = actions::deleteNote,
-                )
-                .semantics { contentDescription = "Delete note" },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(imageVector = ManuscriptIcons.Delete, contentDescription = null, tint = tint)
-        }
+        OutlineIconButton(
+            icon = ManuscriptIcons.Delete,
+            description = "Delete note",
+            onClick = actions::deleteNote,
+            enabled = state.canDeleteNote,
+        )
     }
 }
 

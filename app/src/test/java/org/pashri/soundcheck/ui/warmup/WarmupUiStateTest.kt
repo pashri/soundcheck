@@ -7,10 +7,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.music.Pitch
 import org.pashri.soundcheck.ui.components.spokenMusic
+import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Playback
+import org.pashri.soundcheck.warmup.Programme
+import org.pashri.soundcheck.warmup.SoundId
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StarterSounds
+import org.pashri.soundcheck.warmup.Step
 import org.pashri.soundcheck.warmup.VoiceType
 
 class WarmupUiStateTest {
@@ -105,6 +109,32 @@ class WarmupUiStateTest {
         val state = state(stepIndex = 5, iteration = 0)
         assertNull(state.nextSound)
         assertNull(state.nextDetail)
+    }
+
+    @Test
+    fun `a deleted Sound keeps the label its Step started with, not its raw id`() {
+        val step = Step(
+            pattern = programme.steps[2].pattern,
+            soundId = SoundId("uuid-of-a-deleted-sound"),
+            bpm = 90,
+            direction = Direction.START_LOW,
+            soundLabel = "vroom",
+        )
+        val deleted = Programme(name = programme.name, steps = listOf(step))
+        val playback = Playback(
+            programme = deleted,
+            range = tenor,
+            stepIndex = 0,
+            iteration = 0,
+            playing = true,
+        )
+        val state = warmupUiState(
+            playback = playback,
+            programme = deleted,
+            range = tenor,
+            sounds = emptyList(),
+        )
+        assertEquals("vroom", state.soundLabel)
     }
 
     @Test

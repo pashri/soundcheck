@@ -40,7 +40,7 @@ class PatternListViewModel(
      */
     fun choose(id: PatternId) {
         val step = pickFor ?: return
-        library.edit { it.updateStep(step) { saved -> saved.copy(patternId = id) } }
+        library.edit { it.updateStep(ref = step) { saved -> saved.copy(patternId = id) } }
     }
 
     /**

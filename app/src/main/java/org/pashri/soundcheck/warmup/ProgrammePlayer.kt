@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.pashri.soundcheck.audio.SampleIds
 import org.pashri.soundcheck.audio.SoundOutput
 import org.pashri.soundcheck.audio.msToFrames
 import org.pashri.soundcheck.piano.Piano
@@ -71,6 +72,7 @@ class ProgrammePlayer(
     fun play(programme: Programme, range: Range): Boolean {
         val first = programme.firstStep(range) ?: return false
         preparing?.cancel()
+        announcements.keep(fittingLabels(programme = programme, range = range))
         preparing = scope.launch { prepareAnnouncements(programme = programme, range = range) }
         val start = Playback(
             programme = programme,
@@ -143,6 +145,7 @@ class ProgrammePlayer(
         }
         resumeAt = null
         _playback.value = null
+        announcements.keep(emptySet())
     }
 
     private fun startAt(base: Playback, point: ResumePoint): Boolean {
@@ -298,7 +301,7 @@ class ProgrammePlayer(
 
     private suspend fun prepareStep(base: Playback, index: Int): PreparedStep? {
         val step = base.programme.steps[index]
-        val clip = announcements.prepare(step.soundId)
+        val clip = announcements.prepare(soundId = step.soundId, fallbackLabel = step.soundLabel)
         val timeline = buildStepTimeline(
             step = step,
             range = base.range,
@@ -310,10 +313,24 @@ class ProgrammePlayer(
     private suspend fun prepareAnnouncements(programme: Programme, range: Range) {
         programme.steps
             .filter { it.roundTrip(range) is RoundTrip.Fits }
-            .map { it.soundId }
-            .distinct()
-            .forEach { announcements.prepare(it) }
+            .distinctBy { it.soundId }
+            .take(SampleIds.ANNOUNCEMENT_SLOTS - 1)
+            .forEach { announcements.prepare(soundId = it.soundId, fallbackLabel = it.soundLabel) }
     }
+
+    /**
+     * The labels of every Sound a Step of [programme] fitting [range] uses, so [play] can pin
+     * their Announcements' slots for as long as the Programme keeps them.
+     *
+     * @param programme the Programme starting.
+     * @param range the Range it plays through.
+     * @return the labels to keep.
+     */
+    private fun fittingLabels(programme: Programme, range: Range): Set<String> =
+        programme.steps
+            .filter { it.roundTrip(range) is RoundTrip.Fits }
+            .map { it.soundLabel }
+            .toSet()
 
     /** Timing and loudness. */
     companion object {

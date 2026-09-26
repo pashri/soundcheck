@@ -15,13 +15,22 @@ class FakeAnnouncements(
 ) : Announcements {
     private val slots = mutableMapOf<SoundId, SampleId>()
     private val _prepared = mutableSetOf<SoundId>()
+    private val _kept = mutableSetOf<String>()
 
     /** Every Sound [prepare] was asked for. */
     val prepared: Set<SoundId> get() = _prepared
 
-    override suspend fun prepare(soundId: SoundId): Clip? {
+    /** The labels the last [keep] call was given. */
+    val kept: Set<String> get() = _kept
+
+    override suspend fun prepare(soundId: SoundId, fallbackLabel: String?): Clip? {
         _prepared += soundId
         return if (voice) clipOf(soundId) else null
+    }
+
+    override fun keep(labels: Set<String>) {
+        _kept.clear()
+        _kept += labels
     }
 
     /**

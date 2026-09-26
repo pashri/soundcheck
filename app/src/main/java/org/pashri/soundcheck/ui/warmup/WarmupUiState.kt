@@ -116,7 +116,7 @@ fun warmupUiState(
         programmeName = shown.name,
         stepNumber = index + 1,
         stepCount = shown.steps.size,
-        soundLabel = labelOf(id = step.soundId, sounds = sounds),
+        soundLabel = labelOf(id = step.soundId, sounds = sounds, fallback = step.soundLabel),
         stepDetail = "on ${step.pattern.name}, ${startingText(step.direction)}",
         iterations = trip?.let {
             iterationView(
@@ -126,7 +126,9 @@ fun warmupUiState(
                 now = playback?.iteration,
             )
         },
-        nextSound = next?.let { labelOf(id = it.soundId, sounds = sounds) },
+        nextSound = next?.let {
+            labelOf(id = it.soundId, sounds = sounds, fallback = it.soundLabel)
+        },
         nextDetail = next?.let { "on ${it.pattern.name}" },
         active = playback != null,
         playing = playback?.playing == true,
@@ -212,8 +214,8 @@ fun keyLabel(key: Pitch, chord: KeyChord): String = when (chord) {
     else -> "${key.pitchClassName}${chord.label}"
 }
 
-private fun labelOf(id: SoundId, sounds: List<Sound>): String =
-    sounds.firstOrNull { it.id == id }?.label ?: id.value
+private fun labelOf(id: SoundId, sounds: List<Sound>, fallback: String): String =
+    sounds.firstOrNull { it.id == id }?.label ?: fallback
 
 private fun startingText(direction: Direction): String =
     if (direction == Direction.START_LOW) "starting low" else "starting high"

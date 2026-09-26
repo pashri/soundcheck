@@ -41,7 +41,7 @@ class SoundsViewModel(
      */
     fun choose(id: SoundId) {
         val step = pickFor ?: return
-        library.edit { it.updateStep(step) { saved -> saved.copy(soundId = id) } }
+        library.edit { it.updateStep(ref = step) { saved -> saved.copy(soundId = id) } }
     }
 
     /**

@@ -30,6 +30,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.pashri.soundcheck.ui.components.BackHeader
+import org.pashri.soundcheck.ui.components.ChosenBadge
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
 import org.pashri.soundcheck.ui.components.MusicText
 import org.pashri.soundcheck.ui.components.OutlineButton
@@ -160,12 +161,7 @@ private fun PatternEntry(
                     Text(text = row.usage, style = ManuscriptType.label, color = colors.muted)
                 }
                 if (row.chosen) {
-                    Text(
-                        text = "CHOSEN",
-                        style = ManuscriptType.label,
-                        color = colors.accentText,
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                    )
+                    ChosenBadge()
                 }
             }
             if (picking) {

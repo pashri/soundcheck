@@ -24,9 +24,20 @@ interface Announcements {
      * Makes sure [soundId]'s Announcement is loaded. Safe to call from several coroutines.
      *
      * @param soundId the Sound to announce.
+     * @param fallbackLabel the label to speak if [soundId] is no longer in the library (it
+     *     was deleted while a Programme using it kept playing), or null to give up instead.
      * @return its clip, or null if it has none (no working voice, or an unknown Sound).
      */
-    suspend fun prepare(soundId: SoundId): Clip?
+    suspend fun prepare(soundId: SoundId, fallbackLabel: String? = null): Clip?
+
+    /**
+     * Protects the Announcements for [labels] from being given up while every other slot is
+     * also protected; call with an empty set to release them. A running Programme calls this
+     * with its own Sounds' labels so its Segments' clips are never overwritten mid-playback.
+     *
+     * @param labels the labels to keep, replacing any kept before.
+     */
+    fun keep(labels: Set<String>)
 }
 
 /**
@@ -44,29 +55,54 @@ class SpokenAnnouncements(
     private val speech: SpeechSynth,
     private val labelOf: (SoundId) -> String?,
 ) : Announcements {
+    private val accessOrder = true
+
     /** Clips by label, least recently used first. */
-    private val clips = LinkedHashMap<String, Clip>(INITIAL_CAPACITY, LOAD_FACTOR, true)
+    private val clips = LinkedHashMap<String, Clip>(INITIAL_CAPACITY, LOAD_FACTOR, accessOrder)
     private val freeSlots =
         ArrayDeque((0 until SampleIds.ANNOUNCEMENT_SLOTS).map(SampleIds::announcement))
     private val mutex = Mutex()
 
-    override suspend fun prepare(soundId: SoundId): Clip? = mutex.withLock {
-        val label = labelOf(soundId) ?: return@withLock null
-        clips[label] ?: speak(label)?.also { clips[label] = it }
+    /** Labels a running Programme is sounding now; [giveUpOldest] never picks one of these. */
+    private var pinned: Set<String> = emptySet()
+
+    override suspend fun prepare(soundId: SoundId, fallbackLabel: String?): Clip? =
+        mutex.withLock {
+            val label = labelOf(soundId) ?: fallbackLabel ?: return@withLock null
+            clips[label] ?: speak(label)?.also { clips[label] = it }
+        }
+
+    override fun keep(labels: Set<String>) {
+        pinned = labels
     }
 
     private suspend fun speak(label: String): Clip? {
         val pcm = speech.speak(label) ?: return null
         val margin = msToFrames(TRIM_MARGIN_MS).toInt()
-        val trimmed = trimSilence(pcm, threshold = SILENCE_THRESHOLD, marginFrames = margin)
+        val trimmed =
+            trimSilence(frames = pcm, threshold = SILENCE_THRESHOLD, marginFrames = margin)
         if (trimmed.isEmpty()) return null
-        val slot = freeSlots.removeFirstOrNull() ?: giveUpOldest()
-        output.loadSample(slot, normalizePeak(trimmed, peak = ANNOUNCEMENT_PEAK))
+        val slot = freeSlots.removeFirstOrNull() ?: giveUpOldest() ?: return null
+        val loaded = try {
+            output.loadSample(id = slot, pcm = normalizePeak(trimmed, peak = ANNOUNCEMENT_PEAK))
+        } catch (error: RuntimeException) {
+            freeSlots.addFirst(slot)
+            throw error
+        }
+        if (!loaded) {
+            freeSlots.addFirst(slot)
+            return null
+        }
         return Clip(id = slot, lengthFrames = trimmed.size.toLong())
     }
 
-    private fun giveUpOldest(): SampleId {
-        val oldest = clips.entries.first()
+    /**
+     * The slot of the clip used longest ago among those not in [pinned].
+     *
+     * @return the slot, or null if every clip is pinned (nothing safe to overwrite).
+     */
+    private fun giveUpOldest(): SampleId? {
+        val oldest = clips.entries.firstOrNull { it.key !in pinned } ?: return null
         clips.remove(oldest.key)
         return oldest.value.id
     }

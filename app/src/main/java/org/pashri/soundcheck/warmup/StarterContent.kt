@@ -165,7 +165,10 @@ object StarterProgrammes {
     val WARM_UP: Programme = Programme(
         name = SAVED_WARM_UP.name,
         steps = SAVED_WARM_UP.steps.map { saved ->
-            saved.toStep(pattern = StarterPatterns.ALL.first { it.id == saved.patternId })
+            saved.toStep(
+                pattern = StarterPatterns.ALL.first { it.id == saved.patternId },
+                soundLabel = StarterSounds.ALL.first { it.id == saved.soundId }.label,
+            )
         },
     )
 }

@@ -7,7 +7,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeSoundOutput
 import org.pashri.soundcheck.audio.FakeSpeech
+import org.pashri.soundcheck.audio.SampleId
 import org.pashri.soundcheck.audio.SampleIds
+import org.pashri.soundcheck.audio.SoundOutput
 
 class SpokenAnnouncementsTest {
     private val output = FakeSoundOutput(clockMs = { 0L })
@@ -90,5 +92,56 @@ class SpokenAnnouncementsTest {
         assertEquals(SampleIds.ANNOUNCEMENT_SLOTS + 1, speech.spoken.size)
         announcements.prepare(ids[1])
         assertEquals(SampleIds.ANNOUNCEMENT_SLOTS + 2, speech.spoken.size)
+    }
+
+    @Test
+    fun `a kept label's slot is never given up, however many others are prepared`() = runTest {
+        speech.pcm = spokenWord
+        val kept = checkNotNull(announcements.prepare(StarterSounds.MIM.id))
+        announcements.keep(setOf("mim"))
+        val loadedBefore = output.loaded.getValue(kept.id)
+        val others = (0 until SampleIds.ANNOUNCEMENT_SLOTS + 4).map { SoundId("extra-$it") }
+        others.forEachIndexed { index, id -> labels[id] = "extra $index" }
+        others.forEach { announcements.prepare(it) }
+        assertTrue(output.loaded.getValue(kept.id) === loadedBefore)
+    }
+
+    @Test
+    fun `a Sound's cached Announcement still plays by its fallback label once deleted`() =
+        runTest {
+            speech.pcm = spokenWord
+            val prepared = announcements.prepare(StarterSounds.MIM.id)
+            labels.remove(StarterSounds.MIM.id)
+            val clip = announcements.prepare(StarterSounds.MIM.id, fallbackLabel = "mim")
+            assertEquals(prepared, clip)
+            assertEquals(listOf("mim"), speech.spoken)
+        }
+
+    @Test
+    fun `a failed load returns its slot rather than losing it`() = runTest {
+        speech.pcm = spokenWord
+        val failing = FailOnceOutput(output)
+        val announcements =
+            SpokenAnnouncements(output = failing, speech = speech, labelOf = { labels[it] })
+        try {
+            announcements.prepare(StarterSounds.MIM.id)
+        } catch (_: IllegalStateException) {
+            // expected: the engine failed to load the first Announcement.
+        }
+        val clip = announcements.prepare(StarterSounds.HUM.id)
+        assertEquals(SampleIds.announcement(0), clip?.id)
+    }
+}
+
+/** A [SoundOutput] whose first [loadSample] throws, so the caller can prove no slot is lost. */
+private class FailOnceOutput(private val delegate: SoundOutput) : SoundOutput by delegate {
+    private var failed = false
+
+    override fun loadSample(id: SampleId, pcm: FloatArray): Boolean {
+        if (!failed) {
+            failed = true
+            error("The engine failed to load the sample")
+        }
+        return delegate.loadSample(id = id, pcm = pcm)
     }
 }

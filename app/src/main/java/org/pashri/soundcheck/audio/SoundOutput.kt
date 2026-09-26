@@ -15,8 +15,9 @@ const val WHOLE_SAMPLE: Long = 0L
 value class SampleId(val value: Int)
 
 /**
- * Sample slots reserved by each tool: 0–15 the Metronome, 16–47 Announcements (one per
- * Sound) and 64–95 the piano.
+ * Sample slots reserved by each tool: 0–15 the Metronome, 16–47 Announcements (shared
+ * least-recently-used by label, one Sound's clip per slot, up to [ANNOUNCEMENT_SLOTS] at
+ * once) and 64–95 the piano.
  */
 object SampleIds {
     /** The Metronome's ordinary click. */
@@ -32,9 +33,10 @@ object SampleIds {
     const val PIANO_SLOTS: Int = 32
 
     /**
-     * The slot for a Sound's Announcement.
+     * One of the shared Announcement slots, handed out least-recently-used by label rather
+     * than fixed to a Sound.
      *
-     * @param index the Sound's position in the library, from 0.
+     * @param index the slot's position among the Announcement slots, from 0.
      * @return its slot.
      * @throws IllegalArgumentException if [index] is outside 0 until [ANNOUNCEMENT_SLOTS].
      */
