@@ -283,7 +283,13 @@ class AppContainer(context: Context) {
      * @return the factory.
      */
     fun soundsFactory(pickFor: StepRef?): ViewModelProvider.Factory =
-        SoundsViewModel.Factory(pickFor = pickFor, library = library, newId = newId)
+        SoundsViewModel.Factory(
+            pickFor = pickFor,
+            library = library,
+            newId = newId,
+            clips = clips,
+            audition = audition,
+        )
 
     /**
      * The editors' audition's own audio focus: a short transient request while a Demo or

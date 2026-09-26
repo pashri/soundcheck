@@ -5,18 +5,22 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.warmup.ClipName
 import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.Range
+import org.pashri.soundcheck.warmup.RecordedClip
 import org.pashri.soundcheck.warmup.SavedStep
 import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StarterProgrammes
+import org.pashri.soundcheck.warmup.StarterSounds
 import org.pashri.soundcheck.warmup.StepKey
 import org.pashri.soundcheck.warmup.StepRef
 import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.updateStep
 import org.pashri.soundcheck.warmup.withBpm
+import org.pashri.soundcheck.warmup.withClip
 import org.pashri.soundcheck.warmup.withRangeOffset
 
 class StepEditorUiStateTest {
@@ -137,5 +141,17 @@ class StepEditorUiStateTest {
             StepRef(programmeId = ProgrammeId("nope"), key = StepKey("starter-1"))
         assertNull(stepEditorUiState(library = library, ref = missingStep, range = range))
         assertNull(stepEditorUiState(library = library, ref = missingProgramme, range = range))
+    }
+
+    @Test
+    fun `a recorded Sound's card says it is your recording`() {
+        val clip = RecordedClip(name = ClipName("lip.wav"), lengthMs = 600)
+        val library = StarterLibrary.LIBRARY.withClip(id = StarterSounds.LIP_TRILL.id, clip = clip)
+        val state = stepEditorUiState(
+            library = library,
+            ref = ref(1),
+            range = VoiceType.TENOR.range,
+        )
+        assertEquals("your recording · 0.6 s", state?.soundDetail)
     }
 }

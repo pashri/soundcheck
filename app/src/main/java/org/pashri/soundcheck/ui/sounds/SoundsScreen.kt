@@ -1,7 +1,9 @@
 package org.pashri.soundcheck.ui.sounds
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,10 +26,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.pashri.soundcheck.ui.components.BackHeader
@@ -48,6 +55,7 @@ import org.pashri.soundcheck.warmup.SoundId
  * @property add adds a Sound with a label.
  * @property rename renames a Sound.
  * @property delete deletes a Sound and its Steps.
+ * @property play plays a Sound's recording, or stops it.
  */
 data class SoundsActions(
     val back: () -> Unit,
@@ -55,10 +63,12 @@ data class SoundsActions(
     val add: (String) -> Unit,
     val rename: (SoundId, String) -> Unit,
     val delete: (SoundId) -> Unit,
+    val play: (SoundId) -> Unit,
 )
 
 /**
- * The Sounds list, wired to its view model.
+ * The Sounds list, wired to its view model. A recording it is playing stops when the list
+ * leaves the screen or the app goes to the background, but not on rotation.
  *
  * @param factory builds the [SoundsViewModel].
  * @param onBack closes the list.
@@ -67,6 +77,13 @@ data class SoundsActions(
 fun SoundsRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
     val viewModel: SoundsViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val activity = LocalActivity.current
+    LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
+        if (activity?.isChangingConfigurations != true) viewModel.onHidden()
+    }
+    DisposableEffect(viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.onHidden() }
+    }
     val shown = state ?: return
     SoundsScreen(
         state = shown,
@@ -79,12 +96,14 @@ fun SoundsRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
             add = { viewModel.add(it) },
             rename = viewModel::rename,
             delete = viewModel::delete,
+            play = viewModel::play,
         ),
     )
 }
 
 /**
- * Every Sound's label, in the Manuscript design. Scrolls at large font and display sizes.
+ * Every Sound, with its recording's length or "phone voice", in the Manuscript design.
+ * Scrolls at large font and display sizes.
  *
  * @param state what to show.
  * @param actions what the controls do.
@@ -109,6 +128,14 @@ fun SoundsScreen(state: SoundsUiState, actions: SoundsActions) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 8.dp),
         ) {
+            state.notice?.let { notice ->
+                Text(
+                    text = notice,
+                    style = ManuscriptType.body,
+                    color = colors.accentText,
+                    modifier = Modifier.heightIn(min = 48.dp).padding(vertical = 12.dp),
+                )
+            }
             state.rows.forEach { row ->
                 SoundEntry(
                     row = row,
@@ -117,6 +144,7 @@ fun SoundsScreen(state: SoundsUiState, actions: SoundsActions) {
                     onOpen = {
                         if (state.picking) actions.choose(row.id) else renaming = row.id.value
                     },
+                    onPlay = { actions.play(row.id) },
                     onDelete = { deleting = row.id.value },
                 )
             }
@@ -176,6 +204,7 @@ private fun SoundEntry(
     picking: Boolean,
     canDelete: Boolean,
     onOpen: () -> Unit,
+    onPlay: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val colors = Manuscript.colors
@@ -188,22 +217,23 @@ private fun SoundEntry(
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).then(action),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = row.label, style = LABEL_STYLE, color = colors.ink)
-                    Text(
-                        text = "${row.detail} · ${row.usage}",
-                        style = ManuscriptType.body,
-                        color = colors.muted,
-                    )
-                }
+                SoundText(row = row, modifier = Modifier.weight(1f))
                 if (row.chosen) {
                     ChosenBadge()
                 }
+            }
+            if (!picking && row.recorded) {
+                OutlineIconButton(
+                    icon = if (row.playing) ManuscriptIcons.Stop else ManuscriptIcons.Play,
+                    description = if (row.playing) "Stop ${row.label}" else "Play ${row.label}",
+                    onClick = onPlay,
+                )
             }
             if (!picking && canDelete) {
                 OutlineIconButton(
@@ -214,6 +244,21 @@ private fun SoundEntry(
             }
         }
         HorizontalDivider(thickness = 1.dp, color = colors.rule)
+    }
+}
+
+/** The label in italic serif, and under it how it is announced and where it is used. */
+@Composable
+private fun SoundText(row: SoundRow, modifier: Modifier = Modifier) {
+    val colors = Manuscript.colors
+    val spoken = "${row.label}, ${row.spokenDetail}, ${row.usage}"
+    Column(modifier = modifier.clearAndSetSemantics { contentDescription = spoken }) {
+        Text(text = row.label, style = LABEL_STYLE, color = colors.ink)
+        Text(
+            text = "${row.detail} · ${row.usage}",
+            style = ManuscriptType.body,
+            color = colors.muted,
+        )
     }
 }
 
