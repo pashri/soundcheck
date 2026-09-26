@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -16,23 +17,31 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import org.pashri.soundcheck.di.AppContainer
 import org.pashri.soundcheck.ui.components.ManuscriptNavBar
-import org.pashri.soundcheck.ui.components.NotYetBuiltScreen
 import org.pashri.soundcheck.ui.components.Tab
 import org.pashri.soundcheck.ui.metronome.MetronomeRoute
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.tuner.TunerRoute
+import org.pashri.soundcheck.ui.warmup.WarmupRoute
 
 /**
  * The whole app: the current tool above the tab bar.
  *
  * @param container shared dependencies.
+ * @param openTab a tab to navigate to once, e.g. from the playback notification, or null.
+ * @param onTabOpened called once [openTab] has been acted on, so it is not repeated.
  */
 @Composable
-fun SoundcheckApp(container: AppContainer) {
+fun SoundcheckApp(container: AppContainer, openTab: Tab? = null, onTabOpened: () -> Unit = {}) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
     val current = Tab.entries.firstOrNull { it.route == entry?.destination?.route }
         ?: Tab.Metronome
+    LaunchedEffect(openTab) {
+        openTab?.let {
+            navController.openTab(it)
+            onTabOpened()
+        }
+    }
     Column(Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
         NavHost(
             navController = navController,
@@ -52,7 +61,9 @@ fun SoundcheckApp(container: AppContainer) {
             composable(Tab.Metronome.route) {
                 MetronomeRoute(factory = container.metronomeViewModelFactory)
             }
-            composable(Tab.WarmUp.route) { NotYetBuiltScreen(title = "Warm-up") }
+            composable(Tab.WarmUp.route) {
+                WarmupRoute(factory = container.warmupViewModelFactory)
+            }
         }
         ManuscriptNavBar(current = current, onSelect = { navController.openTab(it) })
     }

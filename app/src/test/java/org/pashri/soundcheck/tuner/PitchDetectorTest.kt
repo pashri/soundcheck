@@ -4,6 +4,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.pashri.soundcheck.music.CENTS_PER_SEMITONE
+import org.pashri.soundcheck.music.midiOf
 
 class PitchDetectorTest {
     private val detector = PitchDetector()

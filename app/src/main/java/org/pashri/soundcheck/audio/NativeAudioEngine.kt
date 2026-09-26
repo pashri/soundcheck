@@ -17,8 +17,20 @@ class NativeAudioEngine : SoundOutput {
     override fun loadSample(id: SampleId, pcm: FloatArray): Boolean =
         nativeLoadSample(handle, id.value, pcm)
 
-    override fun schedule(id: SampleId, frame: Long, gain: Float): Boolean =
-        nativeSchedule(handle, id.value, frame, gain)
+    override fun schedule(
+        id: SampleId,
+        frame: Long,
+        gain: Float,
+        rate: Float,
+        lengthFrames: Long,
+    ): Boolean = nativeSchedule(
+        handle = handle,
+        id = id.value,
+        frame = frame,
+        gain = gain,
+        rate = rate,
+        lengthFrames = lengthFrames,
+    )
 
     override fun cancelFrom(frame: Long) {
         nativeCancelFrom(handle, frame)
@@ -28,15 +40,30 @@ class NativeAudioEngine : SoundOutput {
         nativeSilence(handle)
     }
 
+    override fun fadeOut() {
+        nativeFadeOut(handle)
+    }
+
+    override fun hasFailed(): Boolean = nativeHasFailed(handle)
+
     override fun framePosition(): Long = nativeFramePosition(handle)
 
     private external fun nativeCreate(): Long
     private external fun nativeStart(handle: Long): Boolean
     private external fun nativeStop(handle: Long)
     private external fun nativeLoadSample(handle: Long, id: Int, pcm: FloatArray): Boolean
-    private external fun nativeSchedule(handle: Long, id: Int, frame: Long, gain: Float): Boolean
+    private external fun nativeSchedule(
+        handle: Long,
+        id: Int,
+        frame: Long,
+        gain: Float,
+        rate: Float,
+        lengthFrames: Long,
+    ): Boolean
     private external fun nativeCancelFrom(handle: Long, frame: Long)
     private external fun nativeSilence(handle: Long)
+    private external fun nativeFadeOut(handle: Long)
+    private external fun nativeHasFailed(handle: Long): Boolean
     private external fun nativeFramePosition(handle: Long): Long
 
     private companion object {

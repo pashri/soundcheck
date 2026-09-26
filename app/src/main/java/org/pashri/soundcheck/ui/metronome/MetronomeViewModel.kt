@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import org.pashri.soundcheck.audio.FocusGate
 import org.pashri.soundcheck.audio.SoundOutput
+import org.pashri.soundcheck.audio.Tool
+import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
 import org.pashri.soundcheck.metronome.Metronome
@@ -22,11 +24,14 @@ import org.pashri.soundcheck.metronome.TapTempo
  * @param output where clicks play.
  * @param focus audio focus, taken while clicking.
  * @param clockMs a monotonic clock for tap tempo.
+ * @param arbiter keeps one tool sounding at a time; starting takes the slot, and another
+ *     tool taking it stops the Metronome.
  */
 class MetronomeViewModel(
     output: SoundOutput,
     private val focus: FocusGate,
     clockMs: () -> Long,
+    private val arbiter: ToolArbiter,
 ) : ViewModel(), MetronomeActions {
     private val metronome = Metronome(output, viewModelScope)
     private val tapTempo = TapTempo(clockMs)
@@ -66,10 +71,14 @@ class MetronomeViewModel(
         if (settings.value.running) stop() else start()
     }
 
-    /** Stops clicking and hands audio focus back. Safe to call when already stopped. */
+    /**
+     * Stops clicking, hands audio focus back and frees the tool slot. Safe to call when
+     * already stopped.
+     */
     fun stop() {
         metronome.stop()
         focus.release()
+        arbiter.release(Tool.METRONOME)
         settings.update { it.copy(running = false) }
     }
 
@@ -78,10 +87,15 @@ class MetronomeViewModel(
     }
 
     private fun start() {
-        if (!focus.acquire(onLost = ::stop)) return
+        arbiter.claim(Tool.METRONOME, onEvicted = ::stop)
+        if (!focus.acquire(onLost = ::stop)) {
+            arbiter.release(Tool.METRONOME)
+            return
+        }
         val current = settings.value
         if (!metronome.start(current.bpm, current.accentEvery)) {
             focus.release()
+            arbiter.release(Tool.METRONOME)
             return
         }
         settings.update { it.copy(running = true) }
@@ -93,14 +107,16 @@ class MetronomeViewModel(
      * @param output where clicks play.
      * @param focus audio focus.
      * @param clockMs a monotonic clock for tap tempo.
+     * @param arbiter keeps one tool sounding at a time.
      */
     class Factory(
         private val output: SoundOutput,
         private val focus: FocusGate,
         private val clockMs: () -> Long,
+        private val arbiter: ToolArbiter,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            MetronomeViewModel(output, focus, clockMs) as T
+            MetronomeViewModel(output, focus, clockMs = clockMs, arbiter = arbiter) as T
     }
 }

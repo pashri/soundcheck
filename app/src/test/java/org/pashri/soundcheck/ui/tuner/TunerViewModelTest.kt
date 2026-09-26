@@ -21,6 +21,8 @@ import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
 import org.pashri.soundcheck.audio.FakeMicInput
 import org.pashri.soundcheck.audio.FakeMicInput.Companion.HOP_MS
+import org.pashri.soundcheck.audio.Tool
+import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.tuner.HOP_SIZE
 import org.pashri.soundcheck.tuner.MicStatus
 import org.pashri.soundcheck.tuner.Signals
@@ -30,6 +32,7 @@ class TunerViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val mic = FakeMicInput()
     private val focus = FakeFocusGate()
+    private val arbiter = ToolArbiter()
 
     @Before
     fun setUp() {
@@ -41,7 +44,8 @@ class TunerViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() = TunerViewModel(mic, focus, worker = dispatcher)
+    private fun viewModel() =
+        TunerViewModel(mic, focus, worker = dispatcher, arbiter = arbiter)
 
     private fun TestScope.state(viewModel: TunerViewModel): TunerUiState {
         runCurrent()
@@ -394,7 +398,8 @@ class TunerViewModelTest {
     fun `closing the view model hands focus back and releases the microphone`() =
         runTest(dispatcher) {
             val store = ViewModelStore()
-            val factory = TunerViewModel.Factory(mic, focus, dispatcher)
+            val factory =
+                TunerViewModel.Factory(mic, focus, worker = dispatcher, arbiter = arbiter)
             val viewModel = ViewModelProvider(store, factory)[TunerViewModel::class.java]
             viewModel.onShown(granted = true)
             hops(1)
@@ -429,4 +434,87 @@ class TunerViewModelTest {
         assertEquals("A", state(viewModel).note?.name)
         viewModel.stop()
     }
+
+    @Test
+    fun `a Warm-up that is playing pauses when the Tuner starts listening`() =
+        runTest(dispatcher) {
+            var evicted = false
+            arbiter.claim(Tool.WARM_UP, onEvicted = { evicted = true })
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            assertTrue(evicted)
+            assertEquals(Tool.TUNER, arbiter.current)
+            viewModel.stop()
+        }
+
+    @Test
+    fun `the Tuner gives way to a Warm-up and offers to listen instead`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            hops(1)
+            arbiter.claim(Tool.WARM_UP, onEvicted = {})
+            assertEquals(TunerMode.Yielded, state(viewModel).mode)
+            hops(1)
+            assertEquals(0, mic.openNow)
+            viewModel.retry()
+            hops(1)
+            assertEquals(TunerMode.Listening, state(viewModel).mode)
+            assertEquals(Tool.TUNER, arbiter.current)
+            viewModel.stop()
+        }
+
+    @Test
+    fun `a Tuner that yielded does not reclaim on re-show, only on retry`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            hops(1)
+            arbiter.claim(Tool.WARM_UP, onEvicted = {})
+            assertEquals(TunerMode.Yielded, state(viewModel).mode)
+            viewModel.onShown(granted = true)
+            hops(1)
+            assertEquals(TunerMode.Yielded, state(viewModel).mode)
+            assertEquals(0, mic.openNow)
+            assertEquals(Tool.WARM_UP, arbiter.current)
+            viewModel.retry()
+            hops(1)
+            assertEquals(TunerMode.Listening, state(viewModel).mode)
+            assertEquals(Tool.TUNER, arbiter.current)
+            viewModel.stop()
+        }
+
+    @Test
+    fun `a Tuner that yielded listens again on re-show once nothing holds the slot`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            hops(1)
+            arbiter.claim(Tool.WARM_UP, onEvicted = {})
+            viewModel.stop()
+            arbiter.release(Tool.WARM_UP)
+            viewModel.onShown(granted = true)
+            hops(1)
+            assertEquals(TunerMode.Listening, state(viewModel).mode)
+            assertEquals(Tool.TUNER, arbiter.current)
+            viewModel.stop()
+        }
+
+    @Test
+    fun `a Tuner that yielded stays yielded on re-show while a paused Warm-up holds the slot`() =
+        runTest(dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = true)
+            hops(1)
+            var evicted = false
+            arbiter.claim(Tool.WARM_UP, onEvicted = { evicted = true })
+            viewModel.stop()
+            viewModel.onShown(granted = true)
+            hops(1)
+            assertEquals(TunerMode.Yielded, state(viewModel).mode)
+            assertEquals(0, mic.openNow)
+            assertFalse(evicted)
+            assertEquals(Tool.WARM_UP, arbiter.current)
+            viewModel.stop()
+        }
 }

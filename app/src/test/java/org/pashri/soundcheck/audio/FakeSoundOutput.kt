@@ -12,8 +12,16 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
      * @property id the sample.
      * @property frame its start frame.
      * @property gain its loudness.
+     * @property rate its playback speed.
+     * @property lengthFrames how long it is held, or [WHOLE_SAMPLE].
      */
-    data class Scheduled(val id: SampleId, val frame: Long, val gain: Float)
+    data class Scheduled(
+        val id: SampleId,
+        val frame: Long,
+        val gain: Float,
+        val rate: Float = 1f,
+        val lengthFrames: Long = WHOLE_SAMPLE,
+    )
 
     private val _scheduled = mutableListOf<Scheduled>()
     private val _loaded = mutableMapOf<SampleId, FloatArray>()
@@ -37,10 +45,30 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
     /** What the next [start] returns; set false to simulate a device that won't open. */
     var startResult: Boolean = true
 
+    /**
+     * Set true to act like an output that failed to start or closed and could not reopen;
+     * [start] clears it. Setting it true freezes [framePosition] at its current value, like
+     * [stop], but leaves [running] alone.
+     */
+    var failed: Boolean = false
+        set(value) {
+            if (value && !field) framesBeforeStart = framePosition()
+            field = value
+        }
+
+    /** How many times [fadeOut] was called. */
+    var fadeOuts: Int = 0
+        private set
+
     override fun start(): Boolean {
-        if (!startResult) return false
+        if (!startResult) {
+            failed = true
+            return false
+        }
+        if (running && !failed) return true
         startedAtMs = clockMs()
         running = true
+        failed = false
         return true
     }
 
@@ -54,8 +82,20 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
         return true
     }
 
-    override fun schedule(id: SampleId, frame: Long, gain: Float): Boolean {
-        val scheduled = Scheduled(id, frame, gain)
+    override fun schedule(
+        id: SampleId,
+        frame: Long,
+        gain: Float,
+        rate: Float,
+        lengthFrames: Long,
+    ): Boolean {
+        val scheduled = Scheduled(
+            id = id,
+            frame = frame,
+            gain = gain,
+            rate = rate,
+            lengthFrames = lengthFrames,
+        )
         if (frame < framePosition()) _lateSchedules.add(scheduled)
         return _scheduled.add(scheduled)
     }
@@ -68,6 +108,18 @@ class FakeSoundOutput(private val clockMs: () -> Long) : SoundOutput {
         _scheduled.clear()
     }
 
+    override fun fadeOut() {
+        fadeOuts++
+        val now = framePosition()
+        _scheduled.removeAll { it.frame >= now }
+    }
+
+    override fun hasFailed(): Boolean = failed
+
     override fun framePosition(): Long =
-        if (running) framesBeforeStart + msToFrames(clockMs() - startedAtMs) else framesBeforeStart
+        if (running && !failed) {
+            framesBeforeStart + msToFrames(clockMs() - startedAtMs)
+        } else {
+            framesBeforeStart
+        }
 }

@@ -65,9 +65,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.cos
 import kotlin.math.sin
+import org.pashri.soundcheck.music.midiOf
 import org.pashri.soundcheck.tuner.MicStatus
 import org.pashri.soundcheck.tuner.NoteReading
-import org.pashri.soundcheck.tuner.midiOf
 import org.pashri.soundcheck.ui.components.ScreenHeader
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
@@ -348,7 +348,7 @@ private fun MessagePanel(message: TunerMessage, state: TunerUiState, actions: Tu
     Spacer(Modifier.height(24.dp))
     val onClick: () -> Unit = when (state.mode) {
         TunerMode.OpenSettings -> actions::openSettings
-        TunerMode.MicUnavailable -> actions::retry
+        TunerMode.MicUnavailable, TunerMode.Yielded -> actions::retry
         else -> actions::allowMicrophone
     }
     val shape = RoundedCornerShape(6.dp)

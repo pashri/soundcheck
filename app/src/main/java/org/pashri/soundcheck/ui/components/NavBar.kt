@@ -38,6 +38,14 @@ enum class Tab(val route: String, val label: String, val icon: ImageVector) {
 }
 
 /**
+ * The [Tab] whose [Tab.route] matches [route], for opening the tab an intent asked for.
+ *
+ * @param route a tab's route, or null.
+ * @return the matching tab, or null when [route] names none.
+ */
+fun tabForRoute(route: String?): Tab? = Tab.entries.firstOrNull { it.route == route }
+
+/**
  * Bottom navigation in the Manuscript style: a rule above, and a vermilion bar over the
  * selected tab.
  *

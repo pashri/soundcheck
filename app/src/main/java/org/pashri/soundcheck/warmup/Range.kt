@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.warmup
 
+import org.pashri.soundcheck.music.Pitch
+
 /**
  * The lowest and highest notes you want a Warm-up to reach. There is one Range for the
  * whole app; each Step may adjust it with a [RangeOffset].

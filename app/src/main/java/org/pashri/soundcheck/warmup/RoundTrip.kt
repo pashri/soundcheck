@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.warmup
 
+import org.pashri.soundcheck.music.Pitch
+
 /** Which end of the Range a Step starts from. */
 enum class Direction {
     /** Starts at the lowest key, goes up to the top and comes back down. */

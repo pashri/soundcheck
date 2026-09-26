@@ -7,6 +7,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.music.CENTS_PER_SEMITONE
+import org.pashri.soundcheck.music.midiOf
 
 class PitchSmootherTest {
     private val smoother = PitchSmoother()

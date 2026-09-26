@@ -21,4 +21,11 @@ class FocusGateTest {
     fun `regaining focus does not stop playback`() {
         assertFalse(focusChangeStopsPlayback(AudioManager.AUDIOFOCUS_GAIN))
     }
+
+    @Test
+    fun `only regaining focus restores playback`() {
+        assertTrue(focusChangeRestoresPlayback(AudioManager.AUDIOFOCUS_GAIN))
+        assertFalse(focusChangeRestoresPlayback(AudioManager.AUDIOFOCUS_LOSS_TRANSIENT))
+        assertFalse(focusChangeRestoresPlayback(AudioManager.AUDIOFOCUS_LOSS))
+    }
 }

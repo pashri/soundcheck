@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.warmup
 
+import org.pashri.soundcheck.music.Pitch
+
 /**
  * The chord that rings for one bar before each Iteration, giving the new key and time to
  * breathe. Its quality belongs to the Pattern.

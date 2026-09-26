@@ -4,9 +4,9 @@ import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.pashri.soundcheck.music.midiOf
 import org.pashri.soundcheck.tuner.MicStatus
 import org.pashri.soundcheck.tuner.NoteReading
-import org.pashri.soundcheck.tuner.midiOf
 
 class TunerUiStateTest {
     private val listening = TunerUiState(access = MicAccess.Granted, mic = MicStatus.Listening)
@@ -72,5 +72,19 @@ class TunerUiStateTest {
         } finally {
             Locale.setDefault(default)
         }
+    }
+
+    @Test
+    fun `a Tuner that gave way to a Warm-up offers to listen instead`() {
+        val state = TunerUiState(access = MicAccess.Granted, yielded = true)
+        assertEquals(TunerMode.Yielded, state.mode)
+        assertEquals("The Warm-up is playing", state.message?.title)
+        assertEquals("Listen instead", state.message?.button)
+    }
+
+    @Test
+    fun `the microphone permission still comes first when the Tuner has given way`() {
+        val state = TunerUiState(access = MicAccess.Blocked, yielded = true)
+        assertEquals(TunerMode.OpenSettings, state.mode)
     }
 }

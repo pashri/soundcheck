@@ -3,8 +3,10 @@ package org.pashri.soundcheck.tuner
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.music.Pitch
+import org.pashri.soundcheck.music.midiOf
 
-class PitchTest {
+class NoteReadingTest {
     private fun reading(hz: Double): NoteReading = NoteReading.of(midiOf(hz))
 
     @Test
@@ -80,5 +82,13 @@ class PitchTest {
     fun `a reading gives back the frequency it came from`() {
         assertEquals(109.7, reading(109.7).hz, 1e-6)
         assertEquals(-4.73, reading(109.7).cents, 0.01)
+    }
+
+    @Test
+    fun `the Tuner names every MIDI note exactly as the Warm-up does`() {
+        (0..127).forEach {
+            val reading = NoteReading(midi = it, cents = 0.0)
+            assertEquals(Pitch(it).name, "${reading.name}${reading.octave}")
+        }
     }
 }

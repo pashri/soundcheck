@@ -38,7 +38,7 @@ fun ScreenHeader(title: String, trailing: String? = null) {
                 text = title,
                 style = ManuscriptType.screenTitle,
                 color = colors.ink,
-                modifier = Modifier.semantics { heading() },
+                modifier = Modifier.weight(1f, fill = false).semantics { heading() },
             )
             if (trailing != null) {
                 Text(text = trailing, style = ManuscriptType.label, color = colors.muted)
