@@ -273,4 +273,30 @@ class StepTimelineTest {
             buildStepTimeline(step = step, range = tenor, announcementFrames = -1)
         }
     }
+
+    @Test
+    fun `the note being sung is known through the Demo and every Iteration`() {
+        val timeline = arpeggioAt120()
+        assertNull(timeline.noteAt(59_999))
+        assertEquals(0, timeline.noteAt(60_000))
+        assertEquals(2, timeline.noteAt(131_999))
+        assertEquals(3, timeline.noteAt(132_000))
+        assertEquals(9, timeline.noteAt(275_999))
+        assertNull(timeline.noteAt(276_000))
+        assertEquals(0, timeline.noteAt(372_000))
+        assertNull(timeline.noteAt(timeline.lengthFrames))
+    }
+
+    @Test
+    fun `the note being sung is known with the Guide Melody off`() {
+        val timeline = timeline(
+            pattern = arpeggio8Hold,
+            bpm = 120,
+            direction = Direction.START_LOW,
+            guideMelody = false,
+            announcementFrames = 36_000,
+        )
+        assertEquals(0, timeline.noteAt(372_000))
+        assertEquals(20 * 10, timeline.sungNotes.size)
+    }
 }

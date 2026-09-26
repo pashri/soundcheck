@@ -81,18 +81,40 @@ data class IterationSpan(
 )
 
 /**
+ * When one Pattern note is sung: in the Demo, or in an Iteration after its Key Chord,
+ * whether or not the Guide Melody plays it.
+ *
+ * @property index the note's position in the Pattern, from 0.
+ * @property startFrame its first frame, counted from the start of the Step.
+ * @property endFrame the first frame after it.
+ */
+data class SungNote(val index: Int, val startFrame: Long, val endFrame: Long)
+
+/**
  * Everything one Step plays, in order, with frames counted from the Step's start.
  *
  * @property events the Announcement, then the Demo's notes, then each Iteration's Key Chord
  *     and Guide Melody notes, ordered by start frame.
  * @property iterations each Iteration's position, in play order.
+ * @property sungNotes when each Pattern note is sung, in the Demo and then each Iteration.
  * @property lengthFrames the Step's total length; the end of the last Iteration.
  */
 data class StepTimeline(
     val events: List<TimelineEvent>,
     val iterations: List<IterationSpan>,
+    val sungNotes: List<SungNote>,
     val lengthFrames: Long,
-)
+) {
+    /**
+     * Which Pattern note is being sung at [frame].
+     *
+     * @param frame a frame counted from the start of the Step.
+     * @return the note's index in the Pattern, or null during the Announcement, the gap
+     *     and each Key Chord, and after the Step.
+     */
+    fun noteAt(frame: Long): Int? =
+        sungNotes.firstOrNull { frame >= it.startFrame && frame < it.endFrame }?.index
+}
 
 /**
  * Lays out a Step: Announcement, a [ANNOUNCEMENT_GAP_MS] gap, the Demo, then one Iteration
@@ -144,11 +166,27 @@ private class TimelineBuilder(private val step: Step, demoStartFrame: Long) {
         )
         val iterations = trip.keys.mapIndexed(::iterationSpan)
         val notes = demo(trip.startKey) + trip.keys.flatMapIndexed(::iterationNotes)
+        val sungNotes = sung(fromEighth = 0) + trip.keys.indices.flatMap {
+            sung(fromEighth = iterationStartEighth(it) + KEY_CHORD_EIGHTHS)
+        }
         return StepTimeline(
             events = listOf<TimelineEvent>(announcement) + notes,
             iterations = iterations,
+            sungNotes = sungNotes,
             lengthFrames = iterations.last().endFrame,
         )
+    }
+
+    /** When each Pattern note is sung, starting at [fromEighth] on the Step's grid. */
+    private fun sung(fromEighth: Int): List<SungNote> {
+        val starts = noteStarts(fromEighth)
+        return step.pattern.notes.indices.map {
+            SungNote(
+                index = it,
+                startFrame = frameAt(starts[it]),
+                endFrame = frameAt(starts[it + 1]),
+            )
+        }
     }
 
     private fun demo(key: Pitch): List<PianoNoteEvent> =
@@ -191,8 +229,8 @@ private class TimelineBuilder(private val step: Step, demoStartFrame: Long) {
     private fun melody(key: Pitch, fromEighth: Int, part: PianoPart): List<PianoNoteEvent> {
         val notes = step.pattern.notes
         val pitches = step.pattern.pitchesIn(key)
-        val starts = notes.runningFold(fromEighth) { at, note -> at + note.length.eighths }
-        return pitches.zip(notes.zip(starts)) { pitch, (patternNote, start) ->
+        val starts = noteStarts(fromEighth)
+        return pitches.zip(other = notes.zip(other = starts)) { pitch, (patternNote, start) ->
             note(
                 pitch = pitch,
                 fromEighth = start,
@@ -201,6 +239,12 @@ private class TimelineBuilder(private val step: Step, demoStartFrame: Long) {
             )
         }
     }
+
+    /** Each Pattern note's start, on the Step's grid, from [fromEighth]. */
+    private fun noteStarts(fromEighth: Int): List<Int> =
+        step.pattern.notes.runningFold(initial = fromEighth) { at, note ->
+            at + note.length.eighths
+        }
 
     private fun note(
         pitch: Pitch,

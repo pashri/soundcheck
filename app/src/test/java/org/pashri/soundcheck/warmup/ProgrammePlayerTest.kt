@@ -422,4 +422,34 @@ class ProgrammePlayerTest {
         rig.player.stop()
         assertTrue(announcements.kept.isEmpty())
     }
+
+    @Test
+    fun `the note being sung is reported as the Demo and each Iteration play`() = runTest {
+        val rig = rig()
+        rig.player.play(programme = programme, range = range)
+        runCurrent()
+        assertNull(rig.player.note.value)
+        runUntil(1_200)
+        assertEquals(0, rig.player.note.value)
+        runUntil(2_200)
+        assertEquals(2, rig.player.note.value)
+        runUntil(4_500)
+        assertNull(rig.player.note.value)
+        runUntil(6_700)
+        assertEquals(1, rig.player.note.value)
+    }
+
+    @Test
+    fun `pausing or stopping forgets the note`() = runTest {
+        val rig = rig()
+        rig.player.play(programme = programme, range = range)
+        runUntil(1_200)
+        rig.player.pause()
+        assertNull(rig.player.note.value)
+        assertTrue(rig.player.resume())
+        runUntil(2_400)
+        assertEquals(0, rig.player.note.value)
+        rig.player.stop()
+        assertNull(rig.player.note.value)
+    }
 }

@@ -54,6 +54,15 @@ class ProgrammePlayer(
     /** The Programme playing or paused, or null when stopped. */
     val playback: StateFlow<Playback?> = _playback.asStateFlow()
 
+    private val _note = MutableStateFlow<Int?>(null)
+
+    /**
+     * The index of the Pattern note being sung now, in the Demo or an Iteration; null during
+     * an Announcement, a gap or a Key Chord, and whenever nothing is playing. It changes with
+     * every note, so only the playing screen follows it.
+     */
+    val note: StateFlow<Int?> = _note.asStateFlow()
+
     private var loop: Job? = null
     private var tail: Job? = null
     private var preparing: Job? = null
@@ -99,6 +108,7 @@ class ProgrammePlayer(
         }
         val point = pausePoint(current) ?: return stop()
         halt(fade)
+        _note.value = null
         resumeAt = point
         _playback.value =
             current.copy(stepIndex = point.step, iteration = point.iteration, playing = false)
@@ -151,11 +161,13 @@ class ProgrammePlayer(
         }
         resumeAt = null
         _playback.value = null
+        _note.value = null
         announcements.keep(emptySet())
     }
 
     private fun startAt(base: Playback, point: ResumePoint): Boolean {
         cancelLoop()
+        _note.value = null
         output.fadeOut()
         val target = base.copy(stepIndex = point.step, iteration = point.iteration, playing = true)
         if (!output.start()) {
@@ -231,6 +243,7 @@ class ProgrammePlayer(
             return false
         }
         _playback.value = base.copy(stepIndex = current.step, iteration = current.iterationAt(now))
+        _note.value = current.noteAt(now)
         return true
     }
 
@@ -390,4 +403,7 @@ private class Segment(
 
     fun iterationAt(now: Long): Int? =
         prepared.timeline.iterationAt(maxOf(a = now - origin, b = from))?.index
+
+    fun noteAt(now: Long): Int? =
+        prepared.timeline.noteAt(maxOf(a = now - origin, b = from))
 }
