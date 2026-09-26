@@ -65,7 +65,7 @@ class TunerTest {
             tuner.start()
             mic.play(tone(hz = hz, hops = 12))
             hops(12)
-            val note = checkNotNull(tuner.state.value.note) { "nothing heard for $name" }
+            val note = checkNotNull(value = tuner.state.value.note) { "nothing heard for $name" }
             assertEquals(name, "${note.name}${note.octave}")
             assertEquals(name, 0, note.roundedCents)
             tuner.stop()

@@ -129,7 +129,9 @@ data class TunerUiState(
 
     /** The frequency under the note, e.g. "109.7 Hz", or "listening…" with no note. */
     val hzLabel: String
-        get() = note?.let { String.format(Locale.ROOT, "%.1f Hz", it.hz) } ?: "listening…"
+        get() = note?.let {
+            String.format(locale = Locale.ROOT, format = "%.1f Hz", it.hz)
+        } ?: "listening…"
 
     /** The big italic line, e.g. "4 cents flat", or an invitation with no note. */
     val readingLabel: String

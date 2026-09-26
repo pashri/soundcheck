@@ -73,7 +73,7 @@ class FakeMicInput : MicInput {
         private var closed = false
 
         override suspend fun read(buffer: FloatArray): Int {
-            withContext(NonCancellable) { delay(HOP_MS) }
+            withContext(context = NonCancellable) { delay(HOP_MS) }
             currentCoroutineContext().ensureActive()
             onHop?.invoke()
             if (broken) return -1

@@ -12,21 +12,29 @@ import org.pashri.soundcheck.R
 
 /** Instrument Serif: titles, note names and big numbers. */
 val SerifFamily: FontFamily = FontFamily(
-    Font(R.font.instrument_serif_regular, FontWeight.Normal, FontStyle.Normal),
-    Font(R.font.instrument_serif_italic, FontWeight.Normal, FontStyle.Italic),
+    Font(
+        resId = R.font.instrument_serif_regular,
+        weight = FontWeight.Normal,
+        style = FontStyle.Normal,
+    ),
+    Font(
+        resId = R.font.instrument_serif_italic,
+        weight = FontWeight.Normal,
+        style = FontStyle.Italic,
+    ),
 )
 
 /** IBM Plex Sans: body text and buttons. */
 val SansFamily: FontFamily = FontFamily(
-    Font(R.font.ibm_plex_sans_regular, FontWeight.Normal),
-    Font(R.font.ibm_plex_sans_medium, FontWeight.Medium),
-    Font(R.font.ibm_plex_sans_semibold, FontWeight.SemiBold),
+    Font(resId = R.font.ibm_plex_sans_regular, weight = FontWeight.Normal),
+    Font(resId = R.font.ibm_plex_sans_medium, weight = FontWeight.Medium),
+    Font(resId = R.font.ibm_plex_sans_semibold, weight = FontWeight.SemiBold),
 )
 
 /** IBM Plex Mono: small uppercase labels. */
 val MonoFamily: FontFamily = FontFamily(
-    Font(R.font.ibm_plex_mono_regular, FontWeight.Normal),
-    Font(R.font.ibm_plex_mono_medium, FontWeight.Medium),
+    Font(resId = R.font.ibm_plex_mono_regular, weight = FontWeight.Normal),
+    Font(resId = R.font.ibm_plex_mono_medium, weight = FontWeight.Medium),
 )
 
 /** Text styles of the Manuscript design, named by role. */

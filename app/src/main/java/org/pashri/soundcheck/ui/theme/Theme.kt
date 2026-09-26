@@ -32,7 +32,7 @@ object Manuscript {
 @Composable
 fun SoundcheckTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val colors = if (dark) NightColors else DayColors
-    CompositionLocalProvider(LocalManuscriptColors provides colors) {
+    CompositionLocalProvider(value = LocalManuscriptColors provides colors) {
         MaterialTheme(
             colorScheme = manuscriptColorScheme(colors = colors, dark = dark),
             typography = ManuscriptTypography,

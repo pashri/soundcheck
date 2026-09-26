@@ -48,7 +48,7 @@ sing them on), and set your Range from a voice type.
   timestamped backups, and leaves your recordings where they are, matched to Sounds by id
   — recordings named by those backups stay on the phone until the backups are deleted.
   Recordings are never exported. An export that fails part-way removes the file it
-  started.
+  started only if the file was empty before; any other file is left as it is.
 - With "Play over other audio" on, the Warm-up and the Metronome play under a podcast
   instead of pausing it, and the headphone button stays with the podcast app: the Warm-up
   then has no media session at all, only a notification with pause, next and stop. Some
@@ -56,7 +56,8 @@ sing them on), and set your Range from a voice type.
   the other app but not resume it. Recording always pauses a podcast, so it isn't recorded
   under your voice. While the Metronome's tab is open, one press of the headphone button
   starts or stops it; the button goes to whichever of the Metronome and the Warm-up you
-  started last, through Soundcheck's one media session.
+  started last, through Soundcheck's one media session. The press only reaches Soundcheck
+  if it was the last app to play sound; otherwise Android sends it to that app.
 - The Step and Pattern editors can play a Step's Demo or a Pattern on the piano, using the
   same timeline as the Warm-up, and the Sounds screen plays your recordings; doing either
   pauses a playing Programme.

@@ -23,7 +23,7 @@ fun resFile(path: String): File = File("src/main/$path")
 fun colorResource(folder: String, name: String): String {
     val text = resFile(path = "res/$folder/colors.xml").readText()
     val match = Regex("<color name=\"$name\">(#[0-9A-Fa-f]{6})</color>").find(text)
-    return checkNotNull(match) { "no colour $name in $folder" }.groupValues[1].uppercase()
+    return checkNotNull(value = match) { "no colour $name in $folder" }.groupValues[1].uppercase()
 }
 
 /**

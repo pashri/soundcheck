@@ -85,7 +85,7 @@ fun TunerRoute(factory: ViewModelProvider.Factory) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
+        contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         val canAskAgain =
             activity?.shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
@@ -93,18 +93,18 @@ fun TunerRoute(factory: ViewModelProvider.Factory) {
     }
     // ON_START is replayed when this screen enters composition, and fires again on return
     // from Settings, so the permission is rechecked every time the Tuner comes into view.
-    LifecycleEventEffect(Lifecycle.Event.ON_START) {
+    LifecycleEventEffect(event = Lifecycle.Event.ON_START) {
         viewModel.onShown(granted = activity?.hasMicPermission() == true)
         if (viewModel.shouldAskOnOpen()) launcher.launch(Manifest.permission.RECORD_AUDIO)
     }
     // ON_STOP also fires on a config change (rotation, dark-theme toggle); only stop when the
     // app is actually leaving the screen, not being recreated in place.
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+    LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
         if (activity?.isChangingConfigurations != true) viewModel.stop()
     }
     // Switching tabs removes this screen from composition before ON_STOP reaches it, so
     // stop here too; this is what keeps the Tuner and the Metronome from running together.
-    DisposableEffect(viewModel) {
+    DisposableEffect(key1 = viewModel) {
         onDispose { if (activity?.isChangingConfigurations != true) viewModel.stop() }
     }
     val actions = remember(key1 = viewModel, key2 = activity, key3 = launcher) {
@@ -128,9 +128,9 @@ fun TunerRoute(factory: ViewModelProvider.Factory) {
  */
 @Composable
 fun TunerScreen(state: TunerUiState, actions: TunerActions) {
-    Column(Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
         ScreenHeader(title = "Tuner", trailing = "A4 = 440 Hz")
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -194,7 +194,7 @@ private fun NoteOnStaff(note: NoteReading?) {
             .then(semanticsModifier),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.matchParentSize()) {
+        Canvas(modifier = Modifier.matchParentSize()) {
             // Anchored to the box's vertical centre, not its top, so the middle line stays
             // under the letter's centre even as heightIn(min) lets the box grow taller.
             val middle = size.height / 2
@@ -264,7 +264,7 @@ private fun NoteName(note: NoteReading) {
 private fun serifDp(size: Dp, density: Density): TextStyle =
     TextStyle(
         fontFamily = SerifFamily,
-        fontSize = with(density) { size.toSp() },
+        fontSize = with(receiver = density) { size.toSp() },
         lineHeight = 0.8.em,
     )
 
@@ -286,14 +286,16 @@ private fun Needle(degrees: Float?) {
     }
     Canvas(
         // Decorative: the reading and advice lines below already speak the value.
-        Modifier
+        modifier = Modifier
             .widthIn(max = DIAL_WIDTH)
             .fillMaxWidth()
             .aspectRatio(DIAL_WIDTH / DIAL_HEIGHT),
     ) {
         // Draw in the mockup's own coordinates, scaled down on a narrow phone.
         val unit = size.width / DIAL_WIDTH.toPx()
-        withTransform({ scale(scaleX = unit, scaleY = unit, pivot = Offset.Zero) }) {
+        withTransform(
+            transformBlock = { scale(scaleX = unit, scaleY = unit, pivot = Offset.Zero) },
+        ) {
             val pivot = Offset(x = DIAL_WIDTH.toPx() / 2, y = PIVOT_Y.toPx())
             val radius = DIAL_RADIUS.toPx()
             drawTicks(pivot = pivot, radius = radius, major = colors.ink, minor = colors.faint)

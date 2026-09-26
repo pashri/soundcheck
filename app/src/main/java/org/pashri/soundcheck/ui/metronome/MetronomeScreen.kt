@@ -134,7 +134,7 @@ fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
 @Composable
 private fun TempoReadout(state: MetronomeUiState) {
     val colors = Manuscript.colors
-    val numberSize = with(LocalDensity.current) { BPM_NUMBER_SIZE.toSp() }
+    val numberSize = with(receiver = LocalDensity.current) { BPM_NUMBER_SIZE.toSp() }
     Text(text = state.tempoMarking, style = ManuscriptType.displayItalic, color = colors.muted)
     Text(
         text = state.bpm.toString(),

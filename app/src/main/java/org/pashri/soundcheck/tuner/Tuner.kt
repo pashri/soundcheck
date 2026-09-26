@@ -83,8 +83,8 @@ class Tuner(
     fun start() {
         if (job?.isActive == true) return
         val previous = job
-        job = scope.launch(worker) {
-            withContext(NonCancellable) { previous?.join() }
+        job = scope.launch(context = worker) {
+            withContext(context = NonCancellable) { previous?.join() }
             ensureActive()
             listen()
         }
