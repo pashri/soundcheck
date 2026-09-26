@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.paddingFromBaseline
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -44,10 +45,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -162,29 +161,20 @@ private fun StepHeading(state: WarmupUiState) {
 @Composable
 private fun IterationPanel(view: IterationView, active: Boolean) {
     val colors = Manuscript.colors
-    val density = LocalDensity.current
-    val keySize = with(density) { KEY_LABEL_SIZE.toSp() }
-    val keyRowMinHeight = with(density) { keySize.toDp() }
+    val keySize = with(LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
     Spacer(Modifier.height(24.dp))
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = keyRowMinHeight),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom,
     ) {
         Text(
             text = view.keyLabel,
-            style = ManuscriptType.displayNumber.copy(
-                fontSize = keySize,
-                lineHeight = keySize * KEY_LINE_HEIGHT,
-                lineHeightStyle = LineHeightStyle(
-                    alignment = LineHeightStyle.Alignment.Center,
-                    trim = LineHeightStyle.Trim.None,
-                ),
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-            ),
+            style = ManuscriptType.displayNumber.copy(fontSize = keySize),
             color = colors.ink,
             modifier = Modifier
                 .weight(1f, fill = false)
+                .paddingFromBaseline(top = KEY_ABOVE_BASELINE, bottom = KEY_BELOW_BASELINE)
                 .clearAndSetSemantics { contentDescription = spokenKeyLabel(view.keyLabel) },
         )
         Text(
@@ -396,10 +386,11 @@ private val SOUND_LABEL_SIZE = 72.dp
 private val KEY_LABEL_SIZE = 40.dp
 
 /**
- * The key's line height, in key sizes. Compose grows a Text past its line height to fit the
- * ink of what it draws, and ♭ and ♯ come from a fallback font that reaches further than the
- * letters; a line with room for both keeps the key row, and the cells under it, still.
+ * Where the key's baseline sits in its box, and the room under it. ♭ and ♯ come from a
+ * fallback font whose metrics join the line and move the baseline Compose picks, so the key
+ * is placed by its baseline in a box of fixed height: the letters and the cells stay still.
  */
-private const val KEY_LINE_HEIGHT = 1.5f
+private val KEY_ABOVE_BASELINE = KEY_LABEL_SIZE * 1.2f
+private val KEY_BELOW_BASELINE = KEY_LABEL_SIZE * 0.5f
 
 private val CELL_HEIGHT = 14.dp
