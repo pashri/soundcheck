@@ -30,44 +30,45 @@ interface Announcements {
 }
 
 /**
- * Announcements spoken by the phone's voice reading each Sound's label, each loaded once
- * into its own slot. Recorded clips replace these in a later plan.
+ * Announcements spoken by the phone's voice reading each Sound's current label. A clip is
+ * made once per label and kept in one of the engine's [SampleIds.ANNOUNCEMENT_SLOTS] slots;
+ * when every slot is taken, the clip used longest ago gives up its slot. A renamed Sound is
+ * spoken afresh. Recorded clips replace these in a later plan.
  *
  * @param output the engine the clips are loaded into.
  * @param speech the voice.
- * @param sounds the Sound library, at most [SampleIds.ANNOUNCEMENT_SLOTS] of them.
- * @throws IllegalArgumentException if there are more Sounds than slots.
+ * @param labelOf a Sound's label now, or null for a Sound that isn't in the library.
  */
 class SpokenAnnouncements(
     private val output: SoundOutput,
     private val speech: SpeechSynth,
-    sounds: List<Sound>,
+    private val labelOf: (SoundId) -> String?,
 ) : Announcements {
-    init {
-        require(sounds.size <= SampleIds.ANNOUNCEMENT_SLOTS) {
-            "${sounds.size} Sounds, but only ${SampleIds.ANNOUNCEMENT_SLOTS} slots"
-        }
-    }
-
-    private val labels: Map<SoundId, String> = sounds.associate { it.id to it.label }
-    private val slots: Map<SoundId, SampleId> = sounds.withIndex()
-        .associate { (index, sound) -> sound.id to SampleIds.announcement(index) }
-    private val clips = mutableMapOf<SoundId, Clip>()
+    /** Clips by label, least recently used first. */
+    private val clips = LinkedHashMap<String, Clip>(INITIAL_CAPACITY, LOAD_FACTOR, true)
+    private val freeSlots =
+        ArrayDeque((0 until SampleIds.ANNOUNCEMENT_SLOTS).map(SampleIds::announcement))
     private val mutex = Mutex()
 
     override suspend fun prepare(soundId: SoundId): Clip? = mutex.withLock {
-        clips[soundId] ?: speak(soundId)?.also { clips[soundId] = it }
+        val label = labelOf(soundId) ?: return@withLock null
+        clips[label] ?: speak(label)?.also { clips[label] = it }
     }
 
-    private suspend fun speak(soundId: SoundId): Clip? {
-        val label = labels[soundId] ?: return null
+    private suspend fun speak(label: String): Clip? {
         val pcm = speech.speak(label) ?: return null
         val margin = msToFrames(TRIM_MARGIN_MS).toInt()
         val trimmed = trimSilence(pcm, threshold = SILENCE_THRESHOLD, marginFrames = margin)
         if (trimmed.isEmpty()) return null
-        val slot = slots.getValue(soundId)
+        val slot = freeSlots.removeFirstOrNull() ?: giveUpOldest()
         output.loadSample(slot, normalizePeak(trimmed, peak = ANNOUNCEMENT_PEAK))
         return Clip(id = slot, lengthFrames = trimmed.size.toLong())
+    }
+
+    private fun giveUpOldest(): SampleId {
+        val oldest = clips.entries.first()
+        clips.remove(oldest.key)
+        return oldest.value.id
     }
 
     /** How Announcements are cleaned up. */
@@ -80,5 +81,8 @@ class SpokenAnnouncements(
 
         /** Quiet kept before and after the speech, so soft starts and ends survive. */
         const val TRIM_MARGIN_MS: Long = 20L
+
+        private const val INITIAL_CAPACITY = 16
+        private const val LOAD_FACTOR = 0.75f
     }
 }

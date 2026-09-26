@@ -16,6 +16,7 @@ import org.pashri.soundcheck.ui.pattern.PatternListRoute
 import org.pashri.soundcheck.ui.programme.ProgrammeEditorRoute
 import org.pashri.soundcheck.ui.programme.ProgrammeLinks
 import org.pashri.soundcheck.ui.settings.SettingsRoute
+import org.pashri.soundcheck.ui.sounds.SoundsRoute
 import org.pashri.soundcheck.ui.step.StepEditorRoute
 import org.pashri.soundcheck.ui.step.StepLinks
 import org.pashri.soundcheck.warmup.PatternId
@@ -49,6 +50,7 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
                     openPatterns = {
                         navController.navigate(WarmupRoutes.patterns(pickFor = null))
                     },
+                    openSounds = { navController.navigate(WarmupRoutes.sounds(pickFor = null)) },
                 ),
             )
         }
@@ -99,6 +101,7 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
                     choosePattern = {
                         navController.navigate(WarmupRoutes.patterns(pickFor = ref))
                     },
+                    chooseSound = { navController.navigate(WarmupRoutes.sounds(pickFor = ref)) },
                 ),
             )
         }
@@ -126,6 +129,18 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
                     PatternId(entry.requireArg(WarmupRoutes.ARG_PATTERN)),
                 ),
                 onBack = closing(WarmupRoutes.PATTERN),
+            )
+        }
+        composable(
+            route = WarmupRoutes.SOUNDS,
+            arguments = listOf(
+                optionalArg(WarmupRoutes.ARG_PROGRAMME),
+                optionalArg(WarmupRoutes.ARG_STEP),
+            ),
+        ) { entry ->
+            SoundsRoute(
+                factory = container.soundsFactory(entry.pickFor()),
+                onBack = closing(WarmupRoutes.SOUNDS),
             )
         }
     }

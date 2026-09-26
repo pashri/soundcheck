@@ -36,6 +36,7 @@ import org.pashri.soundcheck.ui.pattern.PatternEditorViewModel
 import org.pashri.soundcheck.ui.pattern.PatternListViewModel
 import org.pashri.soundcheck.ui.programme.ProgrammeEditorViewModel
 import org.pashri.soundcheck.ui.settings.SettingsViewModel
+import org.pashri.soundcheck.ui.sounds.SoundsViewModel
 import org.pashri.soundcheck.ui.step.StepEditorViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
@@ -47,7 +48,6 @@ import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.ProgrammePlayer
 import org.pashri.soundcheck.warmup.SpokenAnnouncements
 import org.pashri.soundcheck.warmup.StarterLibrary
-import org.pashri.soundcheck.warmup.StarterSounds
 import org.pashri.soundcheck.warmup.StepRef
 import org.pashri.soundcheck.warmup.WarmupController
 import org.pashri.soundcheck.warmup.WarmupSettings
@@ -148,7 +148,7 @@ class AppContainer(context: Context) {
         val announcements = SpokenAnnouncements(
             output = soundOutput,
             speech = speech,
-            sounds = StarterSounds.ALL,
+            labelOf = { id -> library.data.value?.sound(id)?.label },
         )
         val player = ProgrammePlayer(
             output = soundOutput,
@@ -235,6 +235,15 @@ class AppContainer(context: Context) {
             settings = settings,
             audition = audition,
         )
+
+    /**
+     * Builds the Sounds list's view model.
+     *
+     * @param pickFor the Step to choose a Sound for, or null to browse.
+     * @return the factory.
+     */
+    fun soundsFactory(pickFor: StepRef?): ViewModelProvider.Factory =
+        SoundsViewModel.Factory(pickFor = pickFor, library = library, newId = newId)
 
     /**
      * The editors' audition's own audio focus: a short transient request while a Demo or
