@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.warmup
 
+import org.pashri.soundcheck.music.Pitch
+
 /**
  * The Warm-up's settings.
  *
@@ -29,4 +31,37 @@ data class WarmupSettings(
             playOverOtherAudio = false,
         )
     }
+}
+
+/**
+ * These settings with a Voice Type picked: its preset becomes the Range.
+ *
+ * @param voiceType the Voice Type.
+ * @return the new settings; "Play over other audio" is kept.
+ */
+fun WarmupSettings.withVoiceType(voiceType: VoiceType): WarmupSettings =
+    copy(voiceType = voiceType, range = voiceType.range)
+
+/**
+ * These settings with a new lowest note, kept between A0 and the highest note. The Voice
+ * Type's name stays.
+ *
+ * @param midi the lowest note asked for, as a MIDI number.
+ * @return the new settings.
+ */
+fun WarmupSettings.withLowest(midi: Int): WarmupSettings {
+    val lowest = midi.coerceIn(Range.PIANO.lowest.midi, range.highest.midi)
+    return copy(range = Range(lowest = Pitch(lowest), highest = range.highest))
+}
+
+/**
+ * These settings with a new highest note, kept between the lowest note and C8. The Voice
+ * Type's name stays.
+ *
+ * @param midi the highest note asked for, as a MIDI number.
+ * @return the new settings.
+ */
+fun WarmupSettings.withHighest(midi: Int): WarmupSettings {
+    val highest = midi.coerceIn(range.lowest.midi, Range.PIANO.highest.midi)
+    return copy(range = Range(lowest = range.lowest, highest = Pitch(highest)))
 }

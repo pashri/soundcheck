@@ -19,6 +19,7 @@ import org.pashri.soundcheck.audio.AndroidMic
 import org.pashri.soundcheck.audio.AndroidSpeech
 import org.pashri.soundcheck.audio.FocusGate
 import org.pashri.soundcheck.audio.MicInput
+import org.pashri.soundcheck.audio.MixingFocusGate
 import org.pashri.soundcheck.audio.NativeAudioEngine
 import org.pashri.soundcheck.audio.SoundOutput
 import org.pashri.soundcheck.audio.SpeechSynth
@@ -31,6 +32,7 @@ import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
 import org.pashri.soundcheck.playback.PlaybackService
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
+import org.pashri.soundcheck.ui.settings.SettingsViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
@@ -61,8 +63,9 @@ class AppContainer(context: Context) {
     /** The one audio output every tool plays through. */
     val soundOutput: SoundOutput by lazy { NativeAudioEngine() }
 
-    /** Audio focus for tools that make sound. */
-    val audioFocus: FocusGate = AndroidAudioFocus(context)
+    /** Audio focus for the Metronome; not asked for while "Play over other audio" is on. */
+    val audioFocus: FocusGate =
+        MixingFocusGate(focus = AndroidAudioFocus(context), mixing = ::playsOverOtherAudio)
 
     /** Keeps one tool making sound or listening at a time. */
     val toolArbiter: ToolArbiter = ToolArbiter()
@@ -125,8 +128,12 @@ class AppContainer(context: Context) {
     /** The phone's voice, for Announcements. */
     private val speech: SpeechSynth by lazy { AndroidSpeech(appContext) }
 
-    /** The Warm-up's own audio focus, held while a Programme is playing or paused. */
-    private val warmupFocus: FocusGate = AndroidAudioFocus(context)
+    /**
+     * The Warm-up's own audio focus, held while a Programme is playing or paused; not asked
+     * for while "Play over other audio" is on.
+     */
+    private val warmupFocus: FocusGate =
+        MixingFocusGate(focus = AndroidAudioFocus(context), mixing = ::playsOverOtherAudio)
 
     /** Plays Programmes; it belongs to the app, not to the Warm-up screen. */
     val warmup: WarmupController by lazy {
@@ -163,6 +170,14 @@ class AppContainer(context: Context) {
             newId = newId,
         )
     }
+
+    /** Builds the Settings screen's view model. */
+    val settingsViewModelFactory: ViewModelProvider.Factory by lazy {
+        SettingsViewModel.Factory(settings = settings)
+    }
+
+    /** Whether "Play over other audio" is on; read each time a tool asks for focus. */
+    private fun playsOverOtherAudio(): Boolean = settings.data.value?.playOverOtherAudio == true
 
     /**
      * Starts the playback service whenever a Programme is loaded; the service stops itself

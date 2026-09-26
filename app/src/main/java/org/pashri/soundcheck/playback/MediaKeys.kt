@@ -1,6 +1,7 @@
 package org.pashri.soundcheck.playback
 
 import android.view.KeyEvent
+import org.pashri.soundcheck.warmup.WarmupSettings
 
 /** What a media key event means for a playing Programme. */
 enum class MediaKeyAction {
@@ -43,3 +44,13 @@ fun mediaKeyAction(keyCode: Int, action: Int, repeatCount: Int): MediaKeyAction 
     }
     return if (action == KeyEvent.ACTION_DOWN && repeatCount == 0) role else MediaKeyAction.CONSUME
 }
+
+/**
+ * Whether the Warm-up's media session should take the headphone button. With "Play over
+ * other audio" on, the button stays with the other app.
+ *
+ * @param settings the saved settings, or null before they have loaded.
+ * @return false only while playing over other audio.
+ */
+fun takesHeadphoneButton(settings: WarmupSettings?): Boolean =
+    settings?.playOverOtherAudio != true

@@ -2,7 +2,10 @@ package org.pashri.soundcheck.playback
 
 import android.view.KeyEvent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.warmup.WarmupSettings
 
 class MediaKeysTest {
     private fun down(keyCode: Int): MediaKeyAction =
@@ -52,5 +55,12 @@ class MediaKeysTest {
     fun `other keys are left to the system`() {
         assertEquals(MediaKeyAction.IGNORE, down(KeyEvent.KEYCODE_VOLUME_UP))
         assertEquals(MediaKeyAction.IGNORE, down(KeyEvent.KEYCODE_MEDIA_STOP))
+    }
+
+    @Test
+    fun `the headphone button is taken unless Soundcheck plays over other audio`() {
+        assertTrue(takesHeadphoneButton(WarmupSettings.DEFAULT))
+        assertTrue(takesHeadphoneButton(null))
+        assertFalse(takesHeadphoneButton(WarmupSettings.DEFAULT.copy(playOverOtherAudio = true)))
     }
 }

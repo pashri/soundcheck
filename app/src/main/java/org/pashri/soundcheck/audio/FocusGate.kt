@@ -77,3 +77,27 @@ class AndroidAudioFocus(context: Context) : FocusGate {
             .build()
     }
 }
+
+/**
+ * A [FocusGate] that, while [mixing] says so, plays over other apps without asking for
+ * focus: a podcast keeps playing underneath. Otherwise it asks [focus] as usual.
+ *
+ * @param focus the real audio focus.
+ * @param mixing whether "Play over other audio" is on; read at each [acquire].
+ */
+class MixingFocusGate(
+    private val focus: FocusGate,
+    private val mixing: () -> Boolean,
+) : FocusGate {
+    override fun acquire(onLost: () -> Unit, onRegained: () -> Unit): Boolean {
+        if (mixing()) {
+            focus.release()
+            return true
+        }
+        return focus.acquire(onLost = onLost, onRegained = onRegained)
+    }
+
+    override fun release() {
+        focus.release()
+    }
+}

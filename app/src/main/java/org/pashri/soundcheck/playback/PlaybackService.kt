@@ -25,7 +25,9 @@ import org.pashri.soundcheck.warmup.Playback
 /**
  * Keeps a Programme playing with the screen off: a foreground service with a media session,
  * so the lock screen shows its controls and the headphone button reaches the Warm-up. It is
- * started when a Programme starts and stops itself when the Programme stops or ends. Pulling
+ * started when a Programme starts and stops itself when the Programme stops or ends. With
+ * "Play over other audio" on, the session is inactive, so the headphone button stays with
+ * the other app while the notification keeps its own buttons. Pulling
  * out headphones (or a headset disconnecting) pauses the Programme, so the piano never
  * switches to the loudspeaker.
  */
@@ -52,7 +54,7 @@ class PlaybackService : Service() {
         session = MediaSessionCompat(this, SESSION_TAG).apply {
             setCallback(SessionCallback())
             setMediaButtonReceiver(null)
-            isActive = true
+            isActive = takesHeadphoneButton(container.settings.data.value)
         }
         PlaybackNotifications.createChannel(this)
         ContextCompat.registerReceiver(
@@ -62,6 +64,9 @@ class PlaybackService : Service() {
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         scope.launch { container.warmup.playback.collect(::show) }
+        scope.launch {
+            container.settings.data.collect { session.isActive = takesHeadphoneButton(it) }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

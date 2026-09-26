@@ -47,6 +47,9 @@ object ManuscriptIcons {
 
     /** A chevron pointing left: back. */
     val ChevronLeft: ImageVector = strokeIcon("ChevronLeft", "M15 5l-7 7 7 7")
+
+    /** A pencil: rename. */
+    val Edit: ImageVector = strokeIcon("Edit", "M4 20h4L19 9l-4-4L4 16z", "M13 7l4 4")
 }
 
 private fun strokeIcon(name: String, vararg paths: String): ImageVector =

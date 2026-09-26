@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import org.pashri.soundcheck.di.AppContainer
 import org.pashri.soundcheck.ui.components.Tab
+import org.pashri.soundcheck.ui.settings.SettingsRoute
 
 /**
  * The Warm-up tab's screens, nested under the tab's route so the tab bar stays on the
@@ -22,7 +23,10 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
         composable(WarmupRoutes.HOME) {
             WarmupHomeRoute(
                 factory = container.warmupHomeViewModelFactory,
-                links = HomeLinks(openPlaying = openPlaying),
+                links = HomeLinks(
+                    openPlaying = openPlaying,
+                    openSettings = { navController.navigate(WarmupRoutes.SETTINGS) },
+                ),
             )
         }
         composable(WarmupRoutes.PLAYING) {
@@ -31,6 +35,12 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
                 onFinished = {
                     navController.popBackStack(WarmupRoutes.PLAYING, inclusive = true)
                 },
+            )
+        }
+        composable(WarmupRoutes.SETTINGS) {
+            SettingsRoute(
+                factory = container.settingsViewModelFactory,
+                onBack = { navController.popBackStack(WarmupRoutes.SETTINGS, inclusive = true) },
             )
         }
     }
