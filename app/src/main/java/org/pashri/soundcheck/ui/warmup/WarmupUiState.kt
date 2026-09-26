@@ -157,6 +157,15 @@ fun warmupUiState(
 }
 
 /**
+ * This state with note [note] lit on the staff. Everything else stays the same instance, so
+ * the screen redraws only the moving note as the Pattern plays.
+ *
+ * @param note the index of the Pattern note being sung, or null.
+ * @return the state with [note] lit.
+ */
+fun WarmupUiState.withNote(note: Int?): WarmupUiState = copy(staff = staff?.lit(note))
+
+/**
  * The key and progress for Iteration [now] of a round trip.
  *
  * @param trip the Step's keys.
@@ -251,6 +260,7 @@ private fun keyboardFor(
 ): KeyboardView? {
     val key = trip.keys[now ?: 0]
     val notes = step.pattern.notes
+    // keyboardView marks key + span.highest as TOP; span.highest is this note's halfSteps.
     val top = notes.indices.maxBy { notes[it].halfSteps }
     return range.offsetBy(step.rangeOffset)?.let { sung ->
         keyboardView(

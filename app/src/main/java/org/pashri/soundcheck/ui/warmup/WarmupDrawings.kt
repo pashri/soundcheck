@@ -192,7 +192,7 @@ private class StaffPainter(
     }
 
     private fun DrawScope.drawTrebleClef(origin: Offset) {
-        val path = clefPath(origin = origin, start = TREBLE_START, curves = TREBLE_CURVES)
+        val path = spacePath(origin = origin, start = TREBLE_START, curves = TREBLE_CURVES)
         drawPath(
             path = path,
             color = colors.ink,
@@ -206,7 +206,7 @@ private class StaffPainter(
     }
 
     private fun DrawScope.drawBassClef(origin: Offset) {
-        val path = clefPath(origin = origin, start = BASS_START, curves = BASS_CURVES)
+        val path = spacePath(origin = origin, start = BASS_START, curves = BASS_CURVES)
         drawPath(
             path = path,
             color = colors.ink,
@@ -222,8 +222,11 @@ private class StaffPainter(
         }
     }
 
-    /** A path of cubic curves, each six numbers in staff spaces from [origin]. */
-    private fun clefPath(origin: Offset, start: Pair<Float, Float>, curves: List<Float>): Path =
+    /**
+     * A path in staff spaces from [origin]: from [start] through cubic curves, six numbers
+     * each. The clefs and the ♭'s bowl are drawn with it.
+     */
+    private fun spacePath(origin: Offset, start: Pair<Float, Float>, curves: List<Float>): Path =
         Path().apply {
             moveTo(x = origin.x + gap * start.first, y = origin.y + gap * start.second)
             curves.chunked(size = 6).forEach { c ->
@@ -317,7 +320,7 @@ private class StaffPainter(
         }
         glyph.bowlStart?.let { start ->
             drawPath(
-                path = clefPath(origin = origin, start = start, curves = glyph.bowl),
+                path = spacePath(origin = origin, start = start, curves = glyph.bowl),
                 color = colors.ink,
                 style = Stroke(width = gap * FLAT_BOWL_STROKE, cap = StrokeCap.Round),
             )
@@ -348,11 +351,10 @@ private class AccidentalGlyph(
     val bowl: List<Float> = emptyList(),
 )
 
-
 /**
- * Whether a key's mark gets an outline. At night the key's vermilion and the top note's
- * rose sit about 1.4:1 against a white key, too close to see, so a marked key is ringed in
- * the key edge colour, which stands out against white keys in both themes.
+ * Whether a key's mark gets an outline. At night the key's vermilion sits about 1.4:1 and
+ * the top note's pale rose about 1.3:1 against a white key, too close to see, so a marked
+ * key is ringed in the key edge colour, which stands out against white keys in both themes.
  */
 private val KeyMark.outlined: Boolean
     get() = this == KeyMark.ROOT || this == KeyMark.TOP

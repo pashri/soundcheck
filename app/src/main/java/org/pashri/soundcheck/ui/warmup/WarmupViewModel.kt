@@ -3,6 +3,7 @@ package org.pashri.soundcheck.ui.warmup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -22,21 +23,33 @@ class WarmupViewModel(
     private val controller: WarmupController,
     library: StateFlow<Library?>,
 ) : ViewModel(), WarmupActions {
-    /** Everything the screen shows, or null when no Programme is loaded. */
-    val uiState: StateFlow<WarmupUiState?> = combine(
+    /**
+     * Everything but the moving note, rebuilt only when the playback or the library changes,
+     * not on every note.
+     */
+    private val base: Flow<WarmupUiState?> = combine(
         flow = controller.playback,
         flow2 = library,
-        flow3 = controller.note,
-    ) { now, saved, note ->
-        playingState(playback = now, library = saved, note = note)
+    ) { now, saved ->
+        playingState(playback = now, library = saved)
+    }
+
+    /**
+     * Everything the screen shows, or null when no Programme is loaded. A note change only
+     * relights the staff: every other part keeps its instance, so it isn't redrawn.
+     */
+    val uiState: StateFlow<WarmupUiState?> = combine(
+        flow = base,
+        flow2 = controller.note,
+    ) { state, note ->
+        state?.withNote(note)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = playingState(
             playback = controller.playback.value,
             library = library.value,
-            note = controller.note.value,
-        ),
+        )?.withNote(controller.note.value),
     )
 
     override fun playPause() {
@@ -71,13 +84,12 @@ class WarmupViewModel(
     }
 }
 
-private fun playingState(playback: Playback?, library: Library?, note: Int?): WarmupUiState? =
+private fun playingState(playback: Playback?, library: Library?): WarmupUiState? =
     playback?.let {
         warmupUiState(
             playback = it,
             programme = it.programme,
             range = it.range,
             sounds = library?.sounds.orEmpty(),
-            note = note,
         )
     }

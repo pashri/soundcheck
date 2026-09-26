@@ -66,6 +66,18 @@ class ContrastTest {
         }
     }
 
+    @Test
+    fun `the key and the top note differ in lightness, and their rings show on both`() {
+        palettes.forEach { (theme, c) ->
+            val marks = contrastRatio(foreground = c.accent, background = c.topKey)
+            assertTrue("$theme key against top note is ${"%.2f".format(marks)}:1", marks >= 1.5)
+            val onKey = contrastRatio(foreground = c.keyBorder, background = c.accent)
+            assertTrue("$theme ring on the key is ${"%.2f".format(onKey)}:1", onKey >= 3.0)
+            val onTop = contrastRatio(foreground = c.keyBorder, background = c.topKey)
+            assertTrue("$theme ring on the top note is ${"%.2f".format(onTop)}:1", onTop >= 3.0)
+        }
+    }
+
     private companion object {
         const val MINIMUM_TEXT_CONTRAST = 4.5
     }

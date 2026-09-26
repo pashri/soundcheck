@@ -72,5 +72,5 @@ val NightColors: ManuscriptColors = ManuscriptColors(
     keyTint = Color(0xFFA08E7C),
     keyBorder = Color(0xFF1C1A17),
     blackKey = Color(0xFF0F0E0C),
-    topKey = Color(0xFFC9826F),
+    topKey = Color(0xFFFAC3B3),
 )

@@ -15,6 +15,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -128,4 +129,23 @@ class WarmupViewModelTest {
         advanceTimeBy(1_200)
         assertEquals(0, state(viewModel)?.staff?.now)
     }
+
+    @Test
+    fun `a new note relights the staff and keeps everything else as it was`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            advanceTimeBy(1_200)
+            val first = checkNotNull(state(viewModel))
+            assertEquals(0, first.staff?.now)
+            var next = first
+            while (next.staff?.now == 0) {
+                advanceTimeBy(50)
+                next = checkNotNull(state(viewModel))
+            }
+            assertEquals(1, next.staff?.now)
+            assertSame(first.keyboard, next.keyboard)
+            assertSame(first.iterations, next.iterations)
+            assertSame(first.staff?.layout, next.staff?.layout)
+            assertEquals(first.copy(staff = first.staff?.copy(now = 1)), next)
+        }
 }

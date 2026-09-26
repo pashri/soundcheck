@@ -212,11 +212,22 @@ fun staffView(
     stepKeys: List<Pitch> = listOf(key),
 ): StaffView = StaffView(
     layout = staffLayout(pattern = pattern, key = key, clef = clef),
-    now = now?.takeIf { it in pattern.notes.indices },
+    now = null,
     description = "Pattern on a staff, ${clef.spoken}: " +
         PatternNotation.degrees(notes = pattern.notes),
     reserved = stepStaffBounds(pattern = pattern, keys = stepKeys + key, clef = clef),
-)
+).lit(now)
+
+/**
+ * This staff with a different note lit, keeping the same layout instance, so only the
+ * moving note changes as the Pattern plays.
+ *
+ * @param now the index of the note being sung, or null; an index outside the Pattern (a
+ *     moment's lag at a Step change) lights nothing.
+ * @return the staff with [now] lit.
+ */
+fun StaffView.lit(now: Int?): StaffView =
+    copy(now = now?.takeIf { it in layout.notes.indices })
 
 /**
  * The steps a staff needs to show [pattern] in any of [keys]: the lowest bottom to the
