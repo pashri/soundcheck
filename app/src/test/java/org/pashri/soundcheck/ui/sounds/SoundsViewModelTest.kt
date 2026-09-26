@@ -5,17 +5,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.pashri.soundcheck.audio.FakeFocusGate
+import org.pashri.soundcheck.audio.FakeMicInput
+import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.data.ClipFiles
 import org.pashri.soundcheck.data.FakeStore
 import org.pashri.soundcheck.warmup.Audition
@@ -63,20 +70,56 @@ class SoundsViewModelTest {
     }
 
     private var audition: Audition? = null
+    private val arbiter = ToolArbiter()
 
     private fun TestScope.viewModel(
         pickFor: StepRef? = null,
         store: FakeStore<Library> = library,
     ): SoundsViewModel {
-        val shared = testAudition().also { audition = it }
+        val shared = testAudition(arbiter = arbiter).also { audition = it }
         return SoundsViewModel.Factory(
             pickFor = pickFor,
             library = store,
             newId = { "id-${++ids}" },
             clips = clips,
             audition = shared,
+            mic = mic,
+            focus = FakeFocusGate(),
+            arbiter = arbiter,
+            worker = dispatcher,
         ).create(SoundsViewModel::class.java)
     }
+
+    private val mic = FakeMicInput()
+
+    /** [hops] hops of 1 024 frames at [level], the sign alternating frame by frame. */
+    private fun hops(hops: Int, level: Float): FloatArray =
+        FloatArray(size = hops * 1_024) { if (it % 2 == 0) level else -level }
+
+    /** Queues 10 quiet hops, 15 spoken, 10 quiet: a 420 ms take once trimmed. */
+    private fun sayAWord() {
+        mic.play(
+            signal = hops(hops = 10, level = 0.001f) + hops(hops = 15, level = 0.3f) +
+                hops(hops = 10, level = 0.001f),
+        )
+    }
+
+    /** Holds the record button for [ms] of test time, then lets go and lets the take save. */
+    private fun TestScope.hold(viewModel: SoundsViewModel, ms: Long = 800) {
+        viewModel.startRecording()
+        advanceTimeBy(ms)
+        viewModel.stopRecording()
+        advanceTimeBy(100)
+        runCurrent()
+    }
+
+    /** A view model with neh's recorder open and the microphone allowed. */
+    private fun TestScope.recordingNeh(): SoundsViewModel = viewModel().also {
+        it.onShown(granted = true)
+        it.toggleRecorder(StarterSounds.NEH.id)
+    }
+
+    private fun nehClip(): RecordedClip? = library.value.sound(StarterSounds.NEH.id)?.clip
 
     /** Gives mim a recording, saved as a real file. */
     private suspend fun recordMim() {
@@ -177,4 +220,121 @@ class SoundsViewModelTest {
         assertEquals(false, audition?.playing?.value)
         assertNull(state(viewModel)?.notice)
     }
+
+    @Test
+    fun `holding the button records a take and gives the Sound its recording`() =
+        runTest(context = dispatcher) {
+            val viewModel = recordingNeh()
+            sayAWord()
+            hold(viewModel)
+            assertEquals(420L, nehClip()?.lengthMs)
+            val file = File(folder.root, "clips/${nehClip()?.name?.value}")
+            assertTrue(file.exists())
+            val state = state(viewModel)
+            assertEquals("0.4 s", state?.rows?.single { it.id == StarterSounds.NEH.id }?.detail)
+            assertNull(state?.panel?.message)
+            assertEquals(true, state?.panel?.canUndo)
+        }
+
+    @Test
+    fun `a take with nothing said leaves the Sound as it was and says why`() =
+        runTest(context = dispatcher) {
+            val viewModel = recordingNeh()
+            hold(viewModel)
+            assertNull(nehClip())
+            assertEquals(
+                "Didn't hear anything. Hold the button while you speak.",
+                state(viewModel)?.panel?.message,
+            )
+        }
+
+    @Test
+    fun `a new take can be undone back to the one before`() = runTest(context = dispatcher) {
+        val oldName = clips.save(FloatArray(size = 9_600) { 0.2f })
+        val old = RecordedClip(name = oldName, lengthMs = 200)
+        library.set(library.value.withClip(id = StarterSounds.NEH.id, clip = old))
+        val viewModel = recordingNeh()
+        sayAWord()
+        hold(viewModel)
+        assertNotEquals(old, nehClip())
+        viewModel.undo(StarterSounds.NEH.id)
+        assertEquals(old, nehClip())
+        assertEquals(false, state(viewModel)?.panel?.canUndo)
+    }
+
+    @Test
+    fun `giving up a recording brings back the phone's voice, and can be undone`() =
+        runTest(context = dispatcher) {
+            recordMim()
+            val recorded = library.value.sound(StarterSounds.MIM.id)?.clip
+            val viewModel = viewModel()
+            viewModel.usePhoneVoice(StarterSounds.MIM.id)
+            assertNull(library.value.sound(StarterSounds.MIM.id)?.clip)
+            viewModel.undo(StarterSounds.MIM.id)
+            assertEquals(recorded, library.value.sound(StarterSounds.MIM.id)?.clip)
+        }
+
+    @Test
+    fun `opening the recorder before the microphone is allowed asks for it`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            viewModel.onShown(granted = false)
+            assertTrue(viewModel.toggleRecorder(StarterSounds.NEH.id))
+            assertEquals(PanelMode.ASK, state(viewModel)?.panel?.mode)
+            viewModel.onPermissionResult(granted = true, canAskAgain = false)
+            assertEquals(PanelMode.READY, state(viewModel)?.panel?.mode)
+            assertFalse(viewModel.toggleRecorder(StarterSounds.NEH.id))
+            assertNull(state(viewModel)?.panel)
+        }
+
+    @Test
+    fun `no take starts without the microphone allowed`() = runTest(context = dispatcher) {
+        val viewModel = viewModel()
+        viewModel.toggleRecorder(StarterSounds.NEH.id)
+        hold(viewModel)
+        assertEquals(0, mic.timesOpened)
+        assertNull(nehClip())
+    }
+
+    @Test
+    fun `leaving the screen throws a take in progress away`() = runTest(context = dispatcher) {
+        val viewModel = recordingNeh()
+        sayAWord()
+        viewModel.startRecording()
+        advanceTimeBy(300)
+        viewModel.onHidden()
+        advanceTimeBy(100)
+        runCurrent()
+        assertNull(nehClip())
+        assertEquals(0, mic.openNow)
+        assertNull(state(viewModel)?.panel?.message)
+    }
+
+    @Test
+    fun `a take that can't be saved says so and keeps what the Sound had`() =
+        runTest(context = dispatcher) {
+            folder.newFile("clips")
+            val viewModel = recordingNeh()
+            sayAWord()
+            hold(viewModel)
+            assertNull(nehClip())
+            assertEquals(
+                "Couldn't save the recording. Is the phone's storage full?",
+                state(viewModel)?.panel?.message,
+            )
+        }
+
+    @Test
+    fun `starting a take stops a recording that is playing`() =
+        runTest(context = dispatcher) {
+            recordMim()
+            val viewModel = recordingNeh()
+            viewModel.play(StarterSounds.MIM.id)
+            assertEquals(true, mimRow(state(viewModel))?.playing)
+            viewModel.startRecording()
+            runCurrent()
+            assertEquals(false, audition?.playing?.value)
+            assertEquals(false, mimRow(state(viewModel))?.playing)
+            viewModel.stopRecording()
+        }
 }

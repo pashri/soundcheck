@@ -2,8 +2,10 @@ package org.pashri.soundcheck.ui.sounds
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.ui.tuner.MicAccess
 import org.pashri.soundcheck.warmup.ClipName
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.RecordedClip
@@ -37,6 +39,7 @@ class SoundsUiStateTest {
                 usage = "Used in 1 Step",
                 deleteNote = "1 Step in Starter warm-up uses it; that Step goes too.",
                 chosen = false,
+                open = false,
             ),
             state.rows.first(),
         )
@@ -85,5 +88,74 @@ class SoundsUiStateTest {
         val state =
             soundsUiState(library = library, pickFor = null, playing = StarterSounds.MIM.id)
         assertEquals(listOf("mim"), state.rows.filter { it.playing }.map { it.label })
+    }
+
+    private fun panel(
+        view: RecordingView,
+        library: Library = StarterLibrary.LIBRARY,
+    ): RecordPanel? = soundsUiState(library = library, pickFor = null, recording = view).panel
+
+    @Test
+    fun `an open recorder asks for the microphone before it has been allowed`() {
+        val view = RecordingView(open = StarterSounds.NEH.id)
+        val state =
+            soundsUiState(library = StarterLibrary.LIBRARY, pickFor = null, recording = view)
+        assertEquals(PanelMode.ASK, state.panel?.mode)
+        assertEquals("Soundcheck needs the microphone", state.panel?.headline)
+        assertEquals(listOf("neh"), state.rows.filter { it.open }.map { it.label })
+    }
+
+    @Test
+    fun `with the microphone allowed the recorder says to hold the button`() {
+        val view = RecordingView(open = StarterSounds.NEH.id, access = MicAccess.Granted)
+        val expected = RecordPanel(
+            soundId = StarterSounds.NEH.id,
+            mode = PanelMode.READY,
+            headline = "Hold to record",
+            body = "Say “neh” the way you want to hear it in the car. " +
+                "Silence is trimmed from both ends.",
+            levels = emptyList(),
+            message = null,
+            recordDescription = "Hold to record neh",
+            canUndo = false,
+            canUsePhoneVoice = false,
+        )
+        assertEquals(expected, panel(view))
+    }
+
+    @Test
+    fun `while recording the recorder shows the levels and offers nothing else`() {
+        val clip = RecordedClip(name = ClipName("neh.wav"), lengthMs = 500)
+        val library = StarterLibrary.LIBRARY.withClip(id = StarterSounds.NEH.id, clip = clip)
+        val view = RecordingView(
+            open = StarterSounds.NEH.id,
+            access = MicAccess.Granted,
+            recording = true,
+            levels = listOf(0.5f),
+            undoable = setOf(StarterSounds.NEH.id),
+        )
+        val shown = checkNotNull(panel(view = view, library = library))
+        assertEquals(PanelMode.RECORDING, shown.mode)
+        assertEquals(listOf(0.5f), shown.levels)
+        assertEquals("Stop recording neh", shown.recordDescription)
+        assertFalse(shown.canUndo)
+        assertFalse(shown.canUsePhoneVoice)
+    }
+
+    @Test
+    fun `a microphone refused for good sends you to Settings`() {
+        val view = RecordingView(open = StarterSounds.NEH.id, access = MicAccess.Blocked)
+        assertEquals(PanelMode.SETTINGS, panel(view)?.mode)
+        assertEquals("The microphone is turned off", panel(view)?.headline)
+    }
+
+    @Test
+    fun `choosing a Sound for a Step never opens a recorder`() {
+        val mim = StepRef(programmeId = starter, key = StepKey("starter-3"))
+        val view = RecordingView(open = StarterSounds.NEH.id, access = MicAccess.Granted)
+        val state =
+            soundsUiState(library = StarterLibrary.LIBRARY, pickFor = mim, recording = view)
+        assertNull(state.panel)
+        assertTrue(state.rows.none { it.open })
     }
 }

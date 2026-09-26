@@ -1,12 +1,6 @@
 package org.pashri.soundcheck.ui.tuner
 
 import android.Manifest
-import android.app.Activity
-import android.content.ActivityNotFoundException
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -69,6 +63,8 @@ import org.pashri.soundcheck.music.midiOf
 import org.pashri.soundcheck.tuner.MicStatus
 import org.pashri.soundcheck.tuner.NoteReading
 import org.pashri.soundcheck.ui.components.ScreenHeader
+import org.pashri.soundcheck.ui.components.hasMicPermission
+import org.pashri.soundcheck.ui.components.openAppSettings
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SansFamily
@@ -121,18 +117,6 @@ fun TunerRoute(factory: ViewModelProvider.Factory) {
         }
     }
     TunerScreen(state = state, actions = actions)
-}
-
-private fun Activity.hasMicPermission(): Boolean =
-    checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-
-private fun Activity.openAppSettings() {
-    val uri = Uri.fromParts("package", packageName, null)
-    try {
-        startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri))
-    } catch (_: ActivityNotFoundException) {
-        // No Settings app to open on this device; nothing more to do.
-    }
 }
 
 /**

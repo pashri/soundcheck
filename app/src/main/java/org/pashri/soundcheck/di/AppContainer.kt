@@ -289,6 +289,10 @@ class AppContainer(context: Context) {
             newId = newId,
             clips = clips,
             audition = audition,
+            mic = micInput,
+            focus = recordingFocus,
+            arbiter = toolArbiter,
+            worker = Dispatchers.Default,
         )
 
     /**
@@ -297,6 +301,12 @@ class AppContainer(context: Context) {
      */
     private val auditionFocus: FocusGate =
         MixingFocusGate(focus = AndroidAudioFocus(context), mixing = ::playsOverOtherAudio)
+
+    /**
+     * The recorder's own audio focus: always asked for, even with "Play over other audio"
+     * on, so a podcast pauses rather than being recorded under your voice.
+     */
+    private val recordingFocus: FocusGate = AndroidAudioFocus(context)
 
     /** Plays a Step's Demo or a Pattern from the editors; it belongs to the app. */
     val audition: Audition by lazy {

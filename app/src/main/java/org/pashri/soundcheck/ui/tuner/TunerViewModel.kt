@@ -64,11 +64,7 @@ class TunerViewModel(
      */
     fun onShown(granted: Boolean) {
         shown = true
-        if (granted) {
-            access.value = MicAccess.Granted
-        } else if (access.value == MicAccess.Granted) {
-            access.value = MicAccess.Unknown
-        }
+        access.value = micAccessOnShown(previous = access.value, granted = granted)
         if (yielded.value && arbiter.current == null) yielded.value = false
         if (!yielded.value) listenIfAllowed()
     }
