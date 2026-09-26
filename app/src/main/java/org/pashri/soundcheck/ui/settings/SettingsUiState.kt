@@ -73,7 +73,9 @@ interface SettingsActions {
     fun setPlayOverOtherAudio(on: Boolean)
 
     /**
-     * Writes a backup of the library and settings to a file the person picked.
+     * Writes a backup of the library and settings to a file the person picked. If the
+     * write fails, the file is removed only when it was known to be empty before; a file
+     * whose size couldn't be read is kept, in case it was an older backup.
      *
      * @param uri the file's address, from the system's file picker.
      */

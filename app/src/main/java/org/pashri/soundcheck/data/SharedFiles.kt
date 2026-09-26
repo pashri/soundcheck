@@ -26,7 +26,7 @@ interface SharedFiles {
      * @param text what to write, as UTF-8.
      * @param deleteOnFailure removes the picked file if the write fails; only safe for a
      *     file the caller knows was empty (just created) before this write, so pass true
-     *     only after checking [sizeOf]. Left false, a failed write leaves whatever was
+     *     only when [sizeOf] returned 0, never when it returned null. Left false, a failed write leaves whatever was
      *     there before, cut off, rather than risk an existing file.
      * @return false if it couldn't be written.
      */
