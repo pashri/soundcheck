@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.audio.AndroidAudioFocus
-import org.pashri.soundcheck.audio.AndroidMic
 import org.pashri.soundcheck.audio.AndroidSpeech
 import org.pashri.soundcheck.audio.ExclusiveMic
 import org.pashri.soundcheck.audio.FocusGate
@@ -116,11 +115,23 @@ class AppContainer(context: Context) {
         MetronomeViewModel.Factory(metronome = metronome, clockMs = SystemClock::elapsedRealtime)
     }
 
+    /** The microphone as this build type provides it; debug builds can play a demo tone. */
+    private val buildMic: BuildMic = buildMic()
+
     /**
      * The microphone, for the Tuner and for recording Sounds; it never goes through
      * [soundOutput], and only one of them can have it open at a time.
      */
-    val micInput: MicInput = ExclusiveMic(AndroidMic())
+    val micInput: MicInput = ExclusiveMic(buildMic.mic)
+
+    /**
+     * Reads the launch options this build type understands from the activity's intent.
+     *
+     * @param intent the intent that started or reopened the activity.
+     */
+    fun onLaunch(intent: Intent) {
+        buildMic.onLaunch(intent = intent)
+    }
 
     /**
      * The Tuner's own audio focus. Separate from [audioFocus] because the Metronome releases

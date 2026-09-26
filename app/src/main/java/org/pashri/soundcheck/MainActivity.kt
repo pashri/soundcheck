@@ -31,6 +31,7 @@ class MainActivity : ComponentActivity() {
             openTab = tabForRoute(intent.getStringExtra(EXTRA_OPEN_TAB))
         }
         val container = (application as SoundcheckApplication).container
+        container.onLaunch(intent = intent)
         setContent {
             SoundcheckTheme {
                 SoundcheckApp(
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        (application as SoundcheckApplication).container.onLaunch(intent = intent)
         openTab = tabForRoute(intent.getStringExtra(EXTRA_OPEN_TAB))
     }
 

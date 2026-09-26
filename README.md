@@ -1,10 +1,155 @@
 # Soundcheck
 
-A Tuner and a Metronome for any instrument, and a hands-free vocal Warm-up, for Android.
-The Warm-up plays your Programmes on a sampled grand piano, announcing each exercise in
-your own recorded voice (or the phone's voice until you record one), and keeps going with
-the screen off. You build Programmes from Patterns (the notes to sing) and Sounds (what to
-sing them on), and set your Range from a voice type.
+**Warm up your voice hands-free, on a real piano, in the car or anywhere else.** A vocal
+Warm-up, a Metronome and a Tuner for Android, drawn like a page of manuscript.
+
+[**⬇ Download Soundcheck 1.0.0 (APK)**](https://github.com/pashri/soundcheck/releases/latest)
+· Android 11 or later · free, no ads, no accounts, nothing leaves your phone
+
+<p align="center">
+  <img src="docs/screenshots/warmup-playing.png" width="240" alt="The Warm-up playing a Step: the Pattern on a staff with the note being sung in vermilion, and a keyboard below">
+  <img src="docs/screenshots/warmup-playing-night.png" width="240" alt="The same screen at night">
+  <img src="docs/screenshots/warmup-home.png" width="240" alt="The Warm-up home: your Range, your Programmes and your library">
+</p>
+
+## About
+
+Soundcheck runs your vocal warm-up for you. Press Start, put the phone in your pocket, and
+it plays each exercise on a sampled grand piano, tells you what to sing, and walks you up
+through the keys to the top of your range and back down again. You never have to look at
+the screen or touch the phone: the headphone button pauses, skips and goes back.
+
+Everything is yours to shape. Build Programmes from your own exercises, set your range from
+a voice type, and record the cue for each sound in your own voice. When you want to look,
+the playing screen shows the exercise on a staff in the right clef for your voice, with a
+keyboard that follows the note you're singing.
+
+It also has a Metronome and a Tuner, so it's the only practice app you need to open.
+
+## Features
+
+### A warm-up that runs itself
+
+- **Programmes** are lists of Steps. Each Step sings one Pattern on one Sound (a lip trill,
+  a hum, "mah") at its own tempo.
+- **Round trips through your range:**
+  1. Each Step starts with a short spoken cue (the Announcement) and a Demo of the Pattern.
+  2. It plays the Key Chord, and you sing the Pattern.
+  3. It moves up a half-step and repeats until the Pattern reaches the top of your range,
+     then comes back down.
+  4. A Step that can't fit your range is skipped, and the editors warn you ahead of time.
+- **A real piano:** the Salamander Grand, sampled on every third key and re-pitched for the
+  keys between, scheduled to the exact sample so every note lands on the beat.
+- **Guide melody:** the piano can play the Pattern along with you, or leave you to sing it
+  alone over the chords.
+- **Starts high or low:** each Step can start at the bottom of your range and climb, or at
+  the top and descend, and can be offset up or down.
+
+### Hands-free, screen off
+
+- It keeps playing with the screen off, from your pocket or on the car's Bluetooth.
+- **Headphone button:** one press pauses or resumes, two go to the next Step, three to the
+  previous one. The same button starts and stops the Metronome.
+- The lock-screen card has pause, next and stop.
+- Pulling out your headphones pauses it. A phone call pauses it, and it picks up again
+  afterwards.
+- **Play over other audio:** leave your podcast or music playing underneath if you prefer.
+
+### See what you're singing
+
+- **Staff:** the exercise appears in the right clef for your voice: treble for soprano and
+  alto, treble with an 8 below for tenor, bass for bass. Notes are spelled properly for the
+  key, with ledger lines, sharps and flats.
+- **Moving note:** a vermilion note follows the piano, and the staff holds still as the keys
+  change.
+- **Keyboard:** it shows the Step's key, its top note, and the key you're singing right now,
+  drawn as if pressed down.
+
+### Make it yours
+
+- **Your range:** pick Soprano, Alto, Tenor or Bass, then move the lowest and highest notes to
+  fit your voice today.
+- **Patterns:** write the notes to sing as scale degrees, with flats, sharps, four note
+  lengths and a Key Chord (major, minor, seventh and more). Degrees can go past the octave.
+  Play a Pattern to hear it.
+- **Steps:** choose the Pattern and Sound, the tempo, the direction and the Range Offset.
+  "Hear the Demo" plays it in its first key.
+- **Sounds, in your voice:**
+  - Record how each Sound's cue should sound. Silence is trimmed from both ends
+    automatically, and you can re-record or undo.
+  - Until you record one, the phone's voice reads the name.
+- **A starter kit:** six ready-made Steps from lip trills to vowels, so it works the moment
+  you install it.
+
+### Metronome and Tuner
+
+- **Metronome:** set the tempo with − and +, by dragging, or by tapping it out. Put an accent
+  every 2 to 8 beats, or none. It keeps time to the sample, keeps going with the screen off,
+  and the headphone button starts and stops it.
+- **Tuner:** play or sing a note to see its name, octave and how many cents sharp or flat you
+  are, on a dial and a small staff. It listens only while it's open and keeps nothing it
+  hears.
+
+### Built for everyone, day and night
+
+- **Day and night:** warm paper by day and ink-dark by night, following your phone's dark
+  theme.
+- **Accessibility:** it works at the largest text and display sizes, and every control reads
+  out properly with TalkBack, including sharps, flats and the notes on the staff.
+
+### Your data stays yours
+
+- Everything is stored on your phone: no accounts, no ads, no analytics. The app doesn't
+  even ask for internet access.
+- **Back up** your whole library and settings to one small file (Drive, Downloads, anywhere),
+  and restore it later or on a new phone. Your recordings stay on the phone.
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/programme-editor.png" width="200" alt="A Programme's editor, listing its Steps">
+  <img src="docs/screenshots/step-editor.png" width="200" alt="A Step's editor: tempo, direction, range offset, pattern and sound">
+  <img src="docs/screenshots/pattern-editor.png" width="200" alt="A Pattern's editor: its notes, lengths, accidentals and key chord">
+  <img src="docs/screenshots/sounds.png" width="200" alt="The Sounds library: recorded and phone-voice cues">
+</p>
+<p align="center">
+  <img src="docs/screenshots/tuner.png" width="200" alt="The Tuner reading a note: its name, octave, needle and cents">
+  <img src="docs/screenshots/metronome.png" width="200" alt="The Metronome running">
+  <img src="docs/screenshots/settings.png" width="200" alt="Settings: range, voice type, play over other audio and backup">
+</p>
+
+## Download and install
+
+Soundcheck isn't on the Play Store. You install it straight from this page, which Android
+calls sideloading. It takes about a minute.
+
+1. **On your phone,** open the
+   [latest release](https://github.com/pashri/soundcheck/releases/latest) and tap
+   **soundcheck-1.0.0.apk** under *Assets* to download it. You need Android 11 or later.
+2. **Open the downloaded file.** Tap the download notification, or find it in the *Files*
+   app under *Downloads*.
+3. **Allow the install if Android asks.** The first time, Android says your browser or file
+   manager isn't allowed to install unknown apps. Tap **Settings**, switch on **Allow from
+   this source**, and go back.
+4. **Tap Install, then Open.** Soundcheck starts with a starter Programme ready to go. Allow
+   notifications when it asks, so the lock-screen controls can appear.
+
+**From a computer instead:** with USB debugging on, run
+`adb install soundcheck-1.0.0.apk`.
+
+**Updating:** install the newer APK the same way. It replaces the old one and keeps your
+library and recordings, because every release is signed with the same key.
+
+**Checking the download (optional):** the release notes list the APK's SHA-256 checksum.
+Every release is signed by the same certificate, whose SHA-256 is
+`e5344cc15ea8190e23d5dd6380798a96d56e284781ff29f7054fbffb426bf5ef`.
+
+**Removing it:** long-press the icon and choose *Uninstall*. That deletes your library, so
+back it up first if you might want it again.
+
+---
+
+The rest of this page is for people building Soundcheck from source.
 
 ## How it's built
 
@@ -93,6 +238,15 @@ tools/run-native-tests.sh          # C++ engine tests, on this Mac
 
 A debug build installs as "Soundcheck debug" (`org.pashri.soundcheck.debug`), beside the
 release, with its own data.
+
+A debug build can feed the Tuner a steady synthetic tone instead of the microphone, which
+is handy on the emulator (its microphone can hang it) and for screenshots. Release builds
+don't contain this:
+
+```bash
+adb shell am start -n org.pashri.soundcheck.debug/org.pashri.soundcheck.MainActivity \
+    --ef demoTuneHz 442.04   # the Tuner reads A4, 8 cents sharp
+```
 
 The piano samples are committed under `app/src/main/assets/piano/`.
 `tools/fetch-piano-samples.sh` rebuilds them from the original archive; it needs `ffmpeg`
