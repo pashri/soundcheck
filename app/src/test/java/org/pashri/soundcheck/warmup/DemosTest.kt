@@ -35,17 +35,46 @@ class DemosTest {
     }
 
     @Test
-    fun `a Pattern auditions in the Range's lowest key when it fits`() {
+    fun `a Pattern auditions in the Range's lowest key when it fits, after its Key Chord`() {
         val notes = patternDemoNotes(pattern = StarterPatterns.TRIAD, range = tenor)
-        assertEquals(listOf(48, 52, 55, 52, 48), notes.map { it.pitch.midi })
-        assertEquals(0L, notes.first().startFrame)
-        assertEquals(32_000L, notes.first().lengthFrames)
+        val chord = notes.filter { it.part == PianoPart.KEY_CHORD }
+        val demo = notes.filter { it.part == PianoPart.DEMO }
+        assertEquals(listOf(48, 52, 55), chord.map { it.pitch.midi })
+        assertTrue(chord.all { it.startFrame == 0L })
+        val chordEnd = chord.first().endFrame
+        assertEquals(listOf(48, 52, 55, 52, 48), demo.map { it.pitch.midi })
+        assertEquals(chordEnd, demo.first().startFrame)
+        assertEquals(32_000L, demo.first().lengthFrames)
+        assertEquals(
+            listOf(
+                PianoPart.KEY_CHORD, PianoPart.KEY_CHORD, PianoPart.KEY_CHORD,
+                PianoPart.DEMO, PianoPart.DEMO, PianoPart.DEMO, PianoPart.DEMO, PianoPart.DEMO,
+            ),
+            notes.map { it.part },
+        )
+    }
+
+    @Test
+    fun `the Key Chord auditions the right pitches for a non-major quality`() {
+        val minorTriad = StarterPatterns.MINOR_FIVE_NOTE_SCALE.copy(keyChord = KeyChord.MINOR)
+        val notes = patternDemoNotes(pattern = minorTriad, range = tenor)
+        val chord = notes.filter { it.part == PianoPart.KEY_CHORD }
+        assertEquals(KeyChord.MINOR.pitchesOn(chord.first().pitch), chord.map { it.pitch })
+    }
+
+    @Test
+    fun `the Key Chord comes before every event of the Pattern`() {
+        val notes = patternDemoNotes(pattern = StarterPatterns.DOUBLE_ARPEGGIO, range = tenor)
+        val chordEnd = notes.filter { it.part == PianoPart.KEY_CHORD }.maxOf { it.endFrame }
+        val demoStarts = notes.filter { it.part == PianoPart.DEMO }.map { it.startFrame }
+        assertTrue(demoStarts.all { it >= chordEnd })
     }
 
     @Test
     fun `a Pattern too wide for the Range auditions on middle C`() {
         val notes = patternDemoNotes(pattern = pattern("1 ♯13"), range = tenor)
-        assertEquals(listOf(60, 82), notes.map { it.pitch.midi })
+        val demo = notes.filter { it.part == PianoPart.DEMO }
+        assertEquals(listOf(60, 82), demo.map { it.pitch.midi })
     }
 
     @Test

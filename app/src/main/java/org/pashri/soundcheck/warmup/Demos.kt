@@ -51,12 +51,14 @@ fun auditionKey(span: SungSpan, range: Range): Pitch? {
 }
 
 /**
- * A Pattern played once in its [auditionKey] at [AUDITION_BPM], built as the Demo of a
- * Step whose Range is exactly as wide as the Pattern, so it shares the Programme's timing.
+ * The Pattern's Key Chord, then the Pattern once, in its [auditionKey] at [AUDITION_BPM],
+ * built as the Demo of a Step whose Range is exactly as wide as the Pattern, so both share
+ * the Programme's own Key-Chord-then-Iteration timing (see [buildStepTimeline]).
  *
  * @param pattern the Pattern.
  * @param range the app's Range.
- * @return the notes in order, from frame 0, or none if no key keeps it on the piano.
+ * @return the Key Chord's notes then the Pattern's, in order from frame 0, or none if no key
+ *     keeps the Pattern on the piano.
  */
 fun patternDemoNotes(pattern: Pattern, range: Range): List<PianoNoteEvent> {
     val span = pattern.span
@@ -68,7 +70,20 @@ fun patternDemoNotes(pattern: Pattern, range: Range): List<PianoNoteEvent> {
         direction = Direction.START_LOW,
     )
     val exact = Range(lowest = key + span.lowest, highest = key + span.highest)
-    return demoNotes(step = step, range = exact)
+    val timeline = buildStepTimeline(step = step, range = exact, announcementFrames = 0L)
+        ?: return emptyList()
+    val events = timeline.events.filterIsInstance<PianoNoteEvent>()
+    val demo = events.filter { it.part == PianoPart.DEMO }
+    val chordStart = events
+        .filter { it.part == PianoPart.KEY_CHORD }
+        .minOfOrNull { it.startFrame }
+        ?: return emptyList()
+    val chord = events.filter { it.part == PianoPart.KEY_CHORD && it.startFrame == chordStart }
+    val demoStart = demo.minOf { it.startFrame }
+    val chordEnd = chord.maxOf { it.endFrame } - chordStart
+    val alignedChord = chord.map { it.copy(startFrame = it.startFrame - chordStart) }
+    val alignedDemo = demo.map { it.copy(startFrame = it.startFrame - demoStart + chordEnd) }
+    return alignedChord + alignedDemo
 }
 
 /** A Sound no library holds; an audition has no Announcement. */

@@ -81,7 +81,10 @@ interface PatternEditorActions {
     /** Deletes the Pattern and the Steps that use it; the editor then closes. */
     fun delete()
 
-    /** Plays the Pattern once, or stops it if it is sounding. */
+    /**
+     * Plays the Pattern's Key Chord in the audition key, then the Pattern once, or stops
+     * both if they are sounding.
+     */
     fun playPattern()
 
     /** Stops the Pattern playing, as the screen goes away. */
