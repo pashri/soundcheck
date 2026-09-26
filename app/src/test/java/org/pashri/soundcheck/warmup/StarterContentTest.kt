@@ -39,7 +39,7 @@ class StarterContentTest {
             all.map { it.name },
         )
         assertEquals(listOf(7, 12, 19, 7, 7, 7, 14, 12), all.map { it.span.halfSteps })
-        assertEquals(listOf(12, 20, 16, 16, 12, 12, 20, 12), all.map { it.lengthInEighths })
+        assertEquals(listOf(12, 10, 16, 16, 12, 12, 20, 12), all.map { it.lengthInEighths })
         assertEquals(
             listOf(
                 KeyChord.MAJOR, KeyChord.MAJOR, KeyChord.MAJOR, KeyChord.ROOT_ONLY,
