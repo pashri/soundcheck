@@ -8,12 +8,13 @@ import androidx.compose.ui.graphics.Color
  *
  * @property paper page background.
  * @property ink primary text and strokes.
- * @property muted secondary text.
+ * @property muted secondary text, and the borders of text fields.
  * @property rule divider lines.
  * @property faint decorative strokes and unselected outlines; never used for text.
  * @property accent vermilion fills and highlights.
  * @property onAccent text drawn on an [accent] fill.
  * @property accentText vermilion used as text on [paper].
+ * @property raised what dialogs, menus and text fields sit on, a step off the page.
  */
 @Immutable
 data class ManuscriptColors(
@@ -25,6 +26,7 @@ data class ManuscriptColors(
     val accent: Color,
     val onAccent: Color,
     val accentText: Color,
+    val raised: Color,
 )
 
 /** Manuscript by day: warm paper, ink and vermilion. */
@@ -37,6 +39,7 @@ val DayColors: ManuscriptColors = ManuscriptColors(
     accent = Color(0xFFC23B22),
     onAccent = Color(0xFFFFF8F0),
     accentText = Color(0xFFA8321C),
+    raised = Color(0xFFFFFDF8),
 )
 
 /** Manuscript at night: dark ink ground, cream text and a lighter vermilion. */
@@ -49,4 +52,5 @@ val NightColors: ManuscriptColors = ManuscriptColors(
     accent = Color(0xFFF0785D),
     onAccent = Color(0xFF1C1A17),
     accentText = Color(0xFFF0785D),
+    raised = Color(0xFF2A2622),
 )

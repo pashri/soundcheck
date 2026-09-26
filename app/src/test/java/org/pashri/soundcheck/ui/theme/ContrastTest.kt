@@ -9,23 +9,50 @@ class ContrastTest {
     private val palettes = mapOf("day" to DayColors, "night" to NightColors)
 
     private fun assertReadable(name: String, text: Color, background: Color) {
-        val ratio = contrastRatio(text, background)
+        val ratio = contrastRatio(foreground = text, background = background)
         assertTrue("$name is only ${"%.2f".format(ratio)}:1", ratio >= MINIMUM_TEXT_CONTRAST)
     }
 
     @Test
     fun `black on white is the maximum contrast of 21 to 1`() {
-        assertEquals(21.0, contrastRatio(Color.Black, Color.White), 0.01)
+        val ratio = contrastRatio(foreground = Color.Black, background = Color.White)
+        assertEquals(21.0, ratio, 0.01)
     }
 
     @Test
     fun `every text colour is readable on its background in both themes`() {
         palettes.forEach { (theme, c) ->
-            assertReadable("$theme ink on paper", c.ink, c.paper)
-            assertReadable("$theme muted on paper", c.muted, c.paper)
-            assertReadable("$theme accent text on paper", c.accentText, c.paper)
-            assertReadable("$theme on-accent on accent", c.onAccent, c.accent)
-            assertReadable("$theme paper on ink", c.paper, c.ink)
+            assertReadable(name = "$theme ink on paper", text = c.ink, background = c.paper)
+            assertReadable(name = "$theme muted on paper", text = c.muted, background = c.paper)
+            assertReadable(
+                name = "$theme accent text on paper",
+                text = c.accentText,
+                background = c.paper,
+            )
+            assertReadable(
+                name = "$theme on-accent on accent",
+                text = c.onAccent,
+                background = c.accent,
+            )
+            assertReadable(name = "$theme paper on ink", text = c.paper, background = c.ink)
+        }
+    }
+
+    @Test
+    fun `text is readable on raised surfaces such as dialogs and menus`() {
+        palettes.forEach { (theme, c) ->
+            assertReadable(name = "$theme ink on raised", text = c.ink, background = c.raised)
+            assertReadable(name = "$theme muted on raised", text = c.muted, background = c.raised)
+            assertReadable(
+                name = "$theme accent text on raised",
+                text = c.accentText,
+                background = c.raised,
+            )
+            assertReadable(
+                name = "$theme a dialog button's accent on raised",
+                text = c.accent,
+                background = c.raised,
+            )
         }
     }
 

@@ -1,5 +1,6 @@
 package org.pashri.soundcheck.ui.theme
 
+import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -68,5 +69,30 @@ object ManuscriptType {
         fontFamily = SansFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
+    )
+}
+
+/**
+ * Material's type scale in the Manuscript faces, for the text Material's own components
+ * draw: display and headline styles (a dialog's title) in Instrument Serif, everything else
+ * (a dialog's text, a menu item, a button) in IBM Plex Sans. Sizes stay Material's.
+ */
+val ManuscriptTypography: Typography = Typography().let { base ->
+    base.copy(
+        displayLarge = base.displayLarge.copy(fontFamily = SerifFamily),
+        displayMedium = base.displayMedium.copy(fontFamily = SerifFamily),
+        displaySmall = base.displaySmall.copy(fontFamily = SerifFamily),
+        headlineLarge = base.headlineLarge.copy(fontFamily = SerifFamily),
+        headlineMedium = base.headlineMedium.copy(fontFamily = SerifFamily),
+        headlineSmall = base.headlineSmall.copy(fontFamily = SerifFamily),
+        titleLarge = base.titleLarge.copy(fontFamily = SansFamily),
+        titleMedium = base.titleMedium.copy(fontFamily = SansFamily),
+        titleSmall = base.titleSmall.copy(fontFamily = SansFamily),
+        bodyLarge = base.bodyLarge.copy(fontFamily = SansFamily),
+        bodyMedium = base.bodyMedium.copy(fontFamily = SansFamily),
+        bodySmall = base.bodySmall.copy(fontFamily = SansFamily),
+        labelLarge = base.labelLarge.copy(fontFamily = SansFamily),
+        labelMedium = base.labelMedium.copy(fontFamily = SansFamily),
+        labelSmall = base.labelSmall.copy(fontFamily = SansFamily),
     )
 }
