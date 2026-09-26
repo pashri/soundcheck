@@ -75,8 +75,7 @@ class MetronomeViewModel(
         metronome.hide()
     }
 
-    /** Stops clicking. Safe to call when already stopped. */
-    fun stop() {
+    override fun stop() {
         metronome.stop()
     }
 
@@ -104,6 +103,7 @@ private fun uiState(status: MetronomeStatus, beat: Beat?): MetronomeUiState = Me
     bpm = status.bpm,
     accentEvery = status.accentEvery,
     running = status.running,
+    paused = status.paused,
     beatInBar = beat?.positionInBar,
     beatIndex = beat?.index,
 )

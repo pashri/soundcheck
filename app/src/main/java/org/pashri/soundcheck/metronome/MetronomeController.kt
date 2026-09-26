@@ -68,7 +68,9 @@ fun offersHeadphones(shown: Boolean, held: Boolean): Boolean = shown || held
  * notification, so another press or Play starts it again. It ends (stopped, nothing held)
  * when Stop is pressed on screen (a press while the screen shows does the same), Close is
  * pressed in the notification, another tool starts, or audio focus is lost for good.
- * Unplugging headphones pauses it. Call from the main thread.
+ * Unplugging headphones pauses it. A pause while notifications are turned off ends it
+ * instead, so no Metronome ever sits paused, holding focus and the service, where nobody can
+ * see it. Call from the main thread.
  *
  * @param output where clicks play.
  * @param focus audio focus, taken while clicking.
@@ -76,6 +78,8 @@ fun offersHeadphones(shown: Boolean, held: Boolean): Boolean = shown || held
  *     tool taking it stops the Metronome.
  * @param headphones the headphone button, offered the Metronome as [offersHeadphones] says.
  * @param scope runs the clicks; it must outlive every screen.
+ * @param notificationsShown whether Android shows Soundcheck's notifications, read at each
+ *     pause.
  */
 class MetronomeController(
     output: SoundOutput,
@@ -83,6 +87,7 @@ class MetronomeController(
     private val arbiter: ToolArbiter,
     private val headphones: HeadphoneOffer,
     scope: CoroutineScope,
+    private val notificationsShown: () -> Boolean,
 ) {
     private val metronome = Metronome(output = output, scope = scope)
     private val _status = MutableStateFlow(MetronomeStatus())
@@ -134,10 +139,15 @@ class MetronomeController(
 
     /**
      * Pauses a running Metronome: silent, keeping audio focus, the tool slot, the headphone
-     * button and the notification. Does nothing unless it is running.
+     * button and the notification. With notifications turned off it ends instead, since a
+     * paused Metronome would have nothing to show it. Does nothing unless it is running.
      */
     fun pause() {
         if (!_status.value.running) return
+        if (!notificationsShown()) {
+            stop()
+            return
+        }
         metronome.stop()
         _status.update { it.copy(running = false, paused = true) }
     }

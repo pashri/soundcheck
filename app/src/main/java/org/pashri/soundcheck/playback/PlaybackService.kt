@@ -13,12 +13,8 @@ import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import org.pashri.soundcheck.SoundcheckApplication
 import org.pashri.soundcheck.di.AppContainer
@@ -32,14 +28,13 @@ import org.pashri.soundcheck.warmup.Playback
  * needs it ([serviceShows]). While a Programme is loaded its notification carries the app's
  * media session ([MediaButtonSession]), so the lock screen shows the Programme's controls;
  * while only the Metronome plays or is paused, the notification gives its tempo with Pause
- * (or Play) and Close. The
- * session itself belongs to the app, so the headphone button reaches the Metronome too;
- * with "Play over other audio" on there is none, and the notification keeps its own
- * buttons. Pulling out headphones (or a headset disconnecting) pauses the Programme and the
- * Metronome, so neither switches to the loudspeaker. When the session is made or
- * released, the notification switches tool, or notifications are allowed after the first
- * post, a new notification replaces the old one (see [notificationPost]), so the media card
- * appears from the first Start.
+ * (or Play) and Close. The session itself belongs to the app, so the headphone button
+ * reaches the Metronome too; with "Play over other audio" on there is none, and the
+ * notification keeps its own buttons. Pulling out headphones (or a headset disconnecting)
+ * pauses the Programme and the Metronome, so neither switches to the loudspeaker. When the
+ * session is made or released, the notification switches tool, or notifications are
+ * allowed after the first post, a new notification replaces the old one (see
+ * [notificationPost]), so the media card appears from the first Start.
  */
 class PlaybackService : Service() {
     private val scope = MainScope()
@@ -69,12 +64,11 @@ class PlaybackService : Service() {
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         scope.launch {
-            combine(
-                flow = container.warmup.playback,
-                flow2 = settledMetronome(),
-            ) { playback, metronome ->
-                playback to metronome
-            }.collect { (playback, metronome) -> show(playback = playback, metronome = metronome) }
+            withSettledMetronome(
+                other = container.warmup.playback,
+                status = container.metronome.status,
+                settleMs = SETTLE_MS,
+            ).collect { (playback, metronome) -> show(playback = playback, metronome = metronome) }
         }
         scope.launch { container.mediaButtons.session.collect(::onSession) }
     }
@@ -115,15 +109,6 @@ class PlaybackService : Service() {
         scope.cancel()
         super.onDestroy()
     }
-
-    /**
-     * The Metronome's status, with tempo and accent changes settling for a moment while it
-     * is held, so dragging the tempo doesn't flood the notification past Android's rate
-     * limit. Starting from nothing and ending come through at once.
-     */
-    @OptIn(FlowPreview::class)
-    private fun settledMetronome(): Flow<MetronomeStatus> =
-        container.metronome.status.debounce { if (it.held) SETTLE_MS else 0L }
 
     private fun currentShows(): ServiceShows? = serviceShows(
         programmeLoaded = container.warmup.playback.value != null,
@@ -233,7 +218,7 @@ class PlaybackService : Service() {
         /** End the Metronome. */
         const val ACTION_CLOSE_METRONOME: String = "org.pashri.soundcheck.action.CLOSE_METRONOME"
 
-        /** How long tempo and accent changes settle before the notification shows them. */
+        /** How long a held Metronome's changes settle before the notification shows them. */
         private const val SETTLE_MS: Long = 250L
 
         private val STOPS = setOf(ACTION_STOP, ACTION_CLOSE_METRONOME)

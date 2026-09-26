@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,13 +66,16 @@ import org.pashri.soundcheck.ui.components.ScreenHeader
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SoundcheckTheme
+import org.pashri.soundcheck.ui.warmup.rememberNotificationPrompt
 
 /**
  * The Metronome tab, wired to its view model. While the screen shows, the headphone button
  * can start and stop the Metronome. Leaving the screen (switching tabs, the screen off, the
  * app in the background) never stops it: a playing or paused Metronome keeps the button,
  * and a stopped one gives it back. The Stop button ends it; off screen, the headphone
- * button and the notification pause it instead. A configuration change isn't leaving.
+ * button and the notification pause it instead, and back on screen it shows as paused, with
+ * Resume and Stop. A configuration change isn't leaving. The first Start ever asks to show
+ * notifications, for the Metronome's notification.
  *
  * @param factory builds the [MetronomeViewModel].
  */
@@ -92,7 +96,31 @@ fun MetronomeRoute(factory: ViewModelProvider.Factory) {
     DisposableEffect(key1 = viewModel) {
         onDispose { if (activity?.isChangingConfigurations != true) viewModel.onHidden() }
     }
-    MetronomeScreen(state = state, actions = viewModel)
+    val askForNotifications by rememberUpdatedState(newValue = rememberNotificationPrompt())
+    val actions = remember(key1 = viewModel) {
+        AsksBeforeStart(
+            actions = viewModel,
+            running = { viewModel.uiState.value.running },
+            ask = { askForNotifications() },
+        )
+    }
+    MetronomeScreen(state = state, actions = actions)
+}
+
+/**
+ * The screen's actions, asking to show notifications (once ever, see
+ * [rememberNotificationPrompt]) just before a Start, so the Metronome's notification can
+ * appear while it plays with the screen off.
+ */
+private class AsksBeforeStart(
+    private val actions: MetronomeActions,
+    private val running: () -> Boolean,
+    private val ask: () -> Unit,
+) : MetronomeActions by actions {
+    override fun toggle() {
+        if (!running()) ask()
+        actions.toggle()
+    }
 }
 
 /**
@@ -127,7 +155,7 @@ fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
                 Spacer(Modifier.height(22.dp))
                 AccentPicker(selected = state.accentEvery, onSelect = actions::setAccent)
                 Spacer(Modifier.height(22.dp))
-                TransportButtons(running = state.running, actions = actions)
+                TransportButtons(state = state, actions = actions)
             }
         }
     }
@@ -145,6 +173,16 @@ private fun TempoReadout(state: MetronomeUiState) {
         modifier = Modifier.semantics { contentDescription = "${state.bpm} beats per minute" },
     )
     Text(text = "BEATS PER MINUTE", style = ManuscriptType.label, color = colors.muted)
+    state.caption?.let {
+        Text(
+            text = it,
+            style = ManuscriptType.label,
+            color = colors.accent,
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .semantics { contentDescription = "Paused" },
+        )
+    }
 }
 
 @Composable
@@ -324,21 +362,22 @@ private fun AccentChip(
  * a large font wraps a label, rather than letting the text reach the border.
  */
 @Composable
-private fun TransportButtons(running: Boolean, actions: MetronomeActions) {
+private fun TransportButtons(state: MetronomeUiState, actions: MetronomeActions) {
     Row(
         modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // While paused, Stop takes Tap tempo's place, so a paused Metronome can be ended.
         OutlineButton(
-            text = "Tap tempo",
-            onClick = actions::tap,
+            text = if (state.paused) "Stop" else "Tap tempo",
+            onClick = if (state.paused) actions::stop else actions::tap,
             modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = TRANSPORT_HEIGHT),
         )
         AccentButton(
-            text = if (running) "Stop" else "Start",
+            text = state.startLabel,
             onClick = actions::toggle,
             modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = TRANSPORT_HEIGHT),
-            icon = if (running) ManuscriptIcons.Stop else ManuscriptIcons.Play,
+            icon = if (state.running) ManuscriptIcons.Stop else ManuscriptIcons.Play,
         )
     }
 }
@@ -353,6 +392,7 @@ private object PreviewActions : MetronomeActions {
     override fun setAccent(every: Int?) = Unit
     override fun tap() = Unit
     override fun toggle() = Unit
+    override fun stop() = Unit
 }
 
 @Preview(widthDp = 390, heightDp = 844)

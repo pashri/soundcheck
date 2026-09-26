@@ -58,8 +58,10 @@ enum class NotificationButton(
  * @property attachesSession whether the notification is tied to the media session, which
  *   makes it the lock screen's media card.
  * @property opens the tab a tap on the notification opens.
- * @property dismissAction the intent action sent to [PlaybackService] when it is swiped away
- *   (only possible while paused).
+ * @property dismissAction the intent action sent to [PlaybackService] when it is swiped away:
+ *   while paused, and on Android 14 and later even while playing, since a foreground
+ *   service's notification without a media session can be dismissed there. Swiping the
+ *   Metronome's away closes it.
  */
 data class NotificationSpec(
     val buttons: List<NotificationButton>,

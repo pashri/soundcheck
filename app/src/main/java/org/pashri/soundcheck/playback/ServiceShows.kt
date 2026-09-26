@@ -1,6 +1,12 @@
 package org.pashri.soundcheck.playback
 
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import org.pashri.soundcheck.metronome.MetronomeController
+import org.pashri.soundcheck.metronome.MetronomeStatus
 import org.pashri.soundcheck.warmup.WarmupController
 
 /** Which tool the playback service's notification is about. */
@@ -38,4 +44,29 @@ fun serviceShows(programmeLoaded: Boolean, metronomeHeld: Boolean): ServiceShows
 fun onHeadphonesUnplugged(warmup: WarmupController, metronome: MetronomeController) {
     warmup.pause()
     metronome.pause()
+}
+
+/**
+ * Pairs each value of [other] with the Metronome's status as it is now, redrawing on
+ * Metronome changes once they have settled: while the Metronome is held, a change waits
+ * [settleMs] for the next (so dragging the tempo doesn't flood the notification past
+ * Android's rate limit); ending comes through at once. The status in each pair is always
+ * read fresh, never the settled one, so a pair emitted while a start is still settling can't
+ * say the Metronome is stopped.
+ *
+ * @param other what else the notification follows, such as the Warm-up's playback.
+ * @param status the Metronome's status.
+ * @param settleMs how long a change to a held Metronome waits.
+ * @return each value of [other] with the current status.
+ */
+@OptIn(FlowPreview::class)
+fun <T> withSettledMetronome(
+    other: Flow<T>,
+    status: StateFlow<MetronomeStatus>,
+    settleMs: Long,
+): Flow<Pair<T, MetronomeStatus>> = combine(
+    flow = other,
+    flow2 = status.debounce { if (it.held) settleMs else 0L },
+) { value, _ ->
+    value to status.value
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
 import android.util.Log
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
@@ -104,6 +105,9 @@ class AppContainer(context: Context) {
             arbiter = toolArbiter,
             headphones = mediaButtons.button,
             scope = appScope,
+            notificationsShown = {
+                NotificationManagerCompat.from(appContext).areNotificationsEnabled()
+            },
         ).also { keepServiceWhile(needed = it.status.map { status -> status.held }) }
     }
 

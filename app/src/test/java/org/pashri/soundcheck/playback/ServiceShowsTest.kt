@@ -1,7 +1,11 @@
 package org.pashri.soundcheck.playback
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -60,6 +64,7 @@ class ServiceShowsTest {
                 scope = backgroundScope,
             ),
             scope = backgroundScope,
+            notificationsShown = { true },
         )
 
     @Test
@@ -88,5 +93,43 @@ class ServiceShowsTest {
         runCurrent()
 
         assertEquals(false, warmup.playback.value?.playing)
+    }
+
+    @Test
+    fun `a change while a start settles is paired with the Metronome as it is now`() = runTest {
+        val playback = MutableStateFlow(0)
+        val status = MutableStateFlow(MetronomeStatus())
+        val seen = mutableListOf<Pair<Int, MetronomeStatus>>()
+        backgroundScope.launch {
+            withSettledMetronome(other = playback, status = status, settleMs = 250L)
+                .collect { seen.add(it) }
+        }
+        runCurrent()
+        status.value = MetronomeStatus(running = true)
+        advanceTimeBy(100)
+        playback.value = 1
+        runCurrent()
+
+        assertEquals(1 to MetronomeStatus(running = true), seen.last())
+    }
+
+    @Test
+    fun `a held Metronome's changes settle, and ending comes through at once`() = runTest {
+        val status = MutableStateFlow(MetronomeStatus(running = true))
+        val seen = mutableListOf<MetronomeStatus>()
+        backgroundScope.launch {
+            withSettledMetronome(other = flowOf(Unit), status = status, settleMs = 250L)
+                .collect { seen.add(it.second) }
+        }
+        advanceTimeBy(300)
+        seen.clear()
+        status.value = MetronomeStatus(bpm = 100, running = true)
+        advanceTimeBy(50)
+        status.value = MetronomeStatus(bpm = 101, running = true)
+        advanceTimeBy(300)
+        assertEquals(listOf(MetronomeStatus(bpm = 101, running = true)), seen)
+        status.value = MetronomeStatus(bpm = 101)
+        runCurrent()
+        assertEquals(MetronomeStatus(bpm = 101), seen.last())
     }
 }

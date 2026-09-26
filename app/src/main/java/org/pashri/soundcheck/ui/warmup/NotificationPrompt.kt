@@ -16,8 +16,9 @@ import org.pashri.soundcheck.playback.PlaybackService
 /**
  * What to call just before a Start. On Android 13 and later the first Start ever asks to show
  * notifications, for the lock-screen controls; playback goes ahead whatever the answer, and a
- * yes redraws the playing Programme's notification as the media card. The
- * Warm-up home and the Programme editor share it, so the question is asked only once.
+ * yes redraws the playback notification (the playing Programme's media card, or the
+ * Metronome's). The Warm-up home, the Programme editor and the Metronome share it, so the
+ * question is asked only once.
  *
  * @return asks for the notification permission when [shouldAskForNotifications] says to.
  */
@@ -52,8 +53,9 @@ internal fun shouldAskForNotifications(context: Context): Boolean {
 }
 
 /**
- * Asks the playback service to put its notification up again, now that it may show
- * as the media card. With no Programme playing, the service just stops again.
+ * Asks the playback service to put its notification up again, now that it may show (as
+ * the media card, or as the Metronome's). With neither a Programme loaded nor the
+ * Metronome playing or paused, the service just stops again.
  */
 private fun refreshPlaybackNotification(context: Context) {
     val intent = Intent(context, PlaybackService::class.java)
