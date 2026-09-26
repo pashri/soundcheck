@@ -50,12 +50,15 @@ class DemosTest {
 
     @Test
     fun `a Pattern too high for middle C moves down to stay on the piano`() {
-        assertEquals(Pitch.parse("C3"), auditionKey(SungSpan(lowest = 0, highest = 60), tenor))
+        assertEquals(
+            Pitch.parse("C3"),
+            auditionKey(span = SungSpan(lowest = 0, highest = 60), range = tenor),
+        )
     }
 
     @Test
     fun `a Pattern wider than the keyboard has nothing to audition`() {
-        assertNull(auditionKey(SungSpan(lowest = 0, highest = 90), tenor))
+        assertNull(auditionKey(span = SungSpan(lowest = 0, highest = 90), range = tenor))
         assertTrue(patternDemoNotes(pattern = pattern("99"), range = tenor).isEmpty())
     }
 }

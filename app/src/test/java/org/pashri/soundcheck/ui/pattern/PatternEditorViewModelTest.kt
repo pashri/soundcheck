@@ -49,10 +49,11 @@ class PatternEditorViewModelTest {
 
     private fun TestScope.viewModel(
         audition: Audition = testAudition(),
+        settings: FakeStore<WarmupSettings> = FakeStore(WarmupSettings.DEFAULT),
     ): PatternEditorViewModel = PatternEditorViewModel.Factory(
         patternId = triad,
         library = library,
-        settings = FakeStore(WarmupSettings.DEFAULT),
+        settings = settings,
         audition = audition,
     ).create(PatternEditorViewModel::class.java)
 
@@ -134,6 +135,15 @@ class PatternEditorViewModelTest {
         runCurrent()
         assertTrue(viewModel.auditioning.value)
         viewModel.playPattern()
+        assertFalse(audition.playing.value)
+    }
+
+    @Test
+    fun `playing the Pattern does nothing until settings have loaded`() = runTest(dispatcher) {
+        val audition = testAudition()
+        val viewModel = viewModel(audition = audition, settings = FakeStore(null))
+        viewModel.playPattern()
+        runCurrent()
         assertFalse(audition.playing.value)
     }
 }

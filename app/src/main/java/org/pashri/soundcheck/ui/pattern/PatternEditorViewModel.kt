@@ -170,7 +170,7 @@ class PatternEditorViewModel(
     override fun playPattern() {
         if (audition.playing.value) return audition.stop()
         val pattern = library.data.value?.pattern(patternId) ?: return
-        val range = settings.data.value?.range ?: WarmupSettings.DEFAULT.range
+        val range = settings.data.value?.range ?: return
         audition.play(patternDemoNotes(pattern = pattern, range = range))
     }
 

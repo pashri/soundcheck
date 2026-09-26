@@ -1,5 +1,6 @@
 package org.pashri.soundcheck.ui.step
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.pashri.soundcheck.ui.components.BackHeader
@@ -64,7 +67,13 @@ fun StepEditorRoute(factory: ViewModelProvider.Factory, links: StepLinks) {
     val viewModel: StepEditorViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val auditioning by viewModel.auditioning.collectAsStateWithLifecycle()
-    DisposableEffect(viewModel) { onDispose { viewModel.stopAudition() } }
+    val activity = LocalActivity.current
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        if (activity?.isChangingConfigurations != true) viewModel.stopAudition()
+    }
+    DisposableEffect(viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.stopAudition() }
+    }
     EditorFrame(state = state, onGone = links.back) { shown ->
         StepEditorScreen(
             state = shown,

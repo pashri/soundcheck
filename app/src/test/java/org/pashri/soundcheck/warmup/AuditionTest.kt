@@ -61,7 +61,7 @@ class AuditionTest {
     }
 
     private fun TestScope.playingProgramme(rig: Rig) {
-        rig.controller.play(StarterProgrammes.WARM_UP, VoiceType.TENOR.range)
+        rig.controller.play(programme = StarterProgrammes.WARM_UP, range = VoiceType.TENOR.range)
         runCurrent()
     }
 

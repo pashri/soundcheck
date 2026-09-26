@@ -1,5 +1,6 @@
 package org.pashri.soundcheck.ui.pattern
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,7 +39,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.pashri.soundcheck.ui.components.BackHeader
@@ -69,7 +72,13 @@ fun PatternEditorRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
     val viewModel: PatternEditorViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val auditioning by viewModel.auditioning.collectAsStateWithLifecycle()
-    DisposableEffect(viewModel) { onDispose { viewModel.stopAudition() } }
+    val activity = LocalActivity.current
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        if (activity?.isChangingConfigurations != true) viewModel.stopAudition()
+    }
+    DisposableEffect(viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.stopAudition() }
+    }
     EditorFrame(state = state, onGone = onBack) { shown ->
         PatternEditorScreen(
             state = shown,
@@ -117,7 +126,7 @@ fun PatternEditorScreen(
         ) {
             Text(text = state.fit, style = ManuscriptType.body, color = colors.muted)
             OutlineButton(
-                text = if (auditioning) "Stop" else "Play Pattern",
+                text = if (auditioning) "Stop the Pattern" else "Play Pattern",
                 onClick = actions::playPattern,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = auditioning || state.canPlay,

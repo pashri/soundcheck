@@ -54,7 +54,10 @@ class Audition(
     fun play(notes: List<PianoNoteEvent>): Boolean {
         stop()
         if (notes.isEmpty()) return false
-        arbiter.claim(Tool.AUDITION, onEvicted = ::halt)
+        // Claims the slot before asking for focus, so a playing Programme is already paused
+        // (not just about to be) when it receives the transient loss; otherwise it would see
+        // itself still holding the slot and resume once the Demo's focus request lands.
+        arbiter.claim(tool = Tool.AUDITION, onEvicted = ::halt)
         if (!focus.acquire(onLost = ::stop) || !output.start()) {
             focus.release()
             arbiter.release(Tool.AUDITION)
