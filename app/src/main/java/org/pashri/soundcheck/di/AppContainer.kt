@@ -40,6 +40,7 @@ import org.pashri.soundcheck.ui.step.StepEditorViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
+import org.pashri.soundcheck.warmup.Audition
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.ProgrammeId
@@ -205,7 +206,12 @@ class AppContainer(context: Context) {
      * @return the factory.
      */
     fun stepEditorFactory(ref: StepRef): ViewModelProvider.Factory =
-        StepEditorViewModel.Factory(ref = ref, library = library, settings = settings)
+        StepEditorViewModel.Factory(
+            ref = ref,
+            library = library,
+            settings = settings,
+            audition = audition,
+        )
 
     /**
      * Builds the Patterns list's view model.
@@ -223,7 +229,30 @@ class AppContainer(context: Context) {
      * @return the factory.
      */
     fun patternEditorFactory(id: PatternId): ViewModelProvider.Factory =
-        PatternEditorViewModel.Factory(patternId = id, library = library)
+        PatternEditorViewModel.Factory(
+            patternId = id,
+            library = library,
+            settings = settings,
+            audition = audition,
+        )
+
+    /**
+     * The editors' audition's own audio focus: a short transient request while a Demo or
+     * Pattern sounds, not asked for while "Play over other audio" is on.
+     */
+    private val auditionFocus: FocusGate =
+        MixingFocusGate(focus = AndroidAudioFocus(context), mixing = ::playsOverOtherAudio)
+
+    /** Plays a Step's Demo or a Pattern from the editors; it belongs to the app. */
+    val audition: Audition by lazy {
+        Audition(
+            output = soundOutput,
+            piano = piano,
+            focus = auditionFocus,
+            arbiter = toolArbiter,
+            scope = appScope,
+        )
+    }
 
     /** Whether "Play over other audio" is on; read each time a tool asks for focus. */
     private fun playsOverOtherAudio(): Boolean = settings.data.value?.playOverOtherAudio == true

@@ -11,10 +11,12 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.pashri.soundcheck.data.FakeStore
 import org.pashri.soundcheck.ui.components.EditorState
+import org.pashri.soundcheck.warmup.Audition
 import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.RangeOffset
 import org.pashri.soundcheck.warmup.SavedStep
@@ -23,7 +25,9 @@ import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StepKey
 import org.pashri.soundcheck.warmup.StepRef
 import org.pashri.soundcheck.warmup.WarmupSettings
+import org.pashri.soundcheck.warmup.testAudition
 import org.pashri.soundcheck.warmup.updateStep
+import org.pashri.soundcheck.warmup.withRangeOffset
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StepEditorViewModelTest {
@@ -43,9 +47,13 @@ class StepEditorViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel(): StepEditorViewModel =
-        StepEditorViewModel.Factory(ref = ref, library = library, settings = settings)
-            .create(StepEditorViewModel::class.java)
+    private fun TestScope.viewModel(audition: Audition = testAudition()): StepEditorViewModel =
+        StepEditorViewModel.Factory(
+            ref = ref,
+            library = library,
+            settings = settings,
+            audition = audition,
+        ).create(StepEditorViewModel::class.java)
 
     private fun saved(): SavedStep = checkNotNull(library.value.programme(starter)?.step(ref.key))
 
@@ -109,5 +117,27 @@ class StepEditorViewModelTest {
         runCurrent()
         assertEquals(EditorState.Gone, viewModel.uiState.value)
         assertEquals(5, library.value.programme(starter)?.steps?.size)
+    }
+
+    @Test
+    fun `hearing the Demo plays it and a second tap stops it`() = runTest(dispatcher) {
+        val audition = testAudition()
+        val viewModel = viewModel(audition = audition)
+        viewModel.hearDemo()
+        runCurrent()
+        assertTrue(viewModel.auditioning.value)
+        viewModel.hearDemo()
+        assertFalse(audition.playing.value)
+    }
+
+    @Test
+    fun `a Step that doesn't fit has no Demo to hear`() = runTest(dispatcher) {
+        library.edit { saved ->
+            saved.updateStep(ref) { it.withRangeOffset(bottom = -11, top = -11) }
+        }
+        val audition = testAudition()
+        viewModel(audition = audition).hearDemo()
+        runCurrent()
+        assertFalse(audition.playing.value)
     }
 }

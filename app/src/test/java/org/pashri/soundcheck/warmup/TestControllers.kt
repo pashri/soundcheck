@@ -31,3 +31,25 @@ fun TestScope.testController(focus: FocusGate = FakeFocusGate()): WarmupControll
         scope = backgroundScope,
     )
 }
+
+/**
+ * An [Audition] on fakes, running on the test's scheduler, for view model tests.
+ *
+ * @param focus the audio focus it asks for.
+ * @param arbiter the tool slot it takes.
+ * @return the audition.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+fun TestScope.testAudition(
+    focus: FocusGate = FakeFocusGate(),
+    arbiter: ToolArbiter = ToolArbiter(),
+): Audition {
+    val output = FakeSoundOutput(clockMs = { testScheduler.currentTime })
+    return Audition(
+        output = output,
+        piano = Piano(source = FakePianoSource(), output = output),
+        focus = focus,
+        arbiter = arbiter,
+        scope = backgroundScope,
+    )
+}

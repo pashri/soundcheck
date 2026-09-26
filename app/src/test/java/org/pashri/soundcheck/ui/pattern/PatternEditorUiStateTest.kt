@@ -121,6 +121,13 @@ class PatternEditorUiStateTest {
     }
 
     @Test
+    fun `only a Pattern that fits on the keyboard can be played`() {
+        assertTrue(state(id = StarterPatterns.TRIAD.id, selected = 0).canPlay)
+        val high = state(id = StarterPatterns.TRIAD.id, selected = 0, from = triadAs("99"))
+        assertFalse(high.canPlay)
+    }
+
+    @Test
     fun `the choice labels are the design's`() {
         assertEquals("root", chordChipLabel(KeyChord.ROOT_ONLY))
         assertEquals("maj7", chordChipLabel(KeyChord.MAJOR_SEVENTH))

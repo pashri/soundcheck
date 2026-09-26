@@ -12,14 +12,17 @@ import org.pashri.soundcheck.data.Store
 import org.pashri.soundcheck.ui.components.EditorState
 import org.pashri.soundcheck.ui.components.readyOrGone
 import org.pashri.soundcheck.warmup.Accidental
+import org.pashri.soundcheck.warmup.Audition
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.NoteLength
 import org.pashri.soundcheck.warmup.Pattern
 import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.PatternNote
+import org.pashri.soundcheck.warmup.WarmupSettings
 import org.pashri.soundcheck.warmup.deletePattern
 import org.pashri.soundcheck.warmup.lowered
+import org.pashri.soundcheck.warmup.patternDemoNotes
 import org.pashri.soundcheck.warmup.raised
 import org.pashri.soundcheck.warmup.savePattern
 import org.pashri.soundcheck.warmup.withNote
@@ -77,6 +80,12 @@ interface PatternEditorActions {
 
     /** Deletes the Pattern and the Steps that use it; the editor then closes. */
     fun delete()
+
+    /** Plays the Pattern once, or stops it if it is sounding. */
+    fun playPattern()
+
+    /** Stops the Pattern playing, as the screen goes away. */
+    fun stopAudition()
 }
 
 /**
@@ -85,12 +94,19 @@ interface PatternEditorActions {
  *
  * @param patternId the Pattern.
  * @param library the saved library.
+ * @param settings the saved settings, for the key the Pattern plays in.
+ * @param audition plays the Pattern.
  */
 class PatternEditorViewModel(
     private val patternId: PatternId,
     private val library: Store<Library>,
+    private val settings: Store<WarmupSettings>,
+    private val audition: Audition,
 ) : ViewModel(), PatternEditorActions {
     private val selected = MutableStateFlow(0)
+
+    /** Whether the Pattern is sounding. */
+    val auditioning: StateFlow<Boolean> = audition.playing
 
     /** What the editor shows. */
     val uiState: StateFlow<EditorState<PatternEditorUiState>> =
@@ -151,6 +167,17 @@ class PatternEditorViewModel(
         library.edit { it.deletePattern(patternId) }
     }
 
+    override fun playPattern() {
+        if (audition.playing.value) return audition.stop()
+        val pattern = library.data.value?.pattern(patternId) ?: return
+        val range = settings.data.value?.range ?: WarmupSettings.DEFAULT.range
+        audition.play(patternDemoNotes(pattern = pattern, range = range))
+    }
+
+    override fun stopAudition() {
+        audition.stop()
+    }
+
     /** The selected note's position, kept inside the Pattern as it is now. */
     private fun currentIndex(): Int {
         val notes = library.data.value?.pattern(patternId)?.notes ?: return 0
@@ -173,13 +200,21 @@ class PatternEditorViewModel(
      *
      * @param patternId the Pattern.
      * @param library the saved library.
+     * @param settings the saved settings.
+     * @param audition plays the Pattern.
      */
     class Factory(
         private val patternId: PatternId,
         private val library: Store<Library>,
+        private val settings: Store<WarmupSettings>,
+        private val audition: Audition,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            PatternEditorViewModel(patternId = patternId, library = library) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = PatternEditorViewModel(
+            patternId = patternId,
+            library = library,
+            settings = settings,
+            audition = audition,
+        ) as T
     }
 }

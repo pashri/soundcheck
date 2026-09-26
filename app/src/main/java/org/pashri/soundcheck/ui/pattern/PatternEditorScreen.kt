@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -67,8 +68,15 @@ import org.pashri.soundcheck.warmup.NoteLength
 fun PatternEditorRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
     val viewModel: PatternEditorViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val auditioning by viewModel.auditioning.collectAsStateWithLifecycle()
+    DisposableEffect(viewModel) { onDispose { viewModel.stopAudition() } }
     EditorFrame(state = state, onGone = onBack) { shown ->
-        PatternEditorScreen(state = shown, actions = viewModel, onBack = onBack)
+        PatternEditorScreen(
+            state = shown,
+            actions = viewModel,
+            onBack = onBack,
+            auditioning = auditioning,
+        )
     }
 }
 
@@ -79,12 +87,14 @@ fun PatternEditorRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
  * @param state what to show.
  * @param actions what the controls do.
  * @param onBack closes the editor.
+ * @param auditioning whether the Pattern is sounding, which turns its button into Stop.
  */
 @Composable
 fun PatternEditorScreen(
     state: PatternEditorUiState,
     actions: PatternEditorActions,
     onBack: () -> Unit,
+    auditioning: Boolean,
 ) {
     val colors = Manuscript.colors
     var renaming by rememberSaveable { mutableStateOf(false) }
@@ -106,6 +116,12 @@ fun PatternEditorScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(text = state.fit, style = ManuscriptType.body, color = colors.muted)
+            OutlineButton(
+                text = if (auditioning) "Stop" else "Play Pattern",
+                onClick = actions::playPattern,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = auditioning || state.canPlay,
+            )
             NoteChips(notes = state.notes, onSelect = actions::select)
             NoteTools(state = state, actions = actions)
             StepperRow(

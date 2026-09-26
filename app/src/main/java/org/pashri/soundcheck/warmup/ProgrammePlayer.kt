@@ -255,16 +255,8 @@ class ProgrammePlayer(
                 output.schedule(id = it.id, frame = frame, gain = ANNOUNCEMENT_GAIN)
             }
 
-            is PianoNoteEvent -> {
-                val key = piano.keyFor(event.pitch)
-                output.schedule(
-                    id = key.id,
-                    frame = frame,
-                    gain = gainOf(event.part),
-                    rate = key.rate,
-                    lengthFrames = event.lengthFrames,
-                )
-            }
+            is PianoNoteEvent ->
+                output.schedulePianoNote(piano = piano, event = event, origin = segment.origin)
         }
     }
 
@@ -321,11 +313,6 @@ class ProgrammePlayer(
             .map { it.soundId }
             .distinct()
             .forEach { announcements.prepare(it) }
-    }
-
-    private fun gainOf(part: PianoPart): Float = when (part) {
-        PianoPart.KEY_CHORD -> CHORD_GAIN
-        PianoPart.DEMO, PianoPart.GUIDE_MELODY -> MELODY_GAIN
     }
 
     /** Timing and loudness. */

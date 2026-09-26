@@ -10,11 +10,13 @@ import kotlinx.coroutines.flow.stateIn
 import org.pashri.soundcheck.data.Store
 import org.pashri.soundcheck.ui.components.EditorState
 import org.pashri.soundcheck.ui.components.readyOrGone
+import org.pashri.soundcheck.warmup.Audition
 import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.SavedStep
 import org.pashri.soundcheck.warmup.StepRef
 import org.pashri.soundcheck.warmup.WarmupSettings
+import org.pashri.soundcheck.warmup.demoNotes
 import org.pashri.soundcheck.warmup.removeStep
 import org.pashri.soundcheck.warmup.updateStep
 import org.pashri.soundcheck.warmup.withBpm
@@ -26,12 +28,17 @@ import org.pashri.soundcheck.warmup.withRangeOffset
  * @param ref the Step.
  * @param library the saved library.
  * @param settings the saved settings, for the Range.
+ * @param audition plays the Step's Demo.
  */
 class StepEditorViewModel(
     private val ref: StepRef,
     private val library: Store<Library>,
-    settings: Store<WarmupSettings>,
+    private val settings: Store<WarmupSettings>,
+    private val audition: Audition,
 ) : ViewModel(), StepEditorActions {
+    /** Whether the Demo is sounding. */
+    val auditioning: StateFlow<Boolean> = audition.playing
+
     /** What the editor shows. */
     val uiState: StateFlow<EditorState<StepEditorUiState>> =
         combine(library.data, settings.data) { saved, chosen ->
@@ -82,6 +89,18 @@ class StepEditorViewModel(
         library.edit { it.removeStep(ref) }
     }
 
+    override fun hearDemo() {
+        if (audition.playing.value) return audition.stop()
+        val saved = library.data.value ?: return
+        val range = settings.data.value?.range ?: return
+        val step = saved.programme(ref.programmeId)?.step(ref.key) ?: return
+        audition.play(demoNotes(step = saved.stepToPlay(step), range = range))
+    }
+
+    override fun stopAudition() {
+        audition.stop()
+    }
+
     private fun change(edit: (SavedStep) -> SavedStep) {
         library.edit { it.updateStep(ref, edit) }
     }
@@ -92,14 +111,20 @@ class StepEditorViewModel(
      * @param ref the Step.
      * @param library the saved library.
      * @param settings the saved settings.
+     * @param audition plays the Step's Demo.
      */
     class Factory(
         private val ref: StepRef,
         private val library: Store<Library>,
         private val settings: Store<WarmupSettings>,
+        private val audition: Audition,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            StepEditorViewModel(ref = ref, library = library, settings = settings) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = StepEditorViewModel(
+            ref = ref,
+            library = library,
+            settings = settings,
+            audition = audition,
+        ) as T
     }
 }

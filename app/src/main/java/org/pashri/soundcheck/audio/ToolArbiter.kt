@@ -10,6 +10,9 @@ enum class Tool {
 
     /** Plays a Programme. */
     WARM_UP,
+
+    /** Plays a Step's Demo or a Pattern once, from an editor. */
+    AUDITION,
 }
 
 /**

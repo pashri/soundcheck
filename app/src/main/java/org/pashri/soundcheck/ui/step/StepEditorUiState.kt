@@ -41,6 +41,7 @@ const val PHONE_VOICE: String = "phone voice"
  *     "C3 – A4 · 19 Iterations"; the Range alone when the Step doesn't fit.
  * @property warning why the Step will be skipped, or null when it fits.
  * @property guideMelody whether the piano plays the Pattern with you.
+ * @property canHearDemo whether the Step fits, so it has a Demo to hear.
  */
 data class StepEditorUiState(
     val title: String,
@@ -63,6 +64,7 @@ data class StepEditorUiState(
     val tripLabel: String,
     val warning: String?,
     val guideMelody: Boolean,
+    val canHearDemo: Boolean,
 )
 
 /** What the Step editor's controls do. */
@@ -101,6 +103,12 @@ interface StepEditorActions {
 
     /** Removes the Step from its Programme; the editor then closes. */
     fun remove()
+
+    /** Plays the Step's Demo, or stops it if it is sounding. */
+    fun hearDemo()
+
+    /** Stops the Demo, as the screen goes away. */
+    fun stopAudition()
 }
 
 /**
@@ -153,6 +161,7 @@ private fun build(
         tripLabel = tripLabel(range = range, offset = offset, trip = trip),
         warning = fitWarning(trip),
         guideMelody = saved.guideMelody,
+        canHearDemo = trip is RoundTrip.Fits,
     )
 }
 

@@ -13,7 +13,9 @@ import org.pashri.soundcheck.warmup.Pattern
 import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.PatternNotation
 import org.pashri.soundcheck.warmup.PatternNote
+import org.pashri.soundcheck.warmup.Range
 import org.pashri.soundcheck.warmup.VoiceType
+import org.pashri.soundcheck.warmup.auditionKey
 import org.pashri.soundcheck.warmup.patternUsage
 import org.pashri.soundcheck.warmup.voiceTypesFitting
 
@@ -46,6 +48,7 @@ data class NoteChip(val text: String, val selected: Boolean, val description: St
  * @property canDelete false for the library's only Pattern.
  * @property deleteNote what deleting the Pattern takes with it.
  * @property otherNames the other Patterns' names, which a rename must avoid.
+ * @property canPlay false when no key keeps every note on the piano.
  */
 data class PatternEditorUiState(
     val name: String,
@@ -65,6 +68,7 @@ data class PatternEditorUiState(
     val canDelete: Boolean,
     val deleteNote: String,
     val otherNames: List<String>,
+    val canPlay: Boolean,
 )
 
 /**
@@ -97,6 +101,7 @@ fun patternEditorUiState(library: Library, id: PatternId, selected: Int): Patter
         canDelete = library.patterns.size > 1,
         deleteNote = usageText(library.patternUsage(id)),
         otherNames = library.patterns.filter { it.id != id }.map { it.name },
+        canPlay = auditionKey(span = pattern.span, range = Range.PIANO) != null,
     )
 }
 

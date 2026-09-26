@@ -10,12 +10,15 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.pashri.soundcheck.data.FakeStore
 import org.pashri.soundcheck.ui.components.EditorState
 import org.pashri.soundcheck.warmup.Accidental
+import org.pashri.soundcheck.warmup.Audition
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.NoteLength
 import org.pashri.soundcheck.warmup.Pattern
@@ -24,6 +27,8 @@ import org.pashri.soundcheck.warmup.PatternNote
 import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StarterPatterns
 import org.pashri.soundcheck.warmup.StarterProgrammes
+import org.pashri.soundcheck.warmup.WarmupSettings
+import org.pashri.soundcheck.warmup.testAudition
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PatternEditorViewModelTest {
@@ -42,9 +47,14 @@ class PatternEditorViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel(): PatternEditorViewModel =
-        PatternEditorViewModel.Factory(patternId = triad, library = library)
-            .create(PatternEditorViewModel::class.java)
+    private fun TestScope.viewModel(
+        audition: Audition = testAudition(),
+    ): PatternEditorViewModel = PatternEditorViewModel.Factory(
+        patternId = triad,
+        library = library,
+        settings = FakeStore(WarmupSettings.DEFAULT),
+        audition = audition,
+    ).create(PatternEditorViewModel::class.java)
 
     private fun saved(): Pattern = checkNotNull(library.value.pattern(triad))
 
@@ -114,5 +124,16 @@ class PatternEditorViewModelTest {
         assertEquals(EditorState.Gone, viewModel.uiState.value)
         assertNull(library.value.pattern(triad))
         assertEquals(5, library.value.programme(starter)?.steps?.size)
+    }
+
+    @Test
+    fun `playing the Pattern sounds it and a second tap stops it`() = runTest(dispatcher) {
+        val audition = testAudition()
+        val viewModel = viewModel(audition = audition)
+        viewModel.playPattern()
+        runCurrent()
+        assertTrue(viewModel.auditioning.value)
+        viewModel.playPattern()
+        assertFalse(audition.playing.value)
     }
 }

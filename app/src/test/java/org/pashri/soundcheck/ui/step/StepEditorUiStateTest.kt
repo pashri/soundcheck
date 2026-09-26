@@ -112,6 +112,13 @@ class StepEditorUiStateTest {
     }
 
     @Test
+    fun `the Demo can be heard only when the Step fits`() {
+        assertTrue(checkNotNull(state(number = 1)).canHearDemo)
+        val narrowed = state(number = 5) { it.withRangeOffset(bottom = 0, top = -3) }
+        assertFalse(checkNotNull(narrowed).canHearDemo)
+    }
+
+    @Test
     fun `the tempo buttons stop at 30 and 300 bpm`() {
         val slowest = checkNotNull(state(number = 1) { it.withBpm(30) })
         assertFalse(slowest.canSlower)

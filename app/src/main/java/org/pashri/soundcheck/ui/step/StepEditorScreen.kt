@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -27,6 +28,7 @@ import org.pashri.soundcheck.ui.components.ConfirmDialog
 import org.pashri.soundcheck.ui.components.EditorFrame
 import org.pashri.soundcheck.ui.components.LinkCard
 import org.pashri.soundcheck.ui.components.MusicText
+import org.pashri.soundcheck.ui.components.OutlineButton
 import org.pashri.soundcheck.ui.components.QuietButton
 import org.pashri.soundcheck.ui.components.SectionLabel
 import org.pashri.soundcheck.ui.components.Segmented
@@ -61,8 +63,15 @@ data class StepLinks(
 fun StepEditorRoute(factory: ViewModelProvider.Factory, links: StepLinks) {
     val viewModel: StepEditorViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val auditioning by viewModel.auditioning.collectAsStateWithLifecycle()
+    DisposableEffect(viewModel) { onDispose { viewModel.stopAudition() } }
     EditorFrame(state = state, onGone = links.back) { shown ->
-        StepEditorScreen(state = shown, actions = viewModel, links = links)
+        StepEditorScreen(
+            state = shown,
+            actions = viewModel,
+            links = links,
+            auditioning = auditioning,
+        )
     }
 }
 
@@ -73,9 +82,15 @@ fun StepEditorRoute(factory: ViewModelProvider.Factory, links: StepLinks) {
  * @param state what to show.
  * @param actions what the controls do.
  * @param links where the cards and back go.
+ * @param auditioning whether the Demo is sounding, which turns its button into Stop.
  */
 @Composable
-fun StepEditorScreen(state: StepEditorUiState, actions: StepEditorActions, links: StepLinks) {
+fun StepEditorScreen(
+    state: StepEditorUiState,
+    actions: StepEditorActions,
+    links: StepLinks,
+    auditioning: Boolean,
+) {
     val colors = Manuscript.colors
     var removing by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(colors.paper)) {
@@ -129,6 +144,12 @@ fun StepEditorScreen(state: StepEditorUiState, actions: StepEditorActions, links
                 note = "Piano plays the Pattern with you",
                 checked = state.guideMelody,
                 onCheckedChange = actions::setGuideMelody,
+            )
+            OutlineButton(
+                text = if (auditioning) "Stop the Demo" else "Hear the Demo",
+                onClick = actions::hearDemo,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = auditioning || state.canHearDemo,
             )
             QuietButton(
                 text = "Remove step",
