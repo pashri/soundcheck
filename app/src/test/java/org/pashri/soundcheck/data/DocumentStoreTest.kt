@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -317,4 +318,105 @@ class DocumentStoreTest {
             assertTrue(store.undoReplace(stamp = 77L, previous = listOf("seed")))
             assertFalse(file.exists())
         }
+
+    @Test
+    fun `undoing a replacement shows a save that had failed as failed again`() = runTest {
+        file.writeText("mine")
+        val store = loaded()
+        val blocker = File(folder.root, "doc.json.tmp").apply { mkdir() }
+        store.edit { it + "unsaved" }
+        advanceUntilIdle()
+        blocker.delete()
+        store.replace(value = listOf("theirs"), stamp = 77L)
+        assertFalse(store.saveFailed.value)
+        assertTrue(store.undoReplace(stamp = 77L, previous = listOf("mine", "unsaved")))
+        assertTrue(store.saveFailed.value)
+    }
+
+    @Test
+    fun `undoing a replacement that never happened leaves the file alone`() = runTest {
+        file.writeText("mine")
+        val store = loaded()
+        assertFalse(store.undoReplace(stamp = 77L, previous = listOf("seed")))
+        assertEquals("mine", file.readText())
+    }
+
+    @Test
+    fun `a backup that has gone missing never deletes the file`() = runTest {
+        file.writeText("mine")
+        val store = loaded()
+        store.replace(value = listOf("theirs"), stamp = 77L)
+        backup(stamp = 77L).delete()
+        assertFalse(store.undoReplace(stamp = 77L, previous = listOf("mine")))
+        assertEquals("theirs", file.readText())
+        assertEquals(listOf("theirs"), store.data.value)
+    }
+
+    @Test
+    fun `a backup name already taken is never overwritten, and nothing changes`() = runTest {
+        file.writeText("mine")
+        val store = loaded()
+        backup(stamp = 77L).writeText("older")
+        assertFalse(store.replace(value = listOf("theirs"), stamp = 77L))
+        assertEquals("older", backup(stamp = 77L).readText())
+        assertEquals("mine", file.readText())
+        assertEquals(listOf("mine"), store.data.value)
+    }
+
+    @Test
+    fun `a backup that can't be written leaves no copy, and nothing changes`() = runTest {
+        file.writeText("mine")
+        val store = loaded()
+        File(folder.root, "doc.json.tmp-backup").mkdir()
+        assertFalse(store.replace(value = listOf("theirs"), stamp = 77L))
+        assertFalse(backup(stamp = 77L).exists())
+        assertEquals("mine", file.readText())
+        assertEquals(listOf("mine"), store.data.value)
+    }
+
+    @Test
+    fun `a replacement leaves only the file and its backup behind`() = runTest {
+        file.writeText("mine")
+        loaded().replace(value = listOf("theirs"), stamp = 77L)
+        assertEquals(setOf("doc.json", "doc.json.backup-77"), folder.root.list()?.toSet())
+    }
+
+    @Test
+    fun `a replacement cancelled while it writes still shows what the file holds`() {
+        val reachedGate = CountDownLatch(1)
+        val releaseGate = CountDownLatch(1)
+        val codec = object : TextCodec<List<String>> {
+            override fun encode(value: List<String>): String {
+                if (value == listOf("theirs")) {
+                    reachedGate.countDown()
+                    releaseGate.await()
+                }
+                return LinesCodec.encode(value)
+            }
+
+            override fun decode(text: String): List<String> = LinesCodec.decode(text)
+        }
+        file.writeText("mine")
+        val scope = CoroutineScope(Dispatchers.Default + Job())
+        val store = DocumentStore(
+            file = file,
+            codec = codec,
+            seed = { listOf("seed") },
+            scope = scope,
+            io = Dispatchers.IO,
+            clockMs = { now },
+        )
+        try {
+            runBlocking { store.load().join() }
+            val replacing = scope.launch { store.replace(value = listOf("theirs"), stamp = 77L) }
+            assertTrue(reachedGate.await(2, TimeUnit.SECONDS))
+            replacing.cancel()
+            releaseGate.countDown()
+            runBlocking { replacing.join() }
+            assertEquals(codec.decode(file.readText()), store.data.value)
+        } finally {
+            releaseGate.countDown()
+            scope.cancel()
+        }
+    }
 }

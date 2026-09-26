@@ -1,5 +1,10 @@
 package org.pashri.soundcheck.data
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -20,6 +25,7 @@ import org.pashri.soundcheck.warmup.deleteProgramme
 import org.pashri.soundcheck.warmup.withClip
 import org.pashri.soundcheck.warmup.withVoiceType
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ImportTest {
     private val library = FakeStore(StarterLibrary.LIBRARY)
     private val settings = FakeStore(WarmupSettings.DEFAULT)
@@ -104,6 +110,27 @@ class ImportTest {
             importBackup(backup = theirs, library = library, settings = unread, stamp = 42L)
         assertEquals(ImportOutcome.NOTHING_CHANGED, outcome)
         assertEquals(StarterLibrary.LIBRARY, library.value)
+    }
+
+    @Test
+    fun `nothing is imported while a document's file couldn't be opened`() = runTest {
+        settings.unopened.value = true
+        assertEquals(ImportOutcome.NOTHING_CHANGED, importTheirs())
+        assertEquals(StarterLibrary.LIBRARY, library.value)
+        assertTrue(library.backups.isEmpty())
+    }
+
+    @Test
+    fun `an import cancelled partway still finishes, so it is never half-applied`() = runTest {
+        val gate = CompletableDeferred<Unit>()
+        library.replaceGate = gate
+        val importing = launch { importTheirs() }
+        runCurrent()
+        importing.cancel()
+        gate.complete(Unit)
+        advanceUntilIdle()
+        assertEquals(theirs.library, library.value)
+        assertEquals(bass, settings.value)
     }
 
     @Test

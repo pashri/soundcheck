@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.data
 
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.WarmupSettings
 
@@ -23,7 +25,9 @@ enum class ImportOutcome {
  * allows. Each document's file is first copied to "<file>.backup-[stamp]". The library is
  * written first; if the settings then can't be written, the library's backup is renamed back
  * (a rename needs no free space), so nothing has changed. Only if that rename fails too does
- * the library stay imported without the settings, and the outcome says so.
+ * the library stay imported without the settings, and the outcome says so. Nothing is
+ * changed while either document is unread, or is a file that couldn't be opened. Once started,
+ * an import runs to the end even if its caller is cancelled, so it is never left half-done.
  *
  * Every Sound whose id is still in the library keeps the recording it has now; a Sound new to
  * the library has none, so the phone's voice reads it. Recordings of Sounds the backup
@@ -42,9 +46,19 @@ suspend fun importBackup(
     library: Store<Library>,
     settings: Store<WarmupSettings>,
     stamp: Long,
+): ImportOutcome = withContext(context = NonCancellable) {
+    replaceBoth(backup = backup, library = library, settings = settings, stamp = stamp)
+}
+
+private suspend fun replaceBoth(
+    backup: Backup,
+    library: Store<Library>,
+    settings: Store<WarmupSettings>,
+    stamp: Long,
 ): ImportOutcome {
     val oldLibrary = library.data.value ?: return ImportOutcome.NOTHING_CHANGED
     if (settings.data.value == null) return ImportOutcome.NOTHING_CHANGED
+    if (library.unopened.value || settings.unopened.value) return ImportOutcome.NOTHING_CHANGED
     val incoming = backup.library.keepingClipsOf(oldLibrary)
     if (!library.replace(value = incoming, stamp = stamp)) return ImportOutcome.NOTHING_CHANGED
     if (settings.replace(value = backup.settings, stamp = stamp)) return ImportOutcome.IMPORTED

@@ -56,6 +56,9 @@ fun readAtMost(input: InputStream, maxBytes: Int): ByteArray? {
 
 private const val READ_CHUNK_BYTES = 8_192
 
+/** Opens a picked file for writing and cuts off whatever it held before. */
+private const val WRITE_TRUNCATE = "wt"
+
 /**
  * [SharedFiles] through Android's content resolver.
  *
@@ -67,7 +70,8 @@ class AndroidSharedFiles(context: Context) : SharedFiles {
     override suspend fun write(uri: String, text: String): Boolean =
         withContext(context = Dispatchers.IO) {
             try {
-                val stream = resolver.openOutputStream(Uri.parse(uri)) ?: return@withContext false
+                val stream = resolver.openOutputStream(Uri.parse(uri), WRITE_TRUNCATE)
+                    ?: return@withContext false
                 stream.use { it.write(text.toByteArray(Charsets.UTF_8)) }
                 true
             } catch (e: IOException) {

@@ -1,6 +1,7 @@
 package org.pashri.soundcheck.data
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.WarmupSettings
 
@@ -8,7 +9,8 @@ import org.pashri.soundcheck.warmup.WarmupSettings
  * Everything a backup file holds: the library (Patterns, Sounds with their ids and labels,
  * and Programmes) and the Warm-up settings. Recordings are never part of it.
  *
- * @property library the library, with no Sound holding a clip.
+ * @property library the library; a Sound may hold a clip, but [ExportCodec.encode] drops
+ *     it, and a backup read back never has one.
  * @property settings the settings.
  */
 data class Backup(val library: Library, val settings: WarmupSettings)
@@ -70,21 +72,34 @@ sealed interface ExportRead {
  * @return the backup, or why it can't be imported.
  */
 fun readExport(text: String): ExportRead {
-    val file = try {
-        DocumentJson.decodeFromString(deserializer = ExportFile.serializer(), string = text)
-    } catch (e: IllegalArgumentException) {
-        return ExportRead.NotAnExport
-    }
-    if (file.format != ExportCodec.FORMAT) return ExportRead.NotAnExport
-    if (file.version > ExportCodec.VERSION) return ExportRead.TooNew
+    val header = headerOf(text) ?: return ExportRead.NotAnExport
+    if (header.format != ExportCodec.FORMAT) return ExportRead.NotAnExport
+    if (header.isTooNew()) return ExportRead.TooNew
     return try {
-        backupOf(file)
+        readBackup(
+            DocumentJson.decodeFromString(deserializer = ExportFile.serializer(), string = text),
+        )
     } catch (e: IllegalArgumentException) {
         ExportRead.NotAnExport
     }
 }
 
-private fun backupOf(file: ExportFile): ExportRead {
+/** Reads only the format and the versions, ignoring the rest, so a newer file is told apart. */
+private val HeaderJson: Json = Json { ignoreUnknownKeys = true }
+
+private fun headerOf(text: String): ExportHeader? =
+    try {
+        HeaderJson.decodeFromString(deserializer = ExportHeader.serializer(), string = text)
+    } catch (e: IllegalArgumentException) {
+        null
+    }
+
+private fun ExportHeader.isTooNew(): Boolean =
+    version > ExportCodec.VERSION ||
+        (library?.version ?: 0) > LibraryCodec.VERSION ||
+        (settings?.version ?: 0) > SettingsCodec.VERSION
+
+private fun readBackup(file: ExportFile): ExportRead {
     require(value = file.version >= 1) { "Backup format ${file.version} doesn't exist" }
     require(value = file.library.sounds.all { it.clip == null }) { "A backup names a clip" }
     val library = file.library.readLibrary()
@@ -98,3 +113,15 @@ internal data class ExportFile(
     val settings: SettingsFile,
     val library: LibraryFile,
 )
+
+/** The parts of a backup file that say what it is, whatever else a newer version adds. */
+@Serializable
+private data class ExportHeader(
+    val format: String,
+    val version: Int,
+    val settings: VersionOnly? = null,
+    val library: VersionOnly? = null,
+)
+
+@Serializable
+private data class VersionOnly(val version: Int)

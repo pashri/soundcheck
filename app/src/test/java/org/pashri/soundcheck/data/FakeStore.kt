@@ -1,5 +1,6 @@
 package org.pashri.soundcheck.data
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,6 +30,12 @@ class FakeStore<T : Any>(initial: T?) : Store<T> {
     /** Set false to act as if [undoReplace] couldn't put the backup back. */
     var undoes: Boolean = true
 
+    /**
+     * Set to make [replace] wait, once it has applied, until this completes: like a real save
+     * whose file is written but whose caller is only told afterward.
+     */
+    var replaceGate: CompletableDeferred<Unit>? = null
+
     /** Every backup [replace] kept, by stamp, holding the document as it was then. */
     val backups: MutableMap<Long, T?> = mutableMapOf()
 
@@ -43,6 +50,7 @@ class FakeStore<T : Any>(initial: T?) : Store<T> {
         if (!replaces) return false
         backups[stamp] = _data.value
         _data.value = value
+        replaceGate?.await()
         return true
     }
 

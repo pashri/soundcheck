@@ -109,6 +109,26 @@ class ExportTest {
     }
 
     @Test
+    fun `a backup holding a library from a newer version is too new`() {
+        val newer = fixture.replace(oldValue = "\"version\": 2", newValue = "\"version\": 3")
+        assertEquals(ExportRead.TooNew, readExport(newer))
+    }
+
+    @Test
+    fun `a backup holding settings from a newer version is too new`() {
+        val newer = fixture.replace(
+            oldValue = "\"settings\": {\n        \"version\": 1",
+            newValue = "\"settings\": {\n        \"version\": 2",
+        )
+        assertEquals(ExportRead.TooNew, readExport(newer))
+    }
+
+    @Test
+    fun `an empty file is not a backup`() {
+        notAnExport("")
+    }
+
+    @Test
     fun `the library's own file is not a backup`() {
         notAnExport(checkNotNull(javaClass.getResource("/data/library-v2.json")).readText())
     }

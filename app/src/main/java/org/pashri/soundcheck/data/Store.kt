@@ -34,7 +34,8 @@ interface Store<T : Any> {
      * @param value the new document.
      * @param stamp names the backup, e.g. the time in ms; [undoReplace] needs the same one.
      * @return false, with the saved document and what is shown unchanged, if the backup or
-     *     the new document couldn't be written, or the saved file must never be overwritten.
+     *     the new document couldn't be written, a backup with this stamp already exists, or
+     *     the saved file must never be overwritten.
      */
     suspend fun replace(value: T, stamp: Long): Boolean
 
@@ -44,7 +45,8 @@ interface Store<T : Any> {
      *
      * @param stamp the stamp [replace] was given.
      * @param previous the document shown before the replace.
-     * @return false if the backup couldn't be put back; the replacement then stays.
+     * @return false if no [replace] with this stamp succeeded, or its backup couldn't be put
+     *     back; the file is then left as it is.
      */
     suspend fun undoReplace(stamp: Long, previous: T): Boolean
 }
