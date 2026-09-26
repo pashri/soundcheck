@@ -1,0 +1,41 @@
+{
+    "version": 1,
+    "patterns": [
+        {
+            "id": "triad",
+            "name": "Triad",
+            "notes": "1q 3q 5q 3q 1h",
+            "keyChord": "MAJOR"
+        },
+        {
+            "id": "p-2",
+            "name": "Minor sigh",
+            "notes": "♭3e 2e 1w",
+            "keyChord": "MINOR"
+        }
+    ],
+    "sounds": [
+        {
+            "id": "hum",
+            "label": "hum"
+        }
+    ],
+    "programmes": [
+        {
+            "id": "morning",
+            "name": "Morning",
+            "steps": [
+                {
+                    "key": "s-1",
+                    "pattern": "triad",
+                    "sound": "hum",
+                    "bpm": 90,
+                    "direction": "START_HIGH",
+                    "offsetBottom": -1,
+                    "offsetTop": 2,
+                    "guideMelody": false
+                }
+            ]
+        }
+    ]
+}

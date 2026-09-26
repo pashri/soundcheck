@@ -82,7 +82,7 @@ fun Library.addStep(programmeId: ProgrammeId, step: SavedStep): Library =
  * @return the library with the Step changed.
  */
 fun Library.updateStep(ref: StepRef, change: (SavedStep) -> SavedStep): Library =
-    mapProgramme(ref.programmeId) { programme ->
+    mapProgramme(id = ref.programmeId) { programme ->
         programme.copy(
             steps = programme.steps.map {
                 if (it.key == ref.key) change(it) else it
@@ -97,7 +97,7 @@ fun Library.updateStep(ref: StepRef, change: (SavedStep) -> SavedStep): Library 
  * @return the library without it.
  */
 fun Library.removeStep(ref: StepRef): Library =
-    mapProgramme(ref.programmeId) { programme ->
+    mapProgramme(id = ref.programmeId) { programme ->
         programme.copy(steps = programme.steps.filterNot { it.key == ref.key })
     }
 
