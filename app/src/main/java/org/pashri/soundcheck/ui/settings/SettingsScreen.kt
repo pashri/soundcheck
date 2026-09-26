@@ -56,7 +56,7 @@ fun SettingsRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
 @Composable
 fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, onBack: () -> Unit) {
     val colors = Manuscript.colors
-    Column(Modifier.fillMaxSize().background(colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         BackHeader(backLabel = "Warm-up", title = "Settings", onBack = onBack)
         Column(
             modifier = Modifier
@@ -67,6 +67,7 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, onBack: () 
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             SectionLabel(text = "RANGE")
+            Text(text = RANGE_NOTE, style = ManuscriptType.body, color = colors.muted)
             Segmented(
                 options = VoiceType.entries,
                 selected = state.voiceType,

@@ -60,14 +60,14 @@ fun Pattern.withoutNote(index: Int): Pattern {
  *
  * @return the note, or itself at [MAX_DEGREE].
  */
-fun PatternNote.raised(): PatternNote = copy(degree = minOf(degree + 1, MAX_DEGREE))
+fun PatternNote.raised(): PatternNote = copy(degree = minOf(a = degree + 1, b = MAX_DEGREE))
 
 /**
  * This note one scale degree lower.
  *
  * @return the note, or itself at degree 1.
  */
-fun PatternNote.lowered(): PatternNote = copy(degree = maxOf(degree - 1, 1))
+fun PatternNote.lowered(): PatternNote = copy(degree = maxOf(a = degree - 1, b = 1))
 
 /**
  * The Voice Types whose preset Range is wide enough for a Pattern with no

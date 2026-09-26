@@ -14,6 +14,12 @@ interface Store<T : Any> {
     val setAside: StateFlow<Boolean>
 
     /**
+     * True when an unreadable saved document couldn't even be set aside: it is left as it is,
+     * the seed is shown, and no change is saved.
+     */
+    val unopened: StateFlow<Boolean>
+
+    /**
      * Changes the document. The change shows in [data] at once and is saved in the
      * background. Call from the main thread; a change before the document is read is dropped.
      *

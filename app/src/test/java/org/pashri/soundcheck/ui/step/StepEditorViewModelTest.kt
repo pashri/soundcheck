@@ -64,17 +64,17 @@ class StepEditorViewModelTest {
 
     @Test
     fun `faster and slower move the tempo a beat per minute and stop at the limits`() =
-        runTest(dispatcher) {
+        runTest(context = dispatcher) {
             val viewModel = viewModel()
             viewModel.faster()
             assertEquals(91, saved().bpm)
-            library.edit { it.updateStep(ref) { step -> step.copy(bpm = 30) } }
+            library.edit { it.updateStep(ref = ref) { step -> step.copy(bpm = 30) } }
             viewModel.slower()
             assertEquals(30, saved().bpm)
         }
 
     @Test
-    fun `lowering the bottom widens the Range downwards`() = runTest(dispatcher) {
+    fun `lowering the bottom widens the Range downwards`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.lowerBottom()
         assertEquals(RangeOffset(bottom = 1, top = 2), saved().rangeOffset)
@@ -84,18 +84,19 @@ class StepEditorViewModelTest {
     }
 
     @Test
-    fun `the top can be raised and lowered and the bottom raised`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        viewModel.raiseTop()
-        assertEquals(3, saved().rangeOffset.top)
-        viewModel.lowerTop()
-        viewModel.lowerTop()
-        viewModel.raiseBottom()
-        assertEquals(RangeOffset(bottom = -1, top = 1), saved().rangeOffset)
-    }
+    fun `the top can be raised and lowered and the bottom raised`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            viewModel.raiseTop()
+            assertEquals(3, saved().rangeOffset.top)
+            viewModel.lowerTop()
+            viewModel.lowerTop()
+            viewModel.raiseBottom()
+            assertEquals(RangeOffset(bottom = -1, top = 1), saved().rangeOffset)
+        }
 
     @Test
-    fun `the Direction and Guide Melody are saved`() = runTest(dispatcher) {
+    fun `the Direction and Guide Melody are saved`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.setDirection(Direction.START_HIGH)
         viewModel.setGuideMelody(false)
@@ -105,13 +106,13 @@ class StepEditorViewModelTest {
     }
 
     @Test
-    fun `an edit shows in the Programme that plays next`() = runTest(dispatcher) {
+    fun `an edit shows in the Programme that plays next`() = runTest(context = dispatcher) {
         viewModel().faster()
         assertEquals(91, library.value.programmeToPlay(starter)?.steps?.first()?.bpm)
     }
 
     @Test
-    fun `removing the Step closes the editor`() = runTest(dispatcher) {
+    fun `removing the Step closes the editor`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.remove()
         runCurrent()
@@ -120,7 +121,7 @@ class StepEditorViewModelTest {
     }
 
     @Test
-    fun `hearing the Demo plays it and a second tap stops it`() = runTest(dispatcher) {
+    fun `hearing the Demo plays it and a second tap stops it`() = runTest(context = dispatcher) {
         val audition = testAudition()
         val viewModel = viewModel(audition = audition)
         viewModel.hearDemo()
@@ -131,9 +132,9 @@ class StepEditorViewModelTest {
     }
 
     @Test
-    fun `a Step that doesn't fit has no Demo to hear`() = runTest(dispatcher) {
+    fun `a Step that doesn't fit has no Demo to hear`() = runTest(context = dispatcher) {
         library.edit { saved ->
-            saved.updateStep(ref) { it.withRangeOffset(bottom = -11, top = -11) }
+            saved.updateStep(ref = ref) { it.withRangeOffset(bottom = -11, top = -11) }
         }
         val audition = testAudition()
         viewModel(audition = audition).hearDemo()

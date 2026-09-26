@@ -55,28 +55,29 @@ class PatternListViewModelTest {
     }
 
     @Test
-    fun `the library lists every Pattern with its notes, chord and use`() = runTest(dispatcher) {
-        val state = checkNotNull(state(viewModel()))
-        assertEquals("Patterns", state.title)
-        assertEquals("Warm-up", state.backLabel)
-        assertEquals("8 PATTERNS", state.countLabel)
-        assertFalse(state.picking)
-        assertEquals(
-            PatternRow(
-                id = StarterPatterns.TRIAD.id,
-                name = "Triad",
-                detail = "1 3 5 3 1 · major",
-                usage = "Used in 1 Step",
-                chosen = false,
-            ),
-            state.rows[4],
-        )
-        assertEquals("1 2 ♭3 4 5 4 ♭3 2 1 · minor", state.rows[5].detail)
-        assertEquals("Not in any Step", state.rows[5].usage)
-    }
+    fun `the library lists every Pattern with its notes, chord and use`() =
+        runTest(context = dispatcher) {
+            val state = checkNotNull(state(viewModel()))
+            assertEquals("Patterns", state.title)
+            assertEquals("Warm-up", state.backLabel)
+            assertEquals("8 PATTERNS", state.countLabel)
+            assertFalse(state.picking)
+            assertEquals(
+                PatternRow(
+                    id = StarterPatterns.TRIAD.id,
+                    name = "Triad",
+                    detail = "1 3 5 3 1 · major",
+                    usage = "Used in 1 Step",
+                    chosen = false,
+                ),
+                state.rows[4],
+            )
+            assertEquals("1 2 ♭3 4 5 4 ♭3 2 1 · minor", state.rows[5].detail)
+            assertEquals("Not in any Step", state.rows[5].usage)
+        }
 
     @Test
-    fun `choosing for a Step marks its Pattern and changes it`() = runTest(dispatcher) {
+    fun `choosing for a Step marks its Pattern and changes it`() = runTest(context = dispatcher) {
         val viewModel = viewModel(pickFor = hum)
         val before = checkNotNull(state(viewModel))
         assertEquals("Choose a Pattern", before.title)
@@ -91,7 +92,7 @@ class PatternListViewModelTest {
     }
 
     @Test
-    fun `a new Pattern gets a fresh name and comes last`() = runTest(dispatcher) {
+    fun `a new Pattern gets a fresh name and comes last`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         assertEquals(PatternId("id-1"), viewModel.addPattern())
         assertEquals(PatternId("id-2"), viewModel.addPattern())
@@ -102,7 +103,7 @@ class PatternListViewModelTest {
     }
 
     @Test
-    fun `nothing is shown until the library has loaded`() = runTest(dispatcher) {
+    fun `nothing is shown until the library has loaded`() = runTest(context = dispatcher) {
         assertNull(state(viewModel(store = FakeStore(null))))
     }
 }

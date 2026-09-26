@@ -41,8 +41,8 @@ fun auditionKey(span: SungSpan, range: Range): Pitch? {
         direction = Direction.START_LOW,
     )
     if (trip is RoundTrip.Fits) return trip.startKey
-    val lowest = maxOf(Range.PIANO.lowest.midi - span.lowest, Pitch.MIDI_NOTES.first)
-    val highest = minOf(Range.PIANO.highest.midi - span.highest, Pitch.MIDI_NOTES.last)
+    val lowest = maxOf(a = Range.PIANO.lowest.midi - span.lowest, b = Pitch.MIDI_NOTES.first)
+    val highest = minOf(a = Range.PIANO.highest.midi - span.highest, b = Pitch.MIDI_NOTES.last)
     return if (lowest <= highest) {
         Pitch(MIDDLE_C.coerceIn(minimumValue = lowest, maximumValue = highest))
     } else {

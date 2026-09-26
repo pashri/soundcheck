@@ -60,7 +60,7 @@ class ProgrammeEditorUiStateTest {
     @Test
     fun `a Step that doesn't fit its Range warns with the numbers`() {
         val ref = StepRef(programmeId = starter, key = StepKey("starter-5"))
-        val narrowed = StarterLibrary.LIBRARY.updateStep(ref) {
+        val narrowed = StarterLibrary.LIBRARY.updateStep(ref = ref) {
             it.withRangeOffset(bottom = 0, top = -3)
         }
         val rows = checkNotNull(state(library = narrowed)).rows

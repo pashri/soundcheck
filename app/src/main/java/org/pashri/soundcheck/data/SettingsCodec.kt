@@ -18,8 +18,8 @@ object SettingsCodec : TextCodec<WarmupSettings> {
     const val VERSION: Int = 1
 
     override fun encode(value: WarmupSettings): String = DocumentJson.encodeToString(
-        SettingsFile.serializer(),
-        SettingsFile(
+        serializer = SettingsFile.serializer(),
+        value = SettingsFile(
             version = VERSION,
             voiceType = value.voiceType.name,
             lowest = value.range.lowest.midi,
@@ -29,8 +29,13 @@ object SettingsCodec : TextCodec<WarmupSettings> {
     )
 
     override fun decode(text: String): WarmupSettings {
-        val file = DocumentJson.decodeFromString(SettingsFile.serializer(), text)
-        require(file.version == VERSION) { "Settings format ${file.version} is not $VERSION" }
+        val file = DocumentJson.decodeFromString(
+            deserializer = SettingsFile.serializer(),
+            string = text,
+        )
+        require(value = file.version == VERSION) {
+            "Settings format ${file.version} is not $VERSION"
+        }
         return WarmupSettings(
             voiceType = VoiceType.valueOf(file.voiceType),
             range = Range(lowest = Pitch(file.lowest), highest = Pitch(file.highest)),

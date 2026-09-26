@@ -40,7 +40,7 @@ fun <T> readyOrGone(content: T?): EditorState<T> =
 fun <T> EditorFrame(state: EditorState<T>, onGone: () -> Unit, content: @Composable (T) -> Unit) {
     when (state) {
         EditorState.Loading -> Unit
-        EditorState.Gone -> LaunchedEffect(Unit) { onGone() }
+        EditorState.Gone -> LaunchedEffect(key1 = Unit) { onGone() }
         is EditorState.Ready -> content(state.value)
     }
 }

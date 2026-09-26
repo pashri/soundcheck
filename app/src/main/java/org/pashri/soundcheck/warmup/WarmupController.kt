@@ -46,7 +46,7 @@ class WarmupController(
     fun play(programme: Programme, range: Range): StartOutcome {
         if (programme.firstStep(range) == null) return StartOutcome.NOTHING_FITS
         if (!takeOver()) return StartOutcome.AUDIO_BUSY
-        val started = player.play(programme, range)
+        val started = player.play(programme = programme, range = range)
         if (player.playback.value == null) handBack()
         return if (started) StartOutcome.PLAYING else StartOutcome.OUTPUT_FAILED
     }
@@ -103,7 +103,7 @@ class WarmupController(
     }
 
     private fun takeOver(): Boolean {
-        arbiter.claim(Tool.WARM_UP, onEvicted = ::onEvicted)
+        arbiter.claim(tool = Tool.WARM_UP, onEvicted = ::onEvicted)
         if (!holdsFocus) {
             holdsFocus = focus.acquire(onLost = ::onFocusLost, onRegained = ::onFocusRegained)
         }

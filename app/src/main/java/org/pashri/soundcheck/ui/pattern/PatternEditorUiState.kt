@@ -81,7 +81,7 @@ data class PatternEditorUiState(
  */
 fun patternEditorUiState(library: Library, id: PatternId, selected: Int): PatternEditorUiState? {
     val pattern = library.pattern(id) ?: return null
-    val index = selected.coerceIn(0, pattern.notes.lastIndex)
+    val index = selected.coerceIn(minimumValue = 0, maximumValue = pattern.notes.lastIndex)
     val note = pattern.notes[index]
     return PatternEditorUiState(
         name = pattern.name,

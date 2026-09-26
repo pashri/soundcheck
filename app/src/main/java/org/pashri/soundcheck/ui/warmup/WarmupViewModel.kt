@@ -23,7 +23,10 @@ class WarmupViewModel(
     library: StateFlow<Library?>,
 ) : ViewModel(), WarmupActions {
     /** Everything the screen shows, or null when no Programme is loaded. */
-    val uiState: StateFlow<WarmupUiState?> = combine(controller.playback, library) { now, saved ->
+    val uiState: StateFlow<WarmupUiState?> = combine(
+        flow = controller.playback,
+        flow2 = library,
+    ) { now, saved ->
         playingState(playback = now, library = saved)
     }.stateIn(
         scope = viewModelScope,

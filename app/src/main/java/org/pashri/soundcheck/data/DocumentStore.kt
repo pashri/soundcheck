@@ -70,10 +70,10 @@ class DocumentStore<T : Any>(
     private val _saveFailed = MutableStateFlow(false)
     private val mutex = Mutex()
 
-    /** True when an unreadable file couldn't be set aside; it must never be overwritten. */
-    private var keepingUnreadable = false
-
     private val _setAside = MutableStateFlow(false)
+
+    /** True when an unreadable file couldn't be set aside; it must never be overwritten. */
+    private val _unopened = MutableStateFlow(false)
 
     override val data: StateFlow<T?> = _data.asStateFlow()
 
@@ -81,13 +81,15 @@ class DocumentStore<T : Any>(
 
     override val setAside: StateFlow<Boolean> = _setAside.asStateFlow()
 
+    override val unopened: StateFlow<Boolean> = _unopened.asStateFlow()
+
     /**
      * Reads the document from [file], or saves [seed] there if there is no file. Call once.
      *
      * @return the loading job.
      */
     fun load(): Job = scope.launch {
-        val loaded = mutex.withLock { withContext(io) { readOrSeed() } }
+        val loaded = mutex.withLock { withContext(context = io) { readOrSeed() } }
         _data.value = loaded
     }
 
@@ -103,7 +105,7 @@ class DocumentStore<T : Any>(
     private suspend fun saveLatest() {
         mutex.withLock {
             val latest = _data.value ?: return
-            _saveFailed.value = keepingUnreadable || !withContext(io) { trySave(latest) }
+            _saveFailed.value = _unopened.value || !withContext(context = io) { trySave(latest) }
         }
     }
 
@@ -113,7 +115,7 @@ class DocumentStore<T : Any>(
             if (trySetAside()) {
                 _setAside.value = true
             } else {
-                keepingUnreadable = true
+                _unopened.value = true
                 _saveFailed.value = true
                 return seed()
             }

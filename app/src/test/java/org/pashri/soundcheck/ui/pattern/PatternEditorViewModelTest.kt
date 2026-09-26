@@ -67,7 +67,7 @@ class PatternEditorViewModelTest {
     }
 
     @Test
-    fun `a Step follows an edit to its Pattern`() = runTest(dispatcher) {
+    fun `a Step follows an edit to its Pattern`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.select(2)
         viewModel.raiseDegree()
@@ -77,27 +77,29 @@ class PatternEditorViewModelTest {
     }
 
     @Test
-    fun `adding a note copies the selected one and selects the copy`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        viewModel.select(1)
-        viewModel.addNote()
-        assertEquals("1 3 3 5 3 1", degrees())
-        assertEquals(2, shown(viewModel).selected)
-    }
+    fun `adding a note copies the selected one and selects the copy`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            viewModel.select(1)
+            viewModel.addNote()
+            assertEquals("1 3 3 5 3 1", degrees())
+            assertEquals(2, shown(viewModel).selected)
+        }
 
     @Test
-    fun `deleting notes keeps one selected, and the last note stays`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        viewModel.select(4)
-        viewModel.deleteNote()
-        assertEquals("1 3 5 3", degrees())
-        assertEquals(3, shown(viewModel).selected)
-        repeat(5) { viewModel.deleteNote() }
-        assertEquals("1", degrees())
-    }
+    fun `deleting notes keeps one selected, and the last note stays`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            viewModel.select(4)
+            viewModel.deleteNote()
+            assertEquals("1 3 5 3", degrees())
+            assertEquals(3, shown(viewModel).selected)
+            repeat(times = 5) { viewModel.deleteNote() }
+            assertEquals("1", degrees())
+        }
 
     @Test
-    fun `the accidental, length and Key Chord are saved`() = runTest(dispatcher) {
+    fun `the accidental, length and Key Chord are saved`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.select(1)
         viewModel.setAccidental(Accidental.FLAT)
@@ -111,39 +113,42 @@ class PatternEditorViewModelTest {
     }
 
     @Test
-    fun `renaming trims the name`() = runTest(dispatcher) {
+    fun `renaming trims the name`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.rename("  Big triad ")
         assertEquals("Big triad", saved().name)
     }
 
     @Test
-    fun `deleting the Pattern removes its Steps and closes the editor`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        viewModel.delete()
-        runCurrent()
-        assertEquals(EditorState.Gone, viewModel.uiState.value)
-        assertNull(library.value.pattern(triad))
-        assertEquals(5, library.value.programme(starter)?.steps?.size)
-    }
+    fun `deleting the Pattern removes its Steps and closes the editor`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            viewModel.delete()
+            runCurrent()
+            assertEquals(EditorState.Gone, viewModel.uiState.value)
+            assertNull(library.value.pattern(triad))
+            assertEquals(5, library.value.programme(starter)?.steps?.size)
+        }
 
     @Test
-    fun `playing the Pattern sounds it and a second tap stops it`() = runTest(dispatcher) {
-        val audition = testAudition()
-        val viewModel = viewModel(audition = audition)
-        viewModel.playPattern()
-        runCurrent()
-        assertTrue(viewModel.auditioning.value)
-        viewModel.playPattern()
-        assertFalse(audition.playing.value)
-    }
+    fun `playing the Pattern sounds it and a second tap stops it`() =
+        runTest(context = dispatcher) {
+            val audition = testAudition()
+            val viewModel = viewModel(audition = audition)
+            viewModel.playPattern()
+            runCurrent()
+            assertTrue(viewModel.auditioning.value)
+            viewModel.playPattern()
+            assertFalse(audition.playing.value)
+        }
 
     @Test
-    fun `playing the Pattern does nothing until settings have loaded`() = runTest(dispatcher) {
-        val audition = testAudition()
-        val viewModel = viewModel(audition = audition, settings = FakeStore(null))
-        viewModel.playPattern()
-        runCurrent()
-        assertFalse(audition.playing.value)
-    }
+    fun `playing the Pattern does nothing until settings have loaded`() =
+        runTest(context = dispatcher) {
+            val audition = testAudition()
+            val viewModel = viewModel(audition = audition, settings = FakeStore(null))
+            viewModel.playPattern()
+            runCurrent()
+            assertFalse(audition.playing.value)
+        }
 }

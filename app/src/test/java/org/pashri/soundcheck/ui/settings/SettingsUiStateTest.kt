@@ -48,15 +48,21 @@ class SettingsUiStateTest {
     @Test
     fun `the audio note explains what the switch does`() {
         assertEquals(
-            "Off: your podcast pauses, and the headphone button controls Soundcheck.",
+            "Off: your podcast pauses, and the headphone button controls Soundcheck. " +
+                "Applies from the next Start.",
             settingsUiState(WarmupSettings.DEFAULT).audioNote,
         )
         val mixing = settingsUiState(WarmupSettings.DEFAULT.copy(playOverOtherAudio = true))
         assertTrue(mixing.playOverOtherAudio)
         assertEquals(
             "On: your podcast keeps playing under Soundcheck, the headphone button stays with " +
-                "it, and a phone call won't pause the Warm-up.",
+                "it, and a phone call won't pause the Warm-up. Applies from the next Start.",
             mixing.audioNote,
         )
+    }
+
+    @Test
+    fun `the Range says when a change takes effect`() {
+        assertEquals("Applies from the next Start.", RANGE_NOTE)
     }
 }

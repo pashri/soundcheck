@@ -50,7 +50,7 @@ private object LinesCodec : TextCodec<List<String>> {
     override fun encode(value: List<String>): String = value.joinToString(separator = "\n")
 
     override fun decode(text: String): List<String> {
-        require(!text.startsWith("#")) { "Unreadable: $text" }
+        require(value = !text.startsWith("#")) { "Unreadable: $text" }
         return if (text.isEmpty()) emptyList() else text.split("\n")
     }
 }
@@ -231,6 +231,7 @@ class DocumentStoreTest {
         val store = loaded()
         assertEquals(listOf("seed"), store.data.value)
         assertTrue(store.saveFailed.value)
+        assertTrue(store.unopened.value)
         store.edit { it + "more" }
         advanceUntilIdle()
         assertEquals("#garbled", file.readText())
@@ -253,6 +254,7 @@ class DocumentStoreTest {
         store.edit { it + "kept" }
         advanceUntilIdle()
         assertTrue(store.saveFailed.value)
+        assertFalse(store.unopened.value)
         assertEquals("seed", file.readText())
         blocker.delete()
         store.edit { it + "again" }

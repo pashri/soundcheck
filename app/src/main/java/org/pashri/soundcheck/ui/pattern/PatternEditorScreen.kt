@@ -3,7 +3,6 @@ package org.pashri.soundcheck.ui.pattern
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,10 +71,10 @@ fun PatternEditorRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val auditioning by viewModel.auditioning.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+    LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
         if (activity?.isChangingConfigurations != true) viewModel.stopAudition()
     }
-    DisposableEffect(viewModel) {
+    DisposableEffect(key1 = viewModel) {
         onDispose { if (activity?.isChangingConfigurations != true) viewModel.stopAudition() }
     }
     EditorFrame(state = state, onGone = onBack) { shown ->
@@ -107,7 +106,7 @@ fun PatternEditorScreen(
     val colors = Manuscript.colors
     var renaming by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().background(colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         BackHeader(
             backLabel = "Patterns",
             title = state.name,

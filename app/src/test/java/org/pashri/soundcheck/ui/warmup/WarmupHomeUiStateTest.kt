@@ -34,6 +34,7 @@ class WarmupHomeUiStateTest {
         problem: StartProblem? = null,
         saveFailed: Boolean = false,
         restoredNotice: String? = null,
+        unopened: Unopened = Unopened.NONE,
     ): WarmupHomeUiState = warmupHomeUiState(
         library = library,
         settings = settings,
@@ -41,6 +42,7 @@ class WarmupHomeUiStateTest {
         problem = problem,
         saveFailed = saveFailed,
         restoredNotice = restoredNotice,
+        unopened = unopened,
     )
 
     private fun humStep(key: String): SavedStep = SavedStep(
@@ -155,6 +157,18 @@ class WarmupHomeUiStateTest {
         assertEquals(
             "Couldn't save your last change. Is the phone's storage full?",
             state(saveFailed = true).saveProblem,
+        )
+    }
+
+    @Test
+    fun `a saved document that couldn't be opened says changes won't be kept`() {
+        assertEquals(
+            "Your saved library couldn't be opened, so changes won't be kept.",
+            state(saveFailed = true, unopened = Unopened(library = true)).saveProblem,
+        )
+        assertEquals(
+            "Your saved settings couldn't be opened, so changes won't be kept.",
+            state(saveFailed = true, unopened = Unopened(settings = true)).saveProblem,
         )
     }
 

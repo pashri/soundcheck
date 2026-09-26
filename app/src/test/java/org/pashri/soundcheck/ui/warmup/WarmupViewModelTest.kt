@@ -47,7 +47,7 @@ class WarmupViewModelTest {
         WarmupViewModel.Factory(controller = controller, library = library.data)
 
     private fun TestScope.playing(): WarmupController = testController(focus).also {
-        it.play(StarterProgrammes.WARM_UP, VoiceType.TENOR.range)
+        it.play(programme = StarterProgrammes.WARM_UP, range = VoiceType.TENOR.range)
         runCurrent()
     }
 
@@ -60,12 +60,12 @@ class WarmupViewModelTest {
     }
 
     @Test
-    fun `it shows nothing while no Programme is loaded`() = runTest(dispatcher) {
+    fun `it shows nothing while no Programme is loaded`() = runTest(context = dispatcher) {
         assertNull(state(viewModel(testController(focus))))
     }
 
     @Test
-    fun `it shows the Programme the controller is playing`() = runTest(dispatcher) {
+    fun `it shows the Programme the controller is playing`() = runTest(context = dispatcher) {
         val state = state(viewModel(playing()))
         assertEquals("Starter warm-up", state?.programmeName)
         assertEquals("lip trill", state?.soundLabel)
@@ -73,7 +73,7 @@ class WarmupViewModelTest {
     }
 
     @Test
-    fun `the play button pauses and resumes the Programme`() = runTest(dispatcher) {
+    fun `the play button pauses and resumes the Programme`() = runTest(context = dispatcher) {
         val viewModel = viewModel(playing())
         viewModel.playPause()
         assertEquals(false, state(viewModel)?.playing)
@@ -83,32 +83,36 @@ class WarmupViewModelTest {
     }
 
     @Test
-    fun `next moves to the second Step`() = runTest(dispatcher) {
+    fun `next moves to the second Step`() = runTest(context = dispatcher) {
         val viewModel = viewModel(playing())
         viewModel.next()
         assertEquals(2, state(viewModel)?.stepNumber)
     }
 
     @Test
-    fun `stop ends the Programme, hands focus back and shows nothing`() = runTest(dispatcher) {
-        val viewModel = viewModel(playing())
-        viewModel.stop()
-        assertNull(state(viewModel))
-        assertFalse(focus.held)
-    }
+    fun `stop ends the Programme, hands focus back and shows nothing`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            viewModel.stop()
+            assertNull(state(viewModel))
+            assertFalse(focus.held)
+        }
 
     @Test
-    fun `a renamed Sound shows on the playing screen`() = runTest(dispatcher) {
+    fun `a renamed Sound shows on the playing screen`() = runTest(context = dispatcher) {
         val viewModel = viewModel(playing())
         library.edit { it.renameSound(id = StarterSounds.LIP_TRILL.id, label = "brr") }
         assertEquals("brr", state(viewModel)?.soundLabel)
     }
 
     @Test
-    fun `closing the screen leaves the Programme playing`() = runTest(dispatcher) {
+    fun `closing the screen leaves the Programme playing`() = runTest(context = dispatcher) {
         val controller = playing()
         val store = ViewModelStore()
-        val viewModel = ViewModelProvider(store, factory(controller))[WarmupViewModel::class.java]
+        val viewModel = ViewModelProvider(
+            store = store,
+            factory = factory(controller),
+        )[WarmupViewModel::class.java]
         runCurrent()
         assertTrue(viewModel.uiState.value?.playing == true)
         store.clear()

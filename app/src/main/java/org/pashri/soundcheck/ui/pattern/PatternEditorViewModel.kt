@@ -110,7 +110,7 @@ class PatternEditorViewModel(
 
     /** What the editor shows. */
     val uiState: StateFlow<EditorState<PatternEditorUiState>> =
-        combine(library.data, selected) { saved, index ->
+        combine(flow = library.data, flow2 = selected) { saved, index ->
             if (saved == null) {
                 EditorState.Loading
             } else {
@@ -181,7 +181,7 @@ class PatternEditorViewModel(
     /** The selected note's position, kept inside the Pattern as it is now. */
     private fun currentIndex(): Int {
         val notes = library.data.value?.pattern(patternId)?.notes ?: return 0
-        return selected.value.coerceIn(0, notes.lastIndex)
+        return selected.value.coerceIn(minimumValue = 0, maximumValue = notes.lastIndex)
     }
 
     private fun editNote(change: (PatternNote) -> PatternNote) {

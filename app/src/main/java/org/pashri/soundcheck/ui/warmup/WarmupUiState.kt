@@ -110,7 +110,7 @@ fun warmupUiState(
     val shownRange = playback?.range ?: range
     val index = playback?.stepIndex ?: shown.firstStep(shownRange) ?: 0
     val step = shown.steps[index]
-    val next = shown.nextStep(index, shownRange)?.let { shown.steps[it] }
+    val next = shown.nextStep(current = index, range = shownRange)?.let { shown.steps[it] }
     val trip = step.roundTrip(shownRange) as? RoundTrip.Fits
     return WarmupUiState(
         programmeName = shown.name,

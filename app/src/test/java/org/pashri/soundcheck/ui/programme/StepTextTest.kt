@@ -34,10 +34,6 @@ class StepTextTest {
             "Needs 19 half-steps; this Step's Range has 18. It will be skipped.",
             fitWarning(RoundTrip.DoesNotFit(neededHalfSteps = 19, availableHalfSteps = 18)),
         )
-        assertEquals(
-            "Needs 1 half-step; this Step's Range has 0. It will be skipped.",
-            fitWarning(RoundTrip.DoesNotFit(neededHalfSteps = 1, availableHalfSteps = 0)),
-        )
         assertNull(fitWarning(RoundTrip.Fits(keys = listOf(Pitch(60)))))
     }
 
@@ -50,17 +46,29 @@ class StepTextTest {
     }
 
     @Test
+    fun `a Step with no Range left says it will be skipped without counting half-steps`() {
+        assertEquals(
+            "No Range left for this Step. It will be skipped.",
+            fitWarning(RoundTrip.DoesNotFit(neededHalfSteps = 1, availableHalfSteps = 0)),
+        )
+        assertEquals(
+            "No Range left for this Step. It will be skipped.",
+            fitWarning(RoundTrip.DoesNotFit(neededHalfSteps = 0, availableHalfSteps = 0)),
+        )
+    }
+
+    @Test
     fun `a Step row is read as one stop with its number, Sound, summary and warning`() {
         val row = StepRow(
             key = StepKey(value = "s1"),
             number = 2,
             sound = "mim",
             meta = "Triad · 90 bpm · from low · top −3",
-            warning = "Needs 19 half-steps; this Step's Range has 18. It will be skipped.",
+            warning = "No Range left for this Step. It will be skipped.",
         )
         assertEquals(
             "Step 2, mim, Triad · 90 bpm · from low · top minus 3, " +
-                "Needs 19 half-steps; this Step's Range has 18. It will be skipped.",
+                "No Range left for this Step. It will be skipped.",
             spokenStep(row = row),
         )
         val plain = row.copy(meta = "Triad", warning = null)

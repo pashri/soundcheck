@@ -50,7 +50,7 @@ data class SavedStep(
     val guideMelody: Boolean = true,
 ) {
     init {
-        require(bpm in MIN_BPM..MAX_BPM) { "Tempo $bpm is outside $MIN_BPM–$MAX_BPM bpm" }
+        require(value = bpm in MIN_BPM..MAX_BPM) { "Tempo $bpm is outside $MIN_BPM–$MAX_BPM bpm" }
     }
 
     /**
@@ -82,7 +82,7 @@ data class SavedStep(
  */
 data class SavedProgramme(val id: ProgrammeId, val name: String, val steps: List<SavedStep>) {
     init {
-        require(steps.map { it.key }.toSet().size == steps.size) {
+        require(value = steps.map { it.key }.toSet().size == steps.size) {
             "Programme \"$name\" has two Steps with one key"
         }
     }
@@ -118,8 +118,8 @@ data class Library(
         val patternIds = patterns.map { it.id }.toSet()
         val soundIds = sounds.map { it.id }.toSet()
         programmes.flatMap { it.steps }.forEach { step ->
-            require(step.patternId in patternIds) { "A Step names a missing Pattern" }
-            require(step.soundId in soundIds) { "A Step names a missing Sound" }
+            require(value = step.patternId in patternIds) { "A Step names a missing Pattern" }
+            require(value = step.soundId in soundIds) { "A Step names a missing Sound" }
         }
     }
 
@@ -173,5 +173,5 @@ data class Library(
 }
 
 private fun <T> requireDistinct(ids: List<T>, kind: String) {
-    require(ids.toSet().size == ids.size) { "Two $kind share an id" }
+    require(value = ids.toSet().size == ids.size) { "Two $kind share an id" }
 }

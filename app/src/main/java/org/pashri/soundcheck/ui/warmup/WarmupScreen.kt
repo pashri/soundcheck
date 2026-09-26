@@ -74,7 +74,7 @@ fun WarmupRoute(factory: ViewModelProvider.Factory, onFinished: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val shown = state
     if (shown == null) {
-        LaunchedEffect(Unit) { onFinished() }
+        LaunchedEffect(key1 = Unit) { onFinished() }
         return
     }
     WarmupScreen(state = shown, actions = viewModel)
@@ -89,9 +89,9 @@ fun WarmupRoute(factory: ViewModelProvider.Factory, onFinished: () -> Unit) {
  */
 @Composable
 fun WarmupScreen(state: WarmupUiState, actions: WarmupActions) {
-    Column(Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
         ScreenHeader(title = state.programmeName, trailing = state.stepLabel)
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -114,7 +114,7 @@ fun WarmupScreen(state: WarmupUiState, actions: WarmupActions) {
 @Composable
 private fun StepHeading(state: WarmupUiState) {
     val colors = Manuscript.colors
-    val size = with(LocalDensity.current) { SOUND_LABEL_SIZE.toSp() }
+    val size = with(receiver = LocalDensity.current) { SOUND_LABEL_SIZE.toSp() }
     Text(
         text = state.soundLabel,
         style = ManuscriptType.displayItalic.copy(fontSize = size, lineHeight = size),
@@ -126,7 +126,7 @@ private fun StepHeading(state: WarmupUiState) {
 @Composable
 private fun IterationPanel(view: IterationView, active: Boolean) {
     val colors = Manuscript.colors
-    val keySize = with(LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
+    val keySize = with(receiver = LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
     Spacer(Modifier.height(24.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -138,7 +138,7 @@ private fun IterationPanel(view: IterationView, active: Boolean) {
             style = ManuscriptType.displayNumber.copy(fontSize = keySize),
             color = colors.ink,
             modifier = Modifier
-                .weight(1f, fill = false)
+                .weight(weight = 1f, fill = false)
                 .paddingFromBaseline(top = KEY_ABOVE_BASELINE, bottom = KEY_BELOW_BASELINE)
                 .clearAndSetSemantics { contentDescription = spokenMusic(view.keyLabel) },
         )
@@ -147,7 +147,7 @@ private fun IterationPanel(view: IterationView, active: Boolean) {
             style = ManuscriptType.label,
             color = colors.muted,
             modifier = Modifier.clearAndSetSemantics {
-                contentDescription = spokenProgress(view, active)
+                contentDescription = spokenProgress(view = view, active = active)
             },
         )
     }
@@ -189,12 +189,12 @@ private fun IterationCells(view: IterationView) {
             .semantics(mergeDescendants = true) { contentDescription = description },
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        repeat(view.count) { index ->
+        repeat(times = view.count) { index ->
             val look = when {
                 now != null && index == now -> Modifier.background(colors.accent)
                 now != null && index < now -> Modifier.background(colors.faint)
-                index == view.turnIndex -> Modifier.border(2.dp, colors.ink)
-                else -> Modifier.border(1.dp, colors.ink)
+                index == view.turnIndex -> Modifier.border(width = 2.dp, color = colors.ink)
+                else -> Modifier.border(width = 1.dp, color = colors.ink)
             }
             Box(Modifier.weight(1f).height(CELL_HEIGHT).then(look))
         }
@@ -216,7 +216,7 @@ private fun NextStep(state: WarmupUiState) {
             fontSize = 20.sp,
             color = colors.ink,
         )
-        withStyle(soundStyle) { append(sound) }
+        withStyle(style = soundStyle) { append(sound) }
         append(" ${state.nextDetail.orEmpty()}")
     }
     Text(text = text, style = ManuscriptType.body, color = colors.muted)
@@ -267,7 +267,7 @@ private fun Transport(state: WarmupUiState, actions: WarmupActions) {
                     color = colors.onAccent,
                     softWrap = false,
                     maxLines = 1,
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.weight(weight = 1f, fill = false),
                 )
             }
             SkipButton(
@@ -288,7 +288,7 @@ private fun SkipButton(icon: ImageVector, description: String, onClick: () -> Un
         modifier = Modifier
             .size(width = 64.dp, height = 60.dp)
             .clip(shape)
-            .border(1.dp, colors.ink, shape)
+            .border(width = 1.dp, color = colors.ink, shape = shape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
@@ -335,7 +335,7 @@ private fun previewState(iteration: Int?, playing: Boolean): WarmupUiState = war
 @Composable
 private fun WarmupDayPreview() {
     SoundcheckTheme(dark = false) {
-        WarmupScreen(previewState(iteration = 3, playing = true), PreviewActions)
+        WarmupScreen(state = previewState(iteration = 3, playing = true), actions = PreviewActions)
     }
 }
 
@@ -343,7 +343,10 @@ private fun WarmupDayPreview() {
 @Composable
 private fun WarmupNightPreview() {
     SoundcheckTheme(dark = true) {
-        WarmupScreen(previewState(iteration = null, playing = false), PreviewActions)
+        WarmupScreen(
+            state = previewState(iteration = null, playing = false),
+            actions = PreviewActions,
+        )
     }
 }
 

@@ -41,7 +41,7 @@ class FakeAnnouncements(
      */
     fun clipOf(soundId: SoundId): Clip =
         Clip(
-            id = slots.getOrPut(soundId) { SampleIds.announcement(slots.size) },
+            id = slots.getOrPut(key = soundId) { SampleIds.announcement(slots.size) },
             lengthFrames = lengthFrames,
         )
 }

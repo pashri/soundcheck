@@ -34,13 +34,13 @@ import org.pashri.soundcheck.warmup.StepRef
  */
 fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostController) {
     val openPlaying: () -> Unit = {
-        navController.navigate(WarmupRoutes.PLAYING) { launchSingleTop = true }
+        navController.navigate(route = WarmupRoutes.PLAYING) { launchSingleTop = true }
     }
     val closing: (String) -> () -> Unit = { route ->
-        { navController.popBackStack(route, inclusive = true) }
+        { navController.popBackStack(route = route, inclusive = true) }
     }
     navigation(route = Tab.WarmUp.route, startDestination = WarmupRoutes.HOME) {
-        composable(WarmupRoutes.HOME) {
+        composable(route = WarmupRoutes.HOME) {
             WarmupHomeRoute(
                 factory = container.warmupHomeViewModelFactory,
                 links = HomeLinks(
@@ -54,13 +54,13 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
                 ),
             )
         }
-        composable(WarmupRoutes.PLAYING) {
+        composable(route = WarmupRoutes.PLAYING) {
             WarmupRoute(
                 factory = container.warmupViewModelFactory,
                 onFinished = closing(WarmupRoutes.PLAYING),
             )
         }
-        composable(WarmupRoutes.SETTINGS) {
+        composable(route = WarmupRoutes.SETTINGS) {
             SettingsRoute(
                 factory = container.settingsViewModelFactory,
                 onBack = closing(WarmupRoutes.SETTINGS),
@@ -147,16 +147,16 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
 }
 
 private fun requiredArg(name: String): NamedNavArgument =
-    navArgument(name) { type = NavType.StringType }
+    navArgument(name = name) { type = NavType.StringType }
 
-private fun optionalArg(name: String): NamedNavArgument = navArgument(name) {
+private fun optionalArg(name: String): NamedNavArgument = navArgument(name = name) {
     type = NavType.StringType
     nullable = true
     defaultValue = null
 }
 
 private fun NavBackStackEntry.requireArg(name: String): String =
-    checkNotNull(arguments?.getString(name)) { "The route has no $name" }
+    checkNotNull(value = arguments?.getString(name)) { "The route has no $name" }
 
 private fun NavBackStackEntry.pickFor(): StepRef? = WarmupRoutes.pickFor(
     programme = arguments?.getString(WarmupRoutes.ARG_PROGRAMME),

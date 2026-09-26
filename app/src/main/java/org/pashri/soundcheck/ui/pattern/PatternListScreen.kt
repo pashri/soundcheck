@@ -85,7 +85,7 @@ fun PatternListScreen(
     onAdd: () -> Unit,
 ) {
     val colors = Manuscript.colors
-    Column(Modifier.fillMaxSize().background(colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         BackHeader(
             backLabel = state.backLabel,
             title = state.title,
@@ -150,7 +150,7 @@ private fun PatternEntry(
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).then(innerAction),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(text = row.name, style = NAME_STYLE, color = colors.ink)
                     MusicText(
                         text = row.detail,

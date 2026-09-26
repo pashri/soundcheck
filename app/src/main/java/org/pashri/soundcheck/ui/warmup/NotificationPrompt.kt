@@ -4,7 +4,32 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.edit
+
+/**
+ * What to call just before a Start. On Android 13 and later the first Start ever asks to show
+ * notifications, for the lock-screen controls; playback goes ahead whatever the answer. The
+ * Warm-up home and the Programme editor share it, so the question is asked only once.
+ *
+ * @return asks for the notification permission when [shouldAskForNotifications] says to.
+ */
+@Composable
+internal fun rememberNotificationPrompt(): () -> Unit {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = {},
+    )
+    return {
+        if (shouldAskForNotifications(context)) {
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+}
 
 /**
  * True once ever, on Android 13 and later without the notification permission: a flag in

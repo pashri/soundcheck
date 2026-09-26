@@ -1,8 +1,5 @@
 package org.pashri.soundcheck.ui.warmup
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,9 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
-
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -86,17 +81,13 @@ data class HomeLinks(
 fun WarmupHomeRoute(factory: ViewModelProvider.Factory, links: HomeLinks) {
     val viewModel: WarmupHomeViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val notifications =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val askForNotifications = rememberNotificationPrompt()
     val shown = state ?: return
     WarmupHomeScreen(
         state = shown,
         links = links,
         onStart = { id ->
-            if (shouldAskForNotifications(context)) {
-                notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
+            askForNotifications()
             if (viewModel.start(id)) links.openPlaying()
         },
         onNewProgramme = links.editProgramme?.let { edit ->
@@ -124,7 +115,7 @@ fun WarmupHomeScreen(
     onDismissRestoredNotice: () -> Unit = {},
 ) {
     val colors = Manuscript.colors
-    Column(Modifier.fillMaxSize().background(colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         HomeHeader(onOpenSettings = links.openSettings)
         Column(
             modifier = Modifier
@@ -203,7 +194,7 @@ private fun RestoredNotice(text: String, onDismiss: () -> Unit) {
 @Composable
 private fun HomeHeader(onOpenSettings: (() -> Unit)?) {
     val colors = Manuscript.colors
-    Column(Modifier.fillMaxWidth().statusBarsPadding()) {
+    Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -310,7 +301,7 @@ private fun summary(card: ProgrammeCard, ink: Color): AnnotatedString = buildAnn
             fontSize = 18.sp,
             color = ink,
         )
-        withStyle(soundStyle) { append(card.sounds) }
+        withStyle(style = soundStyle) { append(card.sounds) }
         append(" · ")
     }
     append(card.stepsLabel)

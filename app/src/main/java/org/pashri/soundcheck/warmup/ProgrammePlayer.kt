@@ -119,14 +119,20 @@ class ProgrammePlayer(
     /** Plays the next Step that fits from its Announcement, or stops after the last Step. */
     fun next() {
         val current = _playback.value ?: return
-        val target = current.programme.nextStep(stepNow(current), current.range) ?: return stop()
+        val target = current.programme.nextStep(
+            current = stepNow(current),
+            range = current.range,
+        ) ?: return stop()
         startAt(base = current, point = ResumePoint(step = target, frame = 0L))
     }
 
     /** Plays the previous Step that fits from its Announcement; on the first, restarts it. */
     fun previous() {
         val current = _playback.value ?: return
-        val target = current.programme.previousStep(stepNow(current), current.range)
+        val target = current.programme.previousStep(
+            current = stepNow(current),
+            range = current.range,
+        )
         startAt(base = current, point = ResumePoint(step = target, frame = 0L))
     }
 
@@ -233,13 +239,16 @@ class ProgrammePlayer(
         val last = segments.last()
         val nextOrigin = last.endFrame + msToFrames(STEP_GAP_MS)
         if (last.isFinal || nextOrigin >= horizon) return
-        val step = base.programme.nextStep(last.step, base.range)
+        val step = base.programme.nextStep(current = last.step, range = base.range)
         val prepared = step?.let { prepareStep(base = base, index = it) }
         if (step == null || prepared == null) {
             last.isFinal = true
             return
         }
-        val origin = maxOf(nextOrigin, output.framePosition() + msToFrames(START_MARGIN_MS))
+        val origin = maxOf(
+            a = nextOrigin,
+            b = output.framePosition() + msToFrames(START_MARGIN_MS),
+        )
         segments.addLast(Segment(step = step, prepared = prepared, origin = origin, from = 0L))
     }
 
@@ -283,12 +292,15 @@ class ProgrammePlayer(
         val now = output.framePosition()
         val segment = currentSegment(now)
         val timeline = segment.prepared.timeline
-        val frame = timeline.resumeFrame(maxOf(now - segment.origin, segment.from))
+        val frame = timeline.resumeFrame(maxOf(a = now - segment.origin, b = segment.from))
         if (frame < timeline.lengthFrames) {
             val iteration = timeline.iterationAt(frame)?.index
             return ResumePoint(step = segment.step, frame = frame, iteration = iteration)
         }
-        val next = current.programme.nextStep(segment.step, current.range) ?: return null
+        val next = current.programme.nextStep(
+            current = segment.step,
+            range = current.range,
+        ) ?: return null
         return ResumePoint(step = next, frame = 0L)
     }
 
@@ -377,5 +389,5 @@ private class Segment(
         get() = origin + prepared.timeline.lengthFrames
 
     fun iterationAt(now: Long): Int? =
-        prepared.timeline.iterationAt(maxOf(now - origin, from))?.index
+        prepared.timeline.iterationAt(maxOf(a = now - origin, b = from))?.index
 }

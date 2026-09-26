@@ -42,22 +42,22 @@ class SettingsCodecTest {
 
     @Test
     fun `a Range beyond the piano is refused`() {
-        refuses(pinned.replace("\"lowest\":38", "\"lowest\":20"))
-        refuses(pinned.replace("\"highest\":64", "\"highest\":109"))
+        refuses(pinned.replace(oldValue = "\"lowest\":38", newValue = "\"lowest\":20"))
+        refuses(pinned.replace(oldValue = "\"highest\":64", newValue = "\"highest\":109"))
     }
 
     @Test
     fun `an upside-down Range is refused`() {
-        refuses(pinned.replace("\"lowest\":38", "\"lowest\":65"))
+        refuses(pinned.replace(oldValue = "\"lowest\":38", newValue = "\"lowest\":65"))
     }
 
     @Test
     fun `an unknown Voice Type is refused`() {
-        refuses(pinned.replace("BASS", "BARITONE"))
+        refuses(pinned.replace(oldValue = "BASS", newValue = "BARITONE"))
     }
 
     @Test
     fun `a file from another version is refused`() {
-        refuses(pinned.replace("\"version\":1", "\"version\":2"))
+        refuses(pinned.replace(oldValue = "\"version\":1", newValue = "\"version\":2"))
     }
 }

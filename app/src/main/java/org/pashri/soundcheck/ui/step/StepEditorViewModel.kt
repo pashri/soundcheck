@@ -41,7 +41,7 @@ class StepEditorViewModel(
 
     /** What the editor shows. */
     val uiState: StateFlow<EditorState<StepEditorUiState>> =
-        combine(library.data, settings.data) { saved, chosen ->
+        combine(flow = library.data, flow2 = settings.data) { saved, chosen ->
             if (saved == null || chosen == null) {
                 EditorState.Loading
             } else {
@@ -102,7 +102,7 @@ class StepEditorViewModel(
     }
 
     private fun change(edit: (SavedStep) -> SavedStep) {
-        library.edit { it.updateStep(ref, edit) }
+        library.edit { it.updateStep(ref = ref, change = edit) }
     }
 
     /**

@@ -11,7 +11,7 @@ import org.pashri.soundcheck.music.Pitch
  */
 data class Range(val lowest: Pitch, val highest: Pitch) {
     init {
-        require(lowest <= highest) { "Range $lowest – $highest is upside down" }
+        require(value = lowest <= highest) { "Range $lowest – $highest is upside down" }
     }
 
     /** Half-steps from [lowest] to [highest]. */
@@ -34,8 +34,8 @@ data class Range(val lowest: Pitch, val highest: Pitch) {
      * @return the effective Range, or null if the offset closes it.
      */
     fun offsetBy(offset: RangeOffset): Range? {
-        val low = maxOf(lowest.midi - offset.bottom, PIANO.lowest.midi)
-        val high = minOf(highest.midi + offset.top, PIANO.highest.midi)
+        val low = maxOf(a = lowest.midi - offset.bottom, b = PIANO.lowest.midi)
+        val high = minOf(a = highest.midi + offset.top, b = PIANO.highest.midi)
         return if (low <= high) Range(lowest = Pitch(low), highest = Pitch(high)) else null
     }
 

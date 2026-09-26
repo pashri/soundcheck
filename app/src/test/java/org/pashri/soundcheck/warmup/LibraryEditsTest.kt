@@ -66,7 +66,7 @@ class LibraryEditsTest {
         val ref = StepRef(programmeId = starter.id, key = step.key)
         val added = library.addStep(programmeId = starter.id, step = step)
         assertEquals("new", keys(added).last())
-        val faster = added.updateStep(ref) { it.copy(bpm = 150) }
+        val faster = added.updateStep(ref = ref) { it.copy(bpm = 150) }
         assertEquals(150, faster.programme(starter.id)?.step(step.key)?.bpm)
         assertEquals(starter.steps, faster.programme(starter.id)?.steps?.dropLast(1))
         assertEquals(keys(library), keys(faster.removeStep(ref)))

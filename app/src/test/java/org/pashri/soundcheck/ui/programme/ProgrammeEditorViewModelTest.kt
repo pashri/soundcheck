@@ -78,7 +78,7 @@ class ProgrammeEditorViewModelTest {
         checkNotNull(library.value.programme(starter)).steps.map { it.key.value }
 
     @Test
-    fun `nothing is shown until the library has loaded`() = runTest(dispatcher) {
+    fun `nothing is shown until the library has loaded`() = runTest(context = dispatcher) {
         val unloaded = FakeStore<Library>(null)
         val viewModel = viewModel(store = unloaded)
         runCurrent()
@@ -88,26 +88,27 @@ class ProgrammeEditorViewModelTest {
     }
 
     @Test
-    fun `renaming trims the name`() = runTest(dispatcher) {
+    fun `renaming trims the name`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.rename("  Evening ")
         assertEquals("Evening", shown(viewModel).name)
     }
 
     @Test
-    fun `adding a Step appends the default Step and gives its key`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        val key = viewModel.addStep()
-        assertEquals(StepKey("id-1"), key)
-        assertEquals(
-            StarterLibrary.LIBRARY.newStep(StepKey("id-1")),
-            library.value.programme(starter)?.steps?.last(),
-        )
-        assertEquals("7 STEPS", shown(viewModel).stepsLabel)
-    }
+    fun `adding a Step appends the default Step and gives its key`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            val key = viewModel.addStep()
+            assertEquals(StepKey("id-1"), key)
+            assertEquals(
+                StarterLibrary.LIBRARY.newStep(StepKey("id-1")),
+                library.value.programme(starter)?.steps?.last(),
+            )
+            assertEquals("7 STEPS", shown(viewModel).stepsLabel)
+        }
 
     @Test
-    fun `removing and moving Steps change the list`() = runTest(dispatcher) {
+    fun `removing and moving Steps change the list`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.removeStep(StepKey("starter-2"))
         viewModel.moveStep(from = 0, to = 4)
@@ -118,7 +119,7 @@ class ProgrammeEditorViewModelTest {
     }
 
     @Test
-    fun `deleting the Programme closes the editor`() = runTest(dispatcher) {
+    fun `deleting the Programme closes the editor`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.delete()
         runCurrent()
@@ -127,7 +128,7 @@ class ProgrammeEditorViewModelTest {
     }
 
     @Test
-    fun `start plays the Programme on the Range from Settings`() = runTest(dispatcher) {
+    fun `start plays the Programme on the Range from Settings`() = runTest(context = dispatcher) {
         val controller = testController(focus)
         val viewModel = viewModel(controller = controller)
         assertTrue(viewModel.start())
@@ -137,7 +138,7 @@ class ProgrammeEditorViewModelTest {
     }
 
     @Test
-    fun `a Start where nothing fits explains why`() = runTest(dispatcher) {
+    fun `a Start where nothing fits explains why`() = runTest(context = dispatcher) {
         settings.set(narrow(lowest = "C4", highest = "D4"))
         val viewModel = viewModel()
         assertFalse(viewModel.start())
@@ -146,7 +147,7 @@ class ProgrammeEditorViewModelTest {
 
     @Test
     fun `narrowing the Range in Settings warns on the Step that no longer fits`() =
-        runTest(dispatcher) {
+        runTest(context = dispatcher) {
             val viewModel = viewModel()
             assertNull(shown(viewModel).rows[2].warning)
             settings.set(narrow(lowest = "C3", highest = "G3"))

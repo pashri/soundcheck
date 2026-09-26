@@ -63,6 +63,7 @@ import org.pashri.soundcheck.ui.components.OutlineButton
 import org.pashri.soundcheck.ui.components.QuietButton
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
+import org.pashri.soundcheck.ui.warmup.rememberNotificationPrompt
 import org.pashri.soundcheck.warmup.StepKey
 
 /**
@@ -101,6 +102,7 @@ data class ProgrammeEditorActions(
 
 /**
  * The Programme editor, wired to its view model; it closes when the Programme is deleted.
+ * Start asks for the notification permission as the Warm-up home does.
  *
  * @param factory builds the [ProgrammeEditorViewModel].
  * @param links where the screen's links go.
@@ -109,6 +111,7 @@ data class ProgrammeEditorActions(
 fun ProgrammeEditorRoute(factory: ViewModelProvider.Factory, links: ProgrammeLinks) {
     val viewModel: ProgrammeEditorViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val askForNotifications = rememberNotificationPrompt()
     EditorFrame(state = state, onGone = links.back) { shown ->
         ProgrammeEditorScreen(
             state = shown,
@@ -122,7 +125,10 @@ fun ProgrammeEditorRoute(factory: ViewModelProvider.Factory, links: ProgrammeLin
                 },
                 removeStep = viewModel::removeStep,
                 moveStep = viewModel::moveStep,
-                start = { if (viewModel.start()) links.openPlaying() },
+                start = {
+                    askForNotifications()
+                    if (viewModel.start()) links.openPlaying()
+                },
             ),
         )
     }
@@ -141,7 +147,7 @@ fun ProgrammeEditorScreen(state: ProgrammeEditorUiState, actions: ProgrammeEdito
     var renaming by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
     var removing by rememberSaveable { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().background(colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         BackHeader(
             backLabel = "Warm-up",
             title = state.name,
@@ -260,7 +266,7 @@ private fun StepList(
                         .onSizeChanged { heights[row.key] = it.height }
                         .zIndex(if (dragged) 1f else 0f)
                         .graphicsLayer { translationY = if (dragged) offset else 0f },
-                    drag = Modifier.pointerInput(row.key) {
+                    drag = Modifier.pointerInput(key1 = row.key) {
                         detectVerticalDragGestures(
                             onDragStart = {
                                 dragging = row.key
@@ -310,7 +316,7 @@ private fun StepEntry(
     )
     val open = if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier
     val spoken = spokenStep(row = row)
-    Column(modifier.fillMaxWidth().background(colors.paper)) {
+    Column(modifier = modifier.fillMaxWidth().background(colors.paper)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +351,7 @@ private fun StepEntry(
                     .padding(start = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(text = row.sound, style = SOUND_STYLE, color = colors.ink)
                     MusicText(text = row.meta, style = ManuscriptType.body, color = colors.muted)
                 }

@@ -84,7 +84,10 @@ class SpokenAnnouncements(
         if (trimmed.isEmpty()) return null
         val slot = freeSlots.removeFirstOrNull() ?: giveUpOldest() ?: return null
         val loaded = try {
-            output.loadSample(id = slot, pcm = normalizePeak(trimmed, peak = ANNOUNCEMENT_PEAK))
+            output.loadSample(
+                id = slot,
+                pcm = normalizePeak(frames = trimmed, peak = ANNOUNCEMENT_PEAK),
+            )
         } catch (error: RuntimeException) {
             freeSlots.addFirst(slot)
             throw error

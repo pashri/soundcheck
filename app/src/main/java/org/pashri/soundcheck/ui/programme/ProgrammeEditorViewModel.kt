@@ -46,7 +46,11 @@ class ProgrammeEditorViewModel(
 
     /** What the editor shows. */
     val uiState: StateFlow<EditorState<ProgrammeEditorUiState>> =
-        combine(library.data, settings.data, problem) { saved, chosen, outcome ->
+        combine(
+            flow = library.data,
+            flow2 = settings.data,
+            flow3 = problem,
+        ) { saved, chosen, outcome ->
             if (saved == null || chosen == null) {
                 EditorState.Loading
             } else {

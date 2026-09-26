@@ -32,9 +32,9 @@ import org.pashri.soundcheck.ui.theme.ManuscriptType
  * @property icon the tab's icon.
  */
 enum class Tab(val route: String, val label: String, val icon: ImageVector) {
-    Tuner("tuner", "Tuner", ManuscriptIcons.Tuner),
-    Metronome("metronome", "Metronome", ManuscriptIcons.Metronome),
-    WarmUp("warmup", "Warm-up", ManuscriptIcons.WarmUp),
+    Tuner(route = "tuner", label = "Tuner", icon = ManuscriptIcons.Tuner),
+    Metronome(route = "metronome", label = "Metronome", icon = ManuscriptIcons.Metronome),
+    WarmUp(route = "warmup", label = "Warm-up", icon = ManuscriptIcons.WarmUp),
 }
 
 /**
@@ -65,7 +65,7 @@ fun tabFor(routes: Sequence<String?>): Tab? = routes.firstNotNullOfOrNull(::tabF
 @Composable
 fun ManuscriptNavBar(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = Modifier) {
     val colors = Manuscript.colors
-    Column(modifier.fillMaxWidth().background(colors.paper).navigationBarsPadding()) {
+    Column(modifier = modifier.fillMaxWidth().background(colors.paper).navigationBarsPadding()) {
         HorizontalDivider(thickness = 1.dp, color = colors.rule)
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -87,13 +87,18 @@ private fun NavItem(tab: Tab, selected: Boolean, onClick: () -> Unit) {
             .width(96.dp)
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
             .drawBehind {
-                if (selected) drawRect(colors.accent, size = Size(size.width, 2.dp.toPx()))
+                if (selected) {
+                    drawRect(
+                        color = colors.accent,
+                        size = Size(width = size.width, height = 2.dp.toPx()),
+                    )
+                }
             }
             .padding(top = 12.dp, bottom = 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(tab.icon, contentDescription = null, tint = tint)
+        Icon(imageVector = tab.icon, contentDescription = null, tint = tint)
         Text(
             text = tab.label,
             style = ManuscriptType.navLabel.copy(

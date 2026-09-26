@@ -61,6 +61,20 @@ data class WarmupHomeUiState(
 )
 
 /**
+ * Which saved documents couldn't be opened or set aside, so none of their changes are kept.
+ *
+ * @property library the library couldn't be opened.
+ * @property settings the settings couldn't be opened.
+ */
+data class Unopened(val library: Boolean = false, val settings: Boolean = false) {
+    /** The usual case. */
+    companion object {
+        /** Every saved document opened. */
+        val NONE: Unopened = Unopened()
+    }
+}
+
+/**
  * A Start that didn't play.
  *
  * @property programmeId the Programme it was for.
@@ -78,6 +92,8 @@ data class StartProblem(val programmeId: ProgrammeId, val outcome: StartOutcome)
  * @param saveFailed whether the last change couldn't be saved.
  * @param restoredNotice what to say when a saved document was set aside and replaced, or
  *     null.
+ * @param unopened which saved documents couldn't be opened; this explains a failed save
+ *     better than a full phone does.
  * @return what to show.
  */
 fun warmupHomeUiState(
@@ -87,6 +103,7 @@ fun warmupHomeUiState(
     problem: StartProblem?,
     saveFailed: Boolean,
     restoredNotice: String? = null,
+    unopened: Unopened = Unopened.NONE,
 ): WarmupHomeUiState = WarmupHomeUiState(
     rangeLabel = rangeLabel(settings),
     nowPlaying = playback?.let(::nowPlayingCard),
@@ -99,7 +116,7 @@ fun warmupHomeUiState(
     },
     patternCount = library.patterns.size,
     soundCount = library.sounds.size,
-    saveProblem = if (saveFailed) SAVE_PROBLEM else null,
+    saveProblem = saveProblem(saveFailed = saveFailed, unopened = unopened),
     restoredNotice = restoredNotice,
 )
 
@@ -154,6 +171,13 @@ const val SETTINGS_RESTORED_NOTICE: String =
     "Your saved settings couldn't be read. They were kept as a backup and the defaults were " +
         "loaded."
 
+private fun saveProblem(saveFailed: Boolean, unopened: Unopened): String? = when {
+    unopened.library -> LIBRARY_UNOPENED
+    unopened.settings -> SETTINGS_UNOPENED
+    saveFailed -> SAVE_PROBLEM
+    else -> null
+}
+
 private fun programmeCard(
     programme: SavedProgramme,
     library: Library,
@@ -177,3 +201,9 @@ private fun nowPlayingCard(playback: Playback): NowPlayingCard = NowPlayingCard(
 )
 
 private const val SAVE_PROBLEM = "Couldn't save your last change. Is the phone's storage full?"
+
+private const val LIBRARY_UNOPENED =
+    "Your saved library couldn't be opened, so changes won't be kept."
+
+private const val SETTINGS_UNOPENED =
+    "Your saved settings couldn't be opened, so changes won't be kept."

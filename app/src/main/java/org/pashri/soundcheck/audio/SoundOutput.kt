@@ -41,7 +41,7 @@ object SampleIds {
      * @throws IllegalArgumentException if [index] is outside 0 until [ANNOUNCEMENT_SLOTS].
      */
     fun announcement(index: Int): SampleId {
-        require(index in 0 until ANNOUNCEMENT_SLOTS) { "No Announcement slot $index" }
+        require(value = index in 0 until ANNOUNCEMENT_SLOTS) { "No Announcement slot $index" }
         return SampleId(FIRST_ANNOUNCEMENT + index)
     }
 
@@ -53,7 +53,7 @@ object SampleIds {
      * @throws IllegalArgumentException if [index] is outside 0 until [PIANO_SLOTS].
      */
     fun piano(index: Int): SampleId {
-        require(index in 0 until PIANO_SLOTS) { "No piano slot $index" }
+        require(value = index in 0 until PIANO_SLOTS) { "No piano slot $index" }
         return SampleId(FIRST_PIANO + index)
     }
 

@@ -54,13 +54,14 @@ class SoundsViewModelTest {
     }
 
     @Test
-    fun `a new Sound is added with its label trimmed and a fresh id`() = runTest(dispatcher) {
-        assertEquals(SoundId("id-1"), viewModel().add(" vroom "))
-        assertEquals(Sound(id = SoundId("id-1"), label = "vroom"), library.value.sounds.last())
-    }
+    fun `a new Sound is added with its label trimmed and a fresh id`() =
+        runTest(context = dispatcher) {
+            assertEquals(SoundId("id-1"), viewModel().add(" vroom "))
+            assertEquals(Sound(id = SoundId("id-1"), label = "vroom"), library.value.sounds.last())
+        }
 
     @Test
-    fun `renaming a Sound keeps its Steps`() = runTest(dispatcher) {
+    fun `renaming a Sound keeps its Steps`() = runTest(context = dispatcher) {
         viewModel().rename(id = StarterSounds.MIM.id, label = "mmm")
         assertEquals("mmm", library.value.sound(StarterSounds.MIM.id)?.label)
         assertEquals(
@@ -70,7 +71,7 @@ class SoundsViewModelTest {
     }
 
     @Test
-    fun `choosing for a Step changes its Sound`() = runTest(dispatcher) {
+    fun `choosing for a Step changes its Sound`() = runTest(context = dispatcher) {
         viewModel(pickFor = mimStep).choose(StarterSounds.EE.id)
         assertEquals(
             StarterSounds.EE.id,
@@ -79,14 +80,14 @@ class SoundsViewModelTest {
     }
 
     @Test
-    fun `deleting a Sound removes its Steps`() = runTest(dispatcher) {
+    fun `deleting a Sound removes its Steps`() = runTest(context = dispatcher) {
         viewModel().delete(StarterSounds.HUM.id)
         assertNull(library.value.sound(StarterSounds.HUM.id))
         assertEquals(5, library.value.programme(starter)?.steps?.size)
     }
 
     @Test
-    fun `nothing is shown until the library has loaded`() = runTest(dispatcher) {
+    fun `nothing is shown until the library has loaded`() = runTest(context = dispatcher) {
         assertNull(state(viewModel(store = FakeStore(null))))
     }
 }

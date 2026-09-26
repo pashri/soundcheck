@@ -44,12 +44,12 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `nothing is shown until the settings have loaded`() = runTest(dispatcher) {
+    fun `nothing is shown until the settings have loaded`() = runTest(context = dispatcher) {
         assertNull(state(viewModel(store = FakeStore(null))))
     }
 
     @Test
-    fun `picking Bass sets the Bass Range`() = runTest(dispatcher) {
+    fun `picking Bass sets the Bass Range`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.selectVoiceType(VoiceType.BASS)
         assertEquals(VoiceType.BASS.range, settings.value.range)
@@ -57,7 +57,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the note buttons move the Range a half-step at a time`() = runTest(dispatcher) {
+    fun `the note buttons move the Range a half-step at a time`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.lowerLowest()
         viewModel.raiseHighest()
@@ -69,7 +69,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `the switch turns Play over other audio on and off`() = runTest(dispatcher) {
+    fun `the switch turns Play over other audio on and off`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.setPlayOverOtherAudio(true)
         assertTrue(settings.value.playOverOtherAudio)

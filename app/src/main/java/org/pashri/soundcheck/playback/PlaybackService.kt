@@ -114,7 +114,7 @@ class PlaybackService : Service() {
             )
         }
         val now = nowPlaying(state)
-        PlaybackNotifications.updateSession(session, now)
+        PlaybackNotifications.updateSession(session = session, now = now)
         ServiceCompat.startForeground(
             this,
             PlaybackNotifications.NOTIFICATION_ID,

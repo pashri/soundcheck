@@ -50,15 +50,17 @@ fun signed(halfSteps: Int): String = when {
  *
  * @param trip the Step's round trip.
  * @return e.g. "Needs 19 half-steps; this Step's Range has 18. It will be skipped.", a
- *     note that the notes reach past the piano's keys when the Range is wide enough but no
- *     key is left (degrees far above the root), or null when it fits.
+ *     note that no Range is left when the Range Offset uses it all up, a note that the
+ *     notes reach past the piano's keys when the Range is wide enough but no key is left
+ *     (degrees far above the root), or null when it fits.
  */
 fun fitWarning(trip: RoundTrip): String? {
     val tooWide = trip as? RoundTrip.DoesNotFit ?: return null
     val available = tooWide.availableHalfSteps
-    if (available > 0 && tooWide.neededHalfSteps <= available) return PAST_THE_KEYS
-    val needed = halfStepsText(tooWide.neededHalfSteps)
-    return "Needs $needed; this Step's Range has ${tooWide.availableHalfSteps}. " +
+    if (available <= 0) return NO_RANGE_LEFT
+    if (tooWide.neededHalfSteps <= available) return PAST_THE_KEYS
+    val needed = halfStepsText(count = tooWide.neededHalfSteps)
+    return "Needs $needed; this Step's Range has $available. " +
         "It will be skipped."
 }
 
@@ -73,6 +75,9 @@ fun spokenStep(row: StepRow): String =
 
 private fun halfStepsText(count: Int): String =
     if (count == 1) "1 half-step" else "$count half-steps"
+
+/** When the Range Offset leaves no Range at all. */
+private const val NO_RANGE_LEFT = "No Range left for this Step. It will be skipped."
 
 /** When the Range is wide enough but every key would sing past A0 or C8 (Task 1). */
 private const val PAST_THE_KEYS = "Its notes reach past the piano's keys here. It will be skipped."

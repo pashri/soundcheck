@@ -35,30 +35,49 @@ class WarmupHomeViewModel(
     private val problem = MutableStateFlow<StartProblem?>(null)
     private val restoredDismissed = MutableStateFlow(false)
 
-    /** Whether the last save failed, and what to say if a saved document was restored. */
-    private val documentNotices = combine(
-        library.saveFailed,
-        settings.saveFailed,
-        library.setAside,
-        settings.setAside,
-        restoredDismissed,
-    ) { librarySaveFailed, settingsSaveFailed, librarySetAside, settingsSetAside, dismissed ->
-        val notice = when {
+    /** What to say if a saved document was set aside and restored, until dismissed. */
+    private val restoredNotice = combine(
+        flow = library.setAside,
+        flow2 = settings.setAside,
+        flow3 = restoredDismissed,
+    ) { librarySetAside, settingsSetAside, dismissed ->
+        when {
             dismissed -> null
             librarySetAside -> LIBRARY_RESTORED_NOTICE
             settingsSetAside -> SETTINGS_RESTORED_NOTICE
             else -> null
         }
-        DocumentNotices(saveFailed = librarySaveFailed || settingsSaveFailed, restored = notice)
+    }
+
+    /** Which saved documents couldn't be opened, so none of their changes are kept. */
+    private val unopened = combine(
+        flow = library.unopened,
+        flow2 = settings.unopened,
+    ) { libraryUnopened, settingsUnopened ->
+        Unopened(library = libraryUnopened, settings = settingsUnopened)
+    }
+
+    /** Whether the last save failed and why, and what to say if a document was restored. */
+    private val documentNotices = combine(
+        flow = library.saveFailed,
+        flow2 = settings.saveFailed,
+        flow3 = unopened,
+        flow4 = restoredNotice,
+    ) { librarySaveFailed, settingsSaveFailed, documentsUnopened, notice ->
+        DocumentNotices(
+            saveFailed = librarySaveFailed || settingsSaveFailed,
+            unopened = documentsUnopened,
+            restored = notice,
+        )
     }
 
     /** What the home shows, or null until the library and the settings have loaded. */
     val uiState: StateFlow<WarmupHomeUiState?> = combine(
-        library.data,
-        settings.data,
-        controller.playback,
-        problem,
-        documentNotices,
+        flow = library.data,
+        flow2 = settings.data,
+        flow3 = controller.playback,
+        flow4 = problem,
+        flow5 = documentNotices,
     ) { saved, chosen, playback, startProblem, notices ->
         if (saved == null || chosen == null) {
             null
@@ -70,6 +89,7 @@ class WarmupHomeViewModel(
                 problem = startProblem,
                 saveFailed = notices.saveFailed,
                 restoredNotice = notices.restored,
+                unopened = notices.unopened,
             )
         }
     }.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
@@ -138,6 +158,11 @@ class WarmupHomeViewModel(
  * aside and replaced.
  *
  * @property saveFailed whether the last save of either document failed.
+ * @property unopened which documents couldn't be opened, which is why their saves fail.
  * @property restored what to say, or null.
  */
-private data class DocumentNotices(val saveFailed: Boolean, val restored: String?)
+private data class DocumentNotices(
+    val saveFailed: Boolean,
+    val unopened: Unopened,
+    val restored: String?,
+)

@@ -27,11 +27,16 @@ object LibraryCodec : TextCodec<Library> {
     const val VERSION: Int = 1
 
     override fun encode(value: Library): String =
-        DocumentJson.encodeToString(LibraryFile.serializer(), value.toFile())
+        DocumentJson.encodeToString(serializer = LibraryFile.serializer(), value = value.toFile())
 
     override fun decode(text: String): Library {
-        val file = DocumentJson.decodeFromString(LibraryFile.serializer(), text)
-        require(file.version == VERSION) { "Library format ${file.version} is not $VERSION" }
+        val file = DocumentJson.decodeFromString(
+            deserializer = LibraryFile.serializer(),
+            string = text,
+        )
+        require(value = file.version == VERSION) {
+            "Library format ${file.version} is not $VERSION"
+        }
         return file.toLibrary()
     }
 }

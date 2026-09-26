@@ -157,13 +157,16 @@ class WarmupUiStateTest {
     @Test
     fun `progress is spoken as an Iteration, a direction, the Demo or not started`() {
         val playing = checkNotNull(state(stepIndex = 2, iteration = 3).iterations)
-        assertEquals("Iteration 4 of 19, going up", spokenProgress(playing, active = true))
+        assertEquals("Iteration 4 of 19, going up", spokenProgress(view = playing, active = true))
         val homeward = checkNotNull(state(stepIndex = 2, iteration = 12).iterations)
-        assertEquals("Iteration 13 of 19, going down", spokenProgress(homeward, active = true))
+        assertEquals(
+            "Iteration 13 of 19, going down",
+            spokenProgress(view = homeward, active = true),
+        )
         val demo = checkNotNull(state(stepIndex = 2, iteration = null).iterations)
-        assertEquals("Demo", spokenProgress(demo, active = true))
+        assertEquals("Demo", spokenProgress(view = demo, active = true))
         val notStarted = checkNotNull(state(stepIndex = null, iteration = null).iterations)
-        assertEquals("not started", spokenProgress(notStarted, active = false))
+        assertEquals("not started", spokenProgress(view = notStarted, active = false))
     }
 
     @Test

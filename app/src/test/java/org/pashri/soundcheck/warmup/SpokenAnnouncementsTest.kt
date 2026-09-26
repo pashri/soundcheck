@@ -20,7 +20,9 @@ class SpokenAnnouncementsTest {
         SpokenAnnouncements(output = output, speech = speech, labelOf = { labels[it] })
 
     /** 4 800 silent frames, 2 400 frames at 0.35, then 4 800 silent frames. */
-    private val spokenWord = FloatArray(12_000) { if (it in 4_800 until 7_200) 0.35f else 0f }
+    private val spokenWord = FloatArray(size = 12_000) {
+        if (it in 4_800 until 7_200) 0.35f else 0f
+    }
 
     @Test
     fun `a Sound's label is spoken, trimmed, levelled and loaded into a slot`() = runTest {
@@ -112,7 +114,7 @@ class SpokenAnnouncementsTest {
             speech.pcm = spokenWord
             val prepared = announcements.prepare(StarterSounds.MIM.id)
             labels.remove(StarterSounds.MIM.id)
-            val clip = announcements.prepare(StarterSounds.MIM.id, fallbackLabel = "mim")
+            val clip = announcements.prepare(soundId = StarterSounds.MIM.id, fallbackLabel = "mim")
             assertEquals(prepared, clip)
             assertEquals(listOf("mim"), speech.spoken)
         }

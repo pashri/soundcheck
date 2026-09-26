@@ -38,7 +38,7 @@ data class Pattern(
     val keyChord: KeyChord,
 ) {
     init {
-        require(notes.isNotEmpty()) { "Pattern \"$name\" has no notes" }
+        require(value = notes.isNotEmpty()) { "Pattern \"$name\" has no notes" }
     }
 
     /** The lowest and highest sung notes relative to the root. */

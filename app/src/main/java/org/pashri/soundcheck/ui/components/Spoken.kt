@@ -17,8 +17,10 @@ import androidx.compose.ui.text.style.TextAlign
  * @return e.g. "B flat 2", "top minus 3" or "Start low up".
  */
 fun spokenMusic(text: String): String = SPOKEN_SYMBOLS.entries
-    .fold(text) { spoken, (symbol, word) -> spoken.replace(symbol, " $word ") }
-    .replace(SPACES, " ")
+    .fold(initial = text) { spoken, (symbol, word) ->
+        spoken.replace(oldValue = symbol, newValue = " $word ")
+    }
+    .replace(regex = SPACES, replacement = " ")
     .trim()
 
 /**

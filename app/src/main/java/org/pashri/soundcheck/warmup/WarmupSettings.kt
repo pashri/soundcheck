@@ -17,7 +17,7 @@ data class WarmupSettings(
     val playOverOtherAudio: Boolean,
 ) {
     init {
-        require(range.lowest in Range.PIANO && range.highest in Range.PIANO) {
+        require(value = range.lowest in Range.PIANO && range.highest in Range.PIANO) {
             "Range ${range.lowest} – ${range.highest} reaches past the piano"
         }
     }
@@ -50,7 +50,10 @@ fun WarmupSettings.withVoiceType(voiceType: VoiceType): WarmupSettings =
  * @return the new settings.
  */
 fun WarmupSettings.withLowest(midi: Int): WarmupSettings {
-    val lowest = midi.coerceIn(Range.PIANO.lowest.midi, range.highest.midi)
+    val lowest = midi.coerceIn(
+        minimumValue = Range.PIANO.lowest.midi,
+        maximumValue = range.highest.midi,
+    )
     return copy(range = Range(lowest = Pitch(lowest), highest = range.highest))
 }
 
@@ -62,6 +65,9 @@ fun WarmupSettings.withLowest(midi: Int): WarmupSettings {
  * @return the new settings.
  */
 fun WarmupSettings.withHighest(midi: Int): WarmupSettings {
-    val highest = midi.coerceIn(range.lowest.midi, Range.PIANO.highest.midi)
+    val highest = midi.coerceIn(
+        minimumValue = range.lowest.midi,
+        maximumValue = Range.PIANO.highest.midi,
+    )
     return copy(range = Range(lowest = range.lowest, highest = Pitch(highest)))
 }

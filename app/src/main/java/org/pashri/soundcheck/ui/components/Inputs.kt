@@ -62,7 +62,7 @@ fun BackHeader(
     onRename: (() -> Unit)? = null,
 ) {
     val colors = Manuscript.colors
-    Column(Modifier.fillMaxWidth().statusBarsPadding()) {
+    Column(modifier = Modifier.fillMaxWidth().statusBarsPadding()) {
         Row(
             modifier = Modifier
                 .padding(start = 12.dp, top = 8.dp)
@@ -120,7 +120,7 @@ private fun HeaderTitle(title: String, onRename: (() -> Unit)?, modifier: Modifi
             text = title,
             style = ManuscriptType.screenTitle,
             color = colors.ink,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(weight = 1f, fill = false),
         )
         if (onRename != null) {
             Spacer(Modifier.width(8.dp))
@@ -204,7 +204,7 @@ fun <T> Segmented(
 fun StepperButton(symbol: String, description: String, enabled: Boolean, onClick: () -> Unit) {
     val colors = Manuscript.colors
     val tint = if (enabled) colors.ink else colors.faint
-    val size = with(LocalDensity.current) { STEPPER_SYMBOL.toSp() }
+    val size = with(receiver = LocalDensity.current) { STEPPER_SYMBOL.toSp() }
     Box(
         modifier = Modifier
             .size(48.dp)
@@ -256,7 +256,8 @@ fun StepperRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val spoken = spokenRow(parts = listOf(label, value, detail))
-        Column(Modifier.weight(1f).clearAndSetSemantics { contentDescription = spoken }) {
+        val merged = Modifier.weight(1f).clearAndSetSemantics { contentDescription = spoken }
+        Column(modifier = merged) {
             Text(text = label, style = ManuscriptType.label, color = colors.muted)
             MusicText(
                 text = value,

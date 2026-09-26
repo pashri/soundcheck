@@ -95,7 +95,7 @@ fun SoundsScreen(state: SoundsUiState, actions: SoundsActions) {
     var adding by rememberSaveable { mutableStateOf(false) }
     var renaming by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().background(colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         BackHeader(
             backLabel = state.backLabel,
             title = state.title,
@@ -193,7 +193,7 @@ private fun SoundEntry(
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).then(action),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(text = row.label, style = LABEL_STYLE, color = colors.ink)
                     Text(
                         text = "${row.detail} · ${row.usage}",

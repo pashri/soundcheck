@@ -11,54 +11,59 @@ import androidx.compose.ui.unit.dp
 /** Line icons drawn to match the Manuscript mockups; tint them with `Icon(tint = …)`. */
 object ManuscriptIcons {
     /** A tuning fork. */
-    val Tuner: ImageVector = strokeIcon("Tuner", "M8 3v7a4 4 0 0 0 8 0V3", "M12 14v7")
+    val Tuner: ImageVector = strokeIcon(name = "Tuner", "M8 3v7a4 4 0 0 0 8 0V3", "M12 14v7")
 
     /** A metronome with its arm swung right. */
-    val Metronome: ImageVector = strokeIcon("Metronome", "M7 21h10L14 3h-4z", "M12 16l5-8")
+    val Metronome: ImageVector = strokeIcon(name = "Metronome", "M7 21h10L14 3h-4z", "M12 16l5-8")
 
     /** A voice waveform. */
-    val WarmUp: ImageVector = strokeIcon("WarmUp", "M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4")
+    val WarmUp: ImageVector = strokeIcon(name = "WarmUp", "M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4")
 
     /** A filled play triangle. */
-    val Play: ImageVector = fillIcon("Play", "M7 4l13 8-13 8z")
+    val Play: ImageVector = fillIcon(name = "Play", path = "M7 4l13 8-13 8z")
 
     /** A filled stop square. */
-    val Stop: ImageVector = fillIcon("Stop", "M6 6h12v12H6z")
+    val Stop: ImageVector = fillIcon(name = "Stop", path = "M6 6h12v12H6z")
 
     /** Two filled bars: pause. */
-    val Pause: ImageVector = fillIcon("Pause", "M6 5h4v14H6zM14 5h4v14h-4z")
+    val Pause: ImageVector = fillIcon(name = "Pause", path = "M6 5h4v14H6zM14 5h4v14h-4z")
 
     /** A left-pointing triangle against a bar: previous. */
-    val Previous: ImageVector = fillIcon("Previous", "M18 6l-9 6 9 6zM5 6h2v12H5z")
+    val Previous: ImageVector = fillIcon(name = "Previous", path = "M18 6l-9 6 9 6zM5 6h2v12H5z")
 
     /** A right-pointing triangle against a bar: next. */
-    val Next: ImageVector = fillIcon("Next", "M6 6l9 6-9 6zM17 6h2v12h-2z")
+    val Next: ImageVector = fillIcon(name = "Next", path = "M6 6l9 6-9 6zM17 6h2v12h-2z")
 
     /** Two sliders: settings. */
     val Settings: ImageVector = strokeIcon(
-        "Settings",
+        name = "Settings",
         "M4 7h10M18 7h2M4 17h4M12 17h8",
         "M14 7a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
         "M8 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
     )
 
     /** A chevron pointing right: opens something. */
-    val ChevronRight: ImageVector = strokeIcon("ChevronRight", "M9 5l7 7-7 7")
+    val ChevronRight: ImageVector = strokeIcon(name = "ChevronRight", "M9 5l7 7-7 7")
 
     /** A chevron pointing left: back. */
-    val ChevronLeft: ImageVector = strokeIcon("ChevronLeft", "M15 5l-7 7 7 7")
+    val ChevronLeft: ImageVector = strokeIcon(name = "ChevronLeft", "M15 5l-7 7 7 7")
 
     /** A pencil: rename. */
-    val Edit: ImageVector = strokeIcon("Edit", "M4 20h4L19 9l-4-4L4 16z", "M13 7l4 4")
+    val Edit: ImageVector = strokeIcon(name = "Edit", "M4 20h4L19 9l-4-4L4 16z", "M13 7l4 4")
 
     /** Three bars: drag to reorder. */
-    val Handle: ImageVector = strokeIcon("Handle", "M6 8h12M6 12h12M6 16h12")
+    val Handle: ImageVector = strokeIcon(name = "Handle", "M6 8h12M6 12h12M6 16h12")
 
     /** A triangle with an exclamation mark: a warning. */
-    val Warning: ImageVector = strokeIcon("Warning", "M12 4l9 16H3z", "M12 10v4", "M12 17v.5")
+    val Warning: ImageVector = strokeIcon(
+        name = "Warning",
+        "M12 4l9 16H3z",
+        "M12 10v4",
+        "M12 17v.5",
+    )
 
     /** A bin: delete. */
-    val Delete: ImageVector = strokeIcon("Delete", "M5 7h14M10 7V4h4v3", "M7 7l1 13h8l1-13")
+    val Delete: ImageVector = strokeIcon(name = "Delete", "M5 7h14M10 7V4h4v3", "M7 7l1 13h8l1-13")
 }
 
 private fun strokeIcon(name: String, vararg paths: String): ImageVector =

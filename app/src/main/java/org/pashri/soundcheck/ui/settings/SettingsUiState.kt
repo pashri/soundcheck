@@ -79,9 +79,15 @@ fun settingsUiState(settings: WarmupSettings): SettingsUiState {
     )
 }
 
+/** A Programme already playing keeps the settings it started with. */
+private const val NEXT_START = "Applies from the next Start."
+
+/** The Range section's supporting text: a Programme already playing keeps its Range. */
+const val RANGE_NOTE: String = NEXT_START
+
 private const val PAUSING_NOTE =
-    "Off: your podcast pauses, and the headphone button controls Soundcheck."
+    "Off: your podcast pauses, and the headphone button controls Soundcheck. $NEXT_START"
 
 private const val MIXING_NOTE =
     "On: your podcast keeps playing under Soundcheck, the headphone button stays with it, " +
-        "and a phone call won't pause the Warm-up."
+        "and a phone call won't pause the Warm-up. $NEXT_START"

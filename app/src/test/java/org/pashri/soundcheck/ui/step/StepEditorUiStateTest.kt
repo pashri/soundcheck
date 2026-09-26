@@ -29,7 +29,10 @@ class StepEditorUiStateTest {
         number: Int,
         change: (SavedStep) -> SavedStep = { it },
     ): StepEditorUiState? {
-        val library: Library = StarterLibrary.LIBRARY.updateStep(ref(number), change)
+        val library: Library = StarterLibrary.LIBRARY.updateStep(
+            ref = ref(number),
+            change = change,
+        )
         return stepEditorUiState(
             library = library,
             ref = ref(number),
@@ -81,10 +84,7 @@ class StepEditorUiStateTest {
             state(number = 5) { it.withRangeOffset(bottom = -11, top = -11) },
         )
         assertEquals("No Range left", state.tripLabel)
-        assertEquals(
-            "Needs 19 half-steps; this Step's Range has 0. It will be skipped.",
-            state.warning,
-        )
+        assertEquals("No Range left for this Step. It will be skipped.", state.warning)
     }
 
     @Test

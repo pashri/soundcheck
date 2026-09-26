@@ -75,7 +75,7 @@ class WarmupHomeViewModelTest {
 
     @Test
     fun `nothing is shown until the library and the settings have loaded`() =
-        runTest(dispatcher) {
+        runTest(context = dispatcher) {
             val unloaded = FakeStore<Library>(null)
             val viewModel = viewModel(library = unloaded)
             assertNull(state(viewModel))
@@ -84,7 +84,7 @@ class WarmupHomeViewModelTest {
         }
 
     @Test
-    fun `start plays the Programme on the Range from Settings`() = runTest(dispatcher) {
+    fun `start plays the Programme on the Range from Settings`() = runTest(context = dispatcher) {
         settings.set(
             WarmupSettings.DEFAULT.copy(voiceType = VoiceType.BASS, range = VoiceType.BASS.range),
         )
@@ -97,7 +97,7 @@ class WarmupHomeViewModelTest {
     }
 
     @Test
-    fun `a Programme that doesn't fit the Range explains why`() = runTest(dispatcher) {
+    fun `a Programme that doesn't fit the Range explains why`() = runTest(context = dispatcher) {
         settings.set(narrow)
         val viewModel = viewModel()
         assertFalse(viewModel.start(starter))
@@ -108,7 +108,7 @@ class WarmupHomeViewModelTest {
     }
 
     @Test
-    fun `a later start that plays clears the problem`() = runTest(dispatcher) {
+    fun `a later start that plays clears the problem`() = runTest(context = dispatcher) {
         settings.set(narrow)
         val viewModel = viewModel()
         viewModel.start(starter)
@@ -118,7 +118,7 @@ class WarmupHomeViewModelTest {
     }
 
     @Test
-    fun `a new Programme is empty and gets a fresh name`() = runTest(dispatcher) {
+    fun `a new Programme is empty and gets a fresh name`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         assertEquals(ProgrammeId("id-1"), viewModel.newProgramme())
         assertEquals(ProgrammeId("id-2"), viewModel.newProgramme())
@@ -128,7 +128,7 @@ class WarmupHomeViewModelTest {
     }
 
     @Test
-    fun `deleting the playing Programme leaves it playing`() = runTest(dispatcher) {
+    fun `deleting the playing Programme leaves it playing`() = runTest(context = dispatcher) {
         val controller = testController(focus)
         val viewModel = viewModel(controller = controller)
         viewModel.start(starter)
@@ -141,7 +141,7 @@ class WarmupHomeViewModelTest {
     }
 
     @Test
-    fun `a failed save of either document is shown`() = runTest(dispatcher) {
+    fun `a failed save of either document is shown`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         assertNull(state(viewModel)?.saveProblem)
         settings.saveFailed.value = true
@@ -153,18 +153,31 @@ class WarmupHomeViewModelTest {
     }
 
     @Test
-    fun `a document set aside is explained until it's dismissed`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        assertNull(state(viewModel)?.restoredNotice)
-        library.setAside.value = true
-        assertEquals(LIBRARY_RESTORED_NOTICE, state(viewModel)?.restoredNotice)
-        viewModel.dismissRestoredNotice()
-        assertNull(state(viewModel)?.restoredNotice)
-    }
+    fun `a library that couldn't be opened is explained instead of a full phone`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            library.saveFailed.value = true
+            library.unopened.value = true
+            assertEquals(
+                "Your saved library couldn't be opened, so changes won't be kept.",
+                state(viewModel)?.saveProblem,
+            )
+        }
+
+    @Test
+    fun `a document set aside is explained until it's dismissed`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            assertNull(state(viewModel)?.restoredNotice)
+            library.setAside.value = true
+            assertEquals(LIBRARY_RESTORED_NOTICE, state(viewModel)?.restoredNotice)
+            viewModel.dismissRestoredNotice()
+            assertNull(state(viewModel)?.restoredNotice)
+        }
 
     @Test
     fun `the settings being set aside is explained separately from the library`() =
-        runTest(dispatcher) {
+        runTest(context = dispatcher) {
             val viewModel = viewModel()
             settings.setAside.value = true
             assertEquals(SETTINGS_RESTORED_NOTICE, state(viewModel)?.restoredNotice)

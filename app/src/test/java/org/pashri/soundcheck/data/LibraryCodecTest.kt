@@ -74,27 +74,30 @@ class LibraryCodecTest {
 
     @Test
     fun `a file from a newer version is refused`() {
-        refuses(fixture.replace("\"version\": 1", "\"version\": 2"))
+        refuses(fixture.replace(oldValue = "\"version\": 1", newValue = "\"version\": 2"))
     }
 
     @Test
     fun `a Pattern with an unknown Key Chord is refused`() {
-        refuses(fixture.replace("\"MINOR\"", "\"BLUES\""))
+        refuses(fixture.replace(oldValue = "\"MINOR\"", newValue = "\"BLUES\""))
     }
 
     @Test
     fun `a malformed note is refused`() {
-        refuses(fixture.replace("♭3e ♯4e 2e 1w", "b3e ♯4e 2e 1w"))
+        refuses(fixture.replace(oldValue = "♭3e ♯4e 2e 1w", newValue = "b3e ♯4e 2e 1w"))
     }
 
     @Test
     fun `a Step naming a missing Pattern is refused`() {
-        refuses(fixture.replace("\"pattern\": \"triad\"", "\"pattern\": \"gone\""))
+        refuses(fixture.replace(
+            oldValue = "\"pattern\": \"triad\"",
+            newValue = "\"pattern\": \"gone\"",
+        ))
     }
 
     @Test
     fun `a missing field is refused`() {
-        refuses(fixture.replace("\"offsetTop\": 2,", ""))
+        refuses(fixture.replace(oldValue = "\"offsetTop\": 2,", newValue = ""))
     }
 
     @Test

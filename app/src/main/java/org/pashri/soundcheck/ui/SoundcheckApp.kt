@@ -40,16 +40,16 @@ fun SoundcheckApp(container: AppContainer, openTab: Tab? = null, onTabOpened: ()
     val entry by navController.currentBackStackEntryAsState()
     val routes = entry?.destination?.hierarchy?.map { it.route } ?: emptySequence()
     val current = tabFor(routes) ?: Tab.Metronome
-    LaunchedEffect(openTab) {
+    LaunchedEffect(key1 = openTab) {
         openTab?.let {
             navController.openTab(it)
             if (it == Tab.WarmUp) {
-                navController.navigate(WarmupRoutes.PLAYING) { launchSingleTop = true }
+                navController.navigate(route = WarmupRoutes.PLAYING) { launchSingleTop = true }
             }
             onTabOpened()
         }
     }
-    Column(Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
         NavHost(
             navController = navController,
             startDestination = Tab.Metronome.route,
@@ -62,10 +62,10 @@ fun SoundcheckApp(container: AppContainer, openTab: Tab? = null, onTabOpened: ()
             popEnterTransition = { EnterTransition.None },
             popExitTransition = { ExitTransition.None },
         ) {
-            composable(Tab.Tuner.route) {
+            composable(route = Tab.Tuner.route) {
                 TunerRoute(factory = container.tunerViewModelFactory)
             }
-            composable(Tab.Metronome.route) {
+            composable(route = Tab.Metronome.route) {
                 MetronomeRoute(factory = container.metronomeViewModelFactory)
             }
             warmupGraph(container = container, navController = navController)
@@ -75,8 +75,8 @@ fun SoundcheckApp(container: AppContainer, openTab: Tab? = null, onTabOpened: ()
 }
 
 private fun NavHostController.openTab(tab: Tab) {
-    navigate(tab.route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+    navigate(route = tab.route) {
+        popUpTo(id = graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
         restoreState = true
     }

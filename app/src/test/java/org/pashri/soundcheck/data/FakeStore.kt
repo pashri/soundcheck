@@ -20,6 +20,9 @@ class FakeStore<T : Any>(initial: T?) : Store<T> {
     /** Set to act as if an unreadable file were set aside and replaced by the seed. */
     override val setAside: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+    /** Set to act as if an unreadable file couldn't be set aside, so nothing is saved. */
+    override val unopened: MutableStateFlow<Boolean> = MutableStateFlow(false)
+
     /** The document now; the test fails if it hasn't loaded. */
     val value: T get() = checkNotNull(_data.value)
 

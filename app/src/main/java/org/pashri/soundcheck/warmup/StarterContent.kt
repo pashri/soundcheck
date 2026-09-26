@@ -192,7 +192,7 @@ private fun starter(
 ): Pattern = Pattern(
     id = PatternId(id),
     name = name,
-    notes = PatternNotation.parse(notation, defaultLength = defaultLength),
+    notes = PatternNotation.parse(text = notation, defaultLength = defaultLength),
     keyChord = keyChord,
 )
 

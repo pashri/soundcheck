@@ -32,7 +32,7 @@ fun nameProblem(name: String, taken: Collection<String>): NameProblem? {
     return when {
         trimmed.isEmpty() -> NameProblem.BLANK
         trimmed.length > MAX_NAME_LENGTH -> NameProblem.TOO_LONG
-        taken.any { it.trim().equals(trimmed, ignoreCase = true) } ->
+        taken.any { it.trim().equals(other = trimmed, ignoreCase = true) } ->
             NameProblem.TAKEN
         else -> null
     }
@@ -47,8 +47,8 @@ fun nameProblem(name: String, taken: Collection<String>): NameProblem? {
  * @return the first free name, compared ignoring case.
  */
 fun uniqueName(base: String, taken: Collection<String>): String =
-    generateSequence(1) { it + 1 }
+    generateSequence(seed = 1) { it + 1 }
         .map { if (it == 1) base else "$base $it" }
         .first { candidate ->
-            taken.none { it.trim().equals(candidate, ignoreCase = true) }
+            taken.none { it.trim().equals(other = candidate, ignoreCase = true) }
         }

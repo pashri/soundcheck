@@ -68,10 +68,10 @@ fun StepEditorRoute(factory: ViewModelProvider.Factory, links: StepLinks) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val auditioning by viewModel.auditioning.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+    LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
         if (activity?.isChangingConfigurations != true) viewModel.stopAudition()
     }
-    DisposableEffect(viewModel) {
+    DisposableEffect(key1 = viewModel) {
         onDispose { if (activity?.isChangingConfigurations != true) viewModel.stopAudition() }
     }
     EditorFrame(state = state, onGone = links.back) { shown ->
@@ -102,7 +102,7 @@ fun StepEditorScreen(
 ) {
     val colors = Manuscript.colors
     var removing by rememberSaveable { mutableStateOf(false) }
-    Column(Modifier.fillMaxSize().background(colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         BackHeader(
             backLabel = state.programmeName,
             title = state.title,

@@ -210,7 +210,7 @@ fun Library.soundUsage(id: SoundId): List<Usage> = usage { it.soundId == id }
 fun <T> List<T>.moved(from: Int, to: Int): List<T> {
     if (from !in indices || to !in indices || from == to) return this
     val items = toMutableList()
-    items.add(to, items.removeAt(from))
+    items.add(index = to, element = items.removeAt(from))
     return items
 }
 

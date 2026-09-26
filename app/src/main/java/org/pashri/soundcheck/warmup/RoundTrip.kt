@@ -21,7 +21,7 @@ sealed interface RoundTrip {
      */
     data class Fits(val keys: List<Pitch>) : RoundTrip {
         init {
-            require(keys.isNotEmpty()) { "A round trip has at least one key" }
+            require(value = keys.isNotEmpty()) { "A round trip has at least one key" }
         }
 
         /** The key of the first Iteration, which is also the Demo's key. */
@@ -69,8 +69,8 @@ fun planRoundTrip(
             availableHalfSteps = available,
         )
     }
-    val lowestKey = maxOf(effective.lowest.midi - span.lowest, Pitch.MIDI_NOTES.first)
-    val highestKey = minOf(effective.highest.midi - span.highest, Pitch.MIDI_NOTES.last)
+    val lowestKey = maxOf(a = effective.lowest.midi - span.lowest, b = Pitch.MIDI_NOTES.first)
+    val highestKey = minOf(a = effective.highest.midi - span.highest, b = Pitch.MIDI_NOTES.last)
     if (lowestKey > highestKey) {
         return RoundTrip.DoesNotFit(
             neededHalfSteps = span.halfSteps,

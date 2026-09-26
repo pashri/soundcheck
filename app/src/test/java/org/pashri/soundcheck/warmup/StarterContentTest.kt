@@ -105,7 +105,7 @@ class StarterContentTest {
                     range = voice.range,
                     announcementFrames = 24_000,
                 )
-                val sung = requireNotNull(timeline) { label }.events
+                val sung = requireNotNull(value = timeline) { label }.events
                     .filterIsInstance<PianoNoteEvent>()
                     .filter { it.part != PianoPart.KEY_CHORD }
                 assertTrue(label, sung.isNotEmpty())

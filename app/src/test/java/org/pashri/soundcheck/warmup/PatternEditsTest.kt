@@ -19,14 +19,14 @@ class PatternEditsTest {
 
     @Test
     fun `changing a note changes only that note`() {
-        val sharp = triad.withNote(2) { it.copy(accidental = Accidental.SHARP) }
+        val sharp = triad.withNote(index = 2) { it.copy(accidental = Accidental.SHARP) }
         assertEquals("1 3 ♯5 3 1", degrees(sharp))
         assertEquals(triad.notes[2].length, sharp.notes[2].length)
     }
 
     @Test
     fun `a note outside the Pattern changes nothing`() {
-        assertEquals(triad, triad.withNote(9) { it.copy(degree = 2) })
+        assertEquals(triad, triad.withNote(index = 9) { it.copy(degree = 2) })
         assertEquals(triad, triad.withNoteCopiedAfter(-1))
         assertEquals(triad, triad.withoutNote(5))
     }

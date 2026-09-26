@@ -43,7 +43,7 @@ data class Step(
     val soundLabel: String = soundId.value,
 ) {
     init {
-        require(bpm in MIN_BPM..MAX_BPM) { "Tempo $bpm is outside $MIN_BPM–$MAX_BPM bpm" }
+        require(value = bpm in MIN_BPM..MAX_BPM) { "Tempo $bpm is outside $MIN_BPM–$MAX_BPM bpm" }
     }
 
     /**

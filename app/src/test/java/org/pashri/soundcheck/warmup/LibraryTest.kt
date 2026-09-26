@@ -3,6 +3,7 @@ package org.pashri.soundcheck.warmup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class LibraryTest {
@@ -24,6 +25,18 @@ class LibraryTest {
         val hum = requireNotNull(edited.programmeToPlay(starter.id)).steps[1]
         assertEquals(wider, hum.pattern)
         assertEquals(12, hum.pattern.span.halfSteps)
+    }
+
+    @Test
+    fun `a Step to play carries its Sound's label from the library`() {
+        val hmm = StarterSounds.HUM.copy(label = "hmm")
+        val renamed = library.copy(
+            sounds = library.sounds.map { if (it.id == hmm.id) hmm else it },
+        )
+        val steps = requireNotNull(renamed.programmeToPlay(starter.id)).steps
+        val hums = steps.filter { it.soundId == StarterSounds.HUM.id }
+        assertTrue(hums.isNotEmpty())
+        assertTrue(hums.all { it.soundLabel == "hmm" })
     }
 
     @Test
