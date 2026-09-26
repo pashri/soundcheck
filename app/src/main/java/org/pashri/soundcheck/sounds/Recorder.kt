@@ -24,9 +24,10 @@ import org.pashri.soundcheck.audio.openRetrying
  * Recording is a tool of its own ([Tool.RECORDING]): starting it pauses a playing Programme
  * and stops an audition, and any tool starting after it ends the take and throws it away.
  * It holds transient audio focus while it listens, so a podcast pauses rather than being
- * recorded, and a call ends the take. The microphone is opened as the take starts and
- * released before the take is handed over. Opening the microphone and trimming the take
- * run on [worker]; call everything else from the main thread.
+ * recorded, and a call ends the take; if focus is refused (a call is on), nothing is
+ * recorded and the take is [Take.Interrupted]. The microphone is opened as the take starts
+ * and released before the take is handed over. Opening the microphone and trimming the
+ * take run on [worker]; call everything else from the main thread.
  *
  * @param mic the microphone, shared with the Tuner through an [ExclusiveMic].
  * @param focus the recorder's own audio focus.
@@ -89,7 +90,7 @@ class Recorder(
 
     private suspend fun recordUntilEnded(): Take {
         try {
-            focus.acquire(onLost = ::interrupt)
+            if (!focus.acquire(onLost = ::interrupt)) return Take.Interrupted
             val session = openMic() ?: return endedBeforeListening()
             try {
                 return listen(session)

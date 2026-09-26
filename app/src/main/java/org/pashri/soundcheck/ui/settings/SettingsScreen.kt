@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -48,10 +50,10 @@ fun SettingsRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
     val viewModel: SettingsViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val exporter = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument(BACKUP_TYPE),
+        contract = ActivityResultContracts.CreateDocument(BACKUP_TYPE),
     ) { uri -> uri?.let { viewModel.exportTo(it.toString()) } }
     val importer = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
+        contract = ActivityResultContracts.OpenDocument(),
     ) { uri -> uri?.let { viewModel.importFrom(it.toString()) } }
     val shown = state ?: return
     SettingsScreen(
@@ -182,7 +184,9 @@ private fun BackupSection(state: SettingsUiState, backup: BackupLinks) {
             text = message,
             style = ManuscriptType.body,
             color = colors.ink,
-            modifier = Modifier.heightIn(min = 22.dp),
+            modifier = Modifier
+                .heightIn(min = 22.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
         )
     }
 }

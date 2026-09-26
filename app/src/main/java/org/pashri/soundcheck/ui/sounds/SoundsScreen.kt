@@ -42,9 +42,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -132,7 +134,7 @@ fun SoundsRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
     LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
         if (activity?.isChangingConfigurations != true) viewModel.onHidden()
     }
-    DisposableEffect(viewModel) {
+    DisposableEffect(key1 = viewModel) {
         onDispose { if (activity?.isChangingConfigurations != true) viewModel.onHidden() }
     }
     val askForMic = { launcher.launch(Manifest.permission.RECORD_AUDIO) }
@@ -193,7 +195,10 @@ fun SoundsScreen(state: SoundsUiState, actions: SoundsActions) {
                     text = notice,
                     style = ManuscriptType.body,
                     color = colors.accentText,
-                    modifier = Modifier.heightIn(min = 48.dp).padding(vertical = 12.dp),
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .padding(vertical = 12.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
             state.rows.forEach { row ->
@@ -366,7 +371,11 @@ private fun RecordPill(open: Boolean, label: String, onClick: () -> Unit) {
             .border(width = 1.dp, color = colors.accent, shape = ControlShape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics {
-                contentDescription = if (open) "Close the recorder for $label" else "Record $label"
+                contentDescription = if (open) {
+                    "Done, close the recorder for $label"
+                } else {
+                    "Record $label"
+                }
             }
             .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center,
@@ -416,7 +425,9 @@ private fun RecordPanelView(panel: RecordPanel, actions: SoundsActions) {
                 text = message,
                 style = ManuscriptType.body,
                 color = colors.accentText,
-                modifier = Modifier.heightIn(min = 22.dp),
+                modifier = Modifier
+                    .heightIn(min = 22.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
             )
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

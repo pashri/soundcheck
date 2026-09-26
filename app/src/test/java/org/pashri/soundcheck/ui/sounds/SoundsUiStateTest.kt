@@ -136,6 +136,7 @@ class SoundsUiStateTest {
         )
         val shown = checkNotNull(panel(view = view, library = library))
         assertEquals(PanelMode.RECORDING, shown.mode)
+        assertEquals("Recording…", shown.headline)
         assertEquals(listOf(0.5f), shown.levels)
         assertEquals("Stop recording neh", shown.recordDescription)
         assertFalse(shown.canUndo)

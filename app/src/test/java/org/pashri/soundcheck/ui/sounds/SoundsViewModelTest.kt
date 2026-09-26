@@ -337,4 +337,21 @@ class SoundsViewModelTest {
             assertEquals(false, mimRow(state(viewModel))?.playing)
             viewModel.stopRecording()
         }
+
+    @Test
+    fun `deleting the Sound being recorded throws the take away and closes its recorder`() =
+        runTest(context = dispatcher) {
+            val viewModel = recordingNeh()
+            sayAWord()
+            viewModel.startRecording()
+            advanceTimeBy(300)
+            viewModel.delete(StarterSounds.NEH.id)
+            advanceTimeBy(100)
+            runCurrent()
+            assertEquals(0, mic.openNow)
+            advanceTimeBy(6_000)
+            runCurrent()
+            assertNull(state(viewModel)?.panel)
+            assertTrue(File(folder.root, "clips").list().isNullOrEmpty())
+        }
 }

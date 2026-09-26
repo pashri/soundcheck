@@ -271,4 +271,16 @@ class RecorderTest {
         assertEquals(1, mic.mostOpenAtOnce)
         tuner.stop()
     }
+
+    @Test
+    fun `refused audio focus records nothing and hands everything back`() = runTest {
+        focus.grant = false
+        mic.play(hops(hops = 40, level = 0.3f))
+        val recorder = recorder()
+        recorder.start { takes += it }
+        wait(500)
+        assertEquals(listOf<Take>(Take.Interrupted), takes)
+        assertEquals(0, mic.timesOpened)
+        assertEverythingHandedBack(recorder)
+    }
 }

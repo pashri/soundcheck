@@ -204,7 +204,7 @@ private val HEADLINES: Map<PanelMode, String> = mapOf(
     PanelMode.ASK to "Soundcheck needs the microphone",
     PanelMode.SETTINGS to "The microphone is turned off",
     PanelMode.READY to "Hold to record",
-    PanelMode.RECORDING to "Recording… let go when you're done",
+    PanelMode.RECORDING to "Recording…",
 )
 
 private fun soundRow(

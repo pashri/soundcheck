@@ -5,6 +5,7 @@ import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -56,6 +57,30 @@ fun readAtMost(input: InputStream, maxBytes: Int): ByteArray? {
 
 private const val READ_CHUNK_BYTES = 8_192
 
+/**
+ * Writes [text] as UTF-8 to the stream [open] gives, closing it after.
+ *
+ * @param open opens the file; null if it has no stream.
+ * @param text what to write.
+ * @return false if it couldn't be opened or written, including when a provider rejects
+ *     the truncating mode with [IllegalArgumentException] or
+ *     [UnsupportedOperationException].
+ */
+fun writeWhole(open: () -> OutputStream?, text: String): Boolean =
+    try {
+        val stream = open() ?: return false
+        stream.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+        true
+    } catch (e: IOException) {
+        false
+    } catch (e: SecurityException) {
+        false
+    } catch (e: IllegalArgumentException) {
+        false
+    } catch (e: UnsupportedOperationException) {
+        false
+    }
+
 /** Opens a picked file for writing and cuts off whatever it held before. */
 private const val WRITE_TRUNCATE = "wt"
 
@@ -69,16 +94,10 @@ class AndroidSharedFiles(context: Context) : SharedFiles {
 
     override suspend fun write(uri: String, text: String): Boolean =
         withContext(context = Dispatchers.IO) {
-            try {
-                val stream = resolver.openOutputStream(Uri.parse(uri), WRITE_TRUNCATE)
-                    ?: return@withContext false
-                stream.use { it.write(text.toByteArray(Charsets.UTF_8)) }
-                true
-            } catch (e: IOException) {
-                false
-            } catch (e: SecurityException) {
-                false
-            }
+            writeWhole(
+                open = { resolver.openOutputStream(Uri.parse(uri), WRITE_TRUNCATE) },
+                text = text,
+            )
         }
 
     override suspend fun read(uri: String): String? = withContext(context = Dispatchers.IO) {

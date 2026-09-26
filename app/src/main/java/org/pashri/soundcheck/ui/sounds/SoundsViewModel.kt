@@ -139,11 +139,16 @@ class SoundsViewModel(
 
     /**
      * Deletes a Sound and the Steps that use it. Its recording's file stays until the next
-     * start of the app, when files nothing uses are swept away.
+     * start of the app, when files nothing uses are swept away. If its recorder is open, it
+     * closes, throwing away a take in progress.
      *
      * @param id the Sound.
      */
     fun delete(id: SoundId) {
+        if (view.value.open == id) {
+            recorder.cancel()
+            view.update { it.copy(open = null, message = null) }
+        }
         library.edit { it.deleteSound(id) }
     }
 
