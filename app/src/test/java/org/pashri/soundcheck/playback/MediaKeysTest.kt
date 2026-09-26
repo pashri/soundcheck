@@ -63,4 +63,27 @@ class MediaKeysTest {
         assertTrue(takesHeadphoneButton(null))
         assertFalse(takesHeadphoneButton(WarmupSettings.DEFAULT.copy(playOverOtherAudio = true)))
     }
+
+    @Test
+    fun `turning Play over other audio on releases the session`() {
+        val mixing = WarmupSettings.DEFAULT.copy(playOverOtherAudio = true)
+
+        assertEquals(
+            SessionChange.RELEASE,
+            sessionChange(hasSession = true, settings = mixing),
+        )
+        assertEquals(SessionChange.KEEP, sessionChange(hasSession = false, settings = mixing))
+    }
+
+    @Test
+    fun `turning Play over other audio off creates the session`() {
+        val pausing = WarmupSettings.DEFAULT
+
+        assertEquals(
+            SessionChange.CREATE,
+            sessionChange(hasSession = false, settings = pausing),
+        )
+        assertEquals(SessionChange.KEEP, sessionChange(hasSession = true, settings = pausing))
+        assertEquals(SessionChange.CREATE, sessionChange(hasSession = false, settings = null))
+    }
 }

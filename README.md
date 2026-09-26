@@ -24,7 +24,8 @@ voice type. Recording your own announcements is on the way.
   fresh install starts with eight Patterns, eight Sounds and a sample Programme. Nothing
   leaves the phone: there are no accounts and no sync.
 - With "Play over other audio" on, the Warm-up and the Metronome play under a podcast
-  instead of pausing it, and the headphone button stays with the podcast app.
+  instead of pausing it, and the headphone button stays with the podcast app: the Warm-up
+  then has no media session at all, only a notification with pause, next and stop.
 - The Step and Pattern editors can play a Step's Demo or a Pattern on the piano, using the
   same timeline as the Warm-up; doing so pauses a playing Programme.
 

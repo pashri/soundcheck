@@ -21,20 +21,22 @@ import org.pashri.soundcheck.SoundcheckApplication
 import org.pashri.soundcheck.di.AppContainer
 import org.pashri.soundcheck.ui.warmup.warmupUiState
 import org.pashri.soundcheck.warmup.Playback
+import org.pashri.soundcheck.warmup.WarmupSettings
 
 /**
  * Keeps a Programme playing with the screen off: a foreground service with a media session,
  * so the lock screen shows its controls and the headphone button reaches the Warm-up. It is
  * started when a Programme starts and stops itself when the Programme stops or ends. With
- * "Play over other audio" on, the session is inactive, so the headphone button stays with
- * the other app while the notification keeps its own buttons. Pulling
+ * "Play over other audio" on, there is no session at all (Android 12 and later give the
+ * headphone button to the app that last played, even to an inactive session), so the button
+ * stays with the other app while the notification keeps its own buttons. Pulling
  * out headphones (or a headset disconnecting) pauses the Programme, so the piano never
  * switches to the loudspeaker.
  */
 class PlaybackService : Service() {
     private val scope = MainScope()
     private lateinit var container: AppContainer
-    private lateinit var session: MediaSessionCompat
+    private var session: MediaSessionCompat? = null
     private lateinit var presses: PressCounter
     private var inForeground = false
     private val noisy = object : BroadcastReceiver() {
@@ -51,11 +53,7 @@ class PlaybackService : Service() {
             windowMs = PressCounter.WINDOW_MS,
             onPresses = container.warmup::onPresses,
         )
-        session = MediaSessionCompat(this, SESSION_TAG).apply {
-            setCallback(SessionCallback())
-            setMediaButtonReceiver(null)
-            isActive = takesHeadphoneButton(container.settings.data.value)
-        }
+        syncSession(container.settings.data.value)
         PlaybackNotifications.createChannel(this)
         ContextCompat.registerReceiver(
             this,
@@ -64,6 +62,7 @@ class PlaybackService : Service() {
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
         scope.launch { container.warmup.playback.collect(::show) }
+        scope.launch { container.settings.data.collect(::syncSession) }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -89,8 +88,7 @@ class PlaybackService : Service() {
     override fun onDestroy() {
         unregisterReceiver(noisy)
         scope.cancel()
-        session.isActive = false
-        session.release()
+        releaseSession()
         super.onDestroy()
     }
 
@@ -104,6 +102,31 @@ class PlaybackService : Service() {
         }
     }
 
+    /** Creates or releases the session to match the settings, and redraws the notification. */
+    private fun syncSession(settings: WarmupSettings?) {
+        when (sessionChange(hasSession = session != null, settings = settings)) {
+            SessionChange.CREATE -> session = createSession()
+            SessionChange.RELEASE -> releaseSession()
+            SessionChange.KEEP -> return
+        }
+        if (inForeground) container.warmup.playback.value?.let(::showInForeground)
+    }
+
+    private fun createSession(): MediaSessionCompat =
+        MediaSessionCompat(this, SESSION_TAG).apply {
+            setCallback(SessionCallback())
+            setMediaButtonReceiver(null)
+            isActive = true
+        }
+
+    private fun releaseSession() {
+        session?.run {
+            isActive = false
+            release()
+        }
+        session = null
+    }
+
     private fun showInForeground(playback: Playback?) {
         val state = playback?.let {
             warmupUiState(
@@ -114,7 +137,8 @@ class PlaybackService : Service() {
             )
         }
         val now = nowPlaying(state)
-        PlaybackNotifications.updateSession(session = session, now = now)
+        val session = session
+        session?.let { PlaybackNotifications.updateSession(session = it, now = now) }
         ServiceCompat.startForeground(
             this,
             PlaybackNotifications.NOTIFICATION_ID,

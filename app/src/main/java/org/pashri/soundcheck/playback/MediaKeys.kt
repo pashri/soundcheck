@@ -54,3 +54,33 @@ fun mediaKeyAction(keyCode: Int, action: Int, repeatCount: Int): MediaKeyAction 
  */
 fun takesHeadphoneButton(settings: WarmupSettings?): Boolean =
     settings?.playOverOtherAudio != true
+
+/** What the playback service does with its media session when the settings change. */
+enum class SessionChange {
+    /** Make a session, so the headphone button reaches the Warm-up. */
+    CREATE,
+
+    /** Release the session, so the headphone button stays with the other app. */
+    RELEASE,
+
+    /** Leave things as they are. */
+    KEEP,
+}
+
+/**
+ * Whether to create or release the media session. While playing over other audio Soundcheck
+ * has no session at all: Android 12 and later route the headphone button to the app that
+ * last played audio, even to an inactive session.
+ *
+ * @param hasSession whether the service holds a session now.
+ * @param settings the saved settings, or null before they have loaded.
+ * @return the change that makes the session match [takesHeadphoneButton].
+ */
+fun sessionChange(hasSession: Boolean, settings: WarmupSettings?): SessionChange {
+    val wanted = takesHeadphoneButton(settings)
+    return when {
+        wanted && !hasSession -> SessionChange.CREATE
+        !wanted && hasSession -> SessionChange.RELEASE
+        else -> SessionChange.KEEP
+    }
+}
