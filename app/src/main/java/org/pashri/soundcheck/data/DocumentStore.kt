@@ -1,7 +1,6 @@
 package org.pashri.soundcheck.data
 
 import java.io.File
-import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
@@ -49,7 +48,8 @@ internal val DocumentJson: Json = Json { prettyPrint = true }
  * so the file is never overwritten. Every save writes the whole document to a temporary
  * file and renames it over [file], so the file is always either the old document or the
  * new one. The temporary file is synced to storage before the rename, so a power cut leaves
- * either the old or the new document.
+ * either the old or the new document. [replace] keeps a synced copy of the file as
+ * "[file].backup-<stamp>" before it writes, and [undoReplace] renames that copy back.
  *
  * @param file where the document lives.
  * @param codec turns the document into text and back.
@@ -101,6 +101,22 @@ class DocumentStore<T : Any>(
         scope.launch { saveLatest() }
     }
 
+    override suspend fun replace(value: T, stamp: Long): Boolean = mutex.withLock {
+        if (_unopened.value) return@withLock false
+        val saved = withContext(context = io) { tryBackUpAndSave(value = value, stamp = stamp) }
+        if (saved) {
+            _data.value = value
+            _saveFailed.value = false
+        }
+        saved
+    }
+
+    override suspend fun undoReplace(stamp: Long, previous: T): Boolean = mutex.withLock {
+        val restored = withContext(context = io) { tryRestore(stamp) }
+        if (restored) _data.value = previous
+        restored
+    }
+
     /** Saves whatever the document is by the time the lock is free, so the newest wins. */
     private suspend fun saveLatest() {
         mutex.withLock {
@@ -142,6 +158,37 @@ class DocumentStore<T : Any>(
             false
         }
 
+    private fun backupOf(stamp: Long): File =
+        File(file.absoluteFile.parentFile, "${file.name}$BACKUP_MARK$stamp")
+
+    private fun tryBackUpAndSave(value: T, stamp: Long): Boolean =
+        try {
+            if (file.exists()) writeSynced(file = backupOf(stamp), bytes = file.readBytes())
+            save(value)
+            true
+        } catch (e: IOException) {
+            backupOf(stamp).delete()
+            false
+        }
+
+    private fun tryRestore(stamp: Long): Boolean =
+        try {
+            val backup = backupOf(stamp)
+            if (backup.exists()) {
+                Files.move(
+                    backup.toPath(),
+                    file.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } else {
+                Files.deleteIfExists(file.toPath())
+            }
+            true
+        } catch (e: IOException) {
+            false
+        }
+
     private fun trySave(value: T): Boolean =
         try {
             save(value)
@@ -155,10 +202,7 @@ class DocumentStore<T : Any>(
         directory.mkdirs()
         val temporary = File(directory, "${file.name}.tmp")
         val bytes = codec.encode(value).toByteArray(StandardCharsets.UTF_8)
-        FileOutputStream(temporary).use { out ->
-            out.write(bytes)
-            out.fd.sync()
-        }
+        writeSynced(file = temporary, bytes = bytes)
         Files.move(
             temporary.toPath(),
             file.toPath(),

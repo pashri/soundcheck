@@ -19,29 +19,44 @@ object SettingsCodec : TextCodec<WarmupSettings> {
 
     override fun encode(value: WarmupSettings): String = DocumentJson.encodeToString(
         serializer = SettingsFile.serializer(),
-        value = SettingsFile(
-            version = VERSION,
-            voiceType = value.voiceType.name,
-            lowest = value.range.lowest.midi,
-            highest = value.range.highest.midi,
-            playOverOtherAudio = value.playOverOtherAudio,
-        ),
+        value = value.toFile(),
     )
 
-    override fun decode(text: String): WarmupSettings {
-        val file = DocumentJson.decodeFromString(
-            deserializer = SettingsFile.serializer(),
-            string = text,
-        )
-        require(value = file.version == VERSION) {
-            "Settings format ${file.version} is not $VERSION"
-        }
-        return WarmupSettings(
-            voiceType = VoiceType.valueOf(file.voiceType),
-            range = Range(lowest = Pitch(file.lowest), highest = Pitch(file.highest)),
-            playOverOtherAudio = file.playOverOtherAudio,
-        )
+    override fun decode(text: String): WarmupSettings = DocumentJson.decodeFromString(
+        deserializer = SettingsFile.serializer(),
+        string = text,
+    ).readSettings()
+}
+
+/**
+ * These settings as the record [SettingsCodec] writes.
+ *
+ * @return the record, at [SettingsCodec.VERSION].
+ */
+internal fun WarmupSettings.toFile(): SettingsFile = SettingsFile(
+    version = SettingsCodec.VERSION,
+    voiceType = voiceType.name,
+    lowest = range.lowest.midi,
+    highest = range.highest.midi,
+    playOverOtherAudio = playOverOtherAudio,
+)
+
+/**
+ * The settings this record holds, checked as [SettingsCodec.decode] checks a whole file.
+ *
+ * @return the settings.
+ * @throws IllegalArgumentException if the version isn't [SettingsCodec.VERSION], the Voice
+ *     Type is unknown, or the Range is broken or reaches past the piano.
+ */
+internal fun SettingsFile.readSettings(): WarmupSettings {
+    require(value = version == SettingsCodec.VERSION) {
+        "Settings format $version is not ${SettingsCodec.VERSION}"
     }
+    return WarmupSettings(
+        voiceType = VoiceType.valueOf(voiceType),
+        range = Range(lowest = Pitch(lowest), highest = Pitch(highest)),
+        playOverOtherAudio = playOverOtherAudio,
+    )
 }
 
 @Serializable

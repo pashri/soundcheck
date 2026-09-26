@@ -67,6 +67,8 @@ class DocumentStoreTest {
 
     private fun aside(at: Long): File = File(folder.root, "doc.json.unreadable-$at")
 
+    private fun backup(stamp: Long): File = File(folder.root, "doc.json.backup-$stamp")
+
     private fun TestScope.store(): DocumentStore<List<String>> = DocumentStore(
         file = file,
         codec = LinesCodec,
@@ -262,4 +264,57 @@ class DocumentStoreTest {
         assertFalse(store.saveFailed.value)
         assertEquals("seed\nkept\nagain", file.readText())
     }
+
+    @Test
+    fun `replacing keeps a copy of the saved file, then saves and shows the new one`() =
+        runTest {
+            file.writeText("mine")
+            val store = loaded()
+            assertTrue(store.replace(value = listOf("theirs"), stamp = 77L))
+            assertEquals(listOf("theirs"), store.data.value)
+            assertEquals("theirs", file.readText())
+            assertEquals("mine", backup(stamp = 77L).readText())
+        }
+
+    @Test
+    fun `a replacement that can't be saved changes nothing`() = runTest {
+        file.writeText("mine")
+        val store = loaded()
+        File(folder.root, "doc.json.tmp").mkdir()
+        assertFalse(store.replace(value = listOf("theirs"), stamp = 77L))
+        assertEquals(listOf("mine"), store.data.value)
+        assertEquals("mine", file.readText())
+        assertFalse(backup(stamp = 77L).exists())
+    }
+
+    @Test
+    fun `undoing a replacement puts the saved file back`() = runTest {
+        file.writeText("mine")
+        val store = loaded()
+        store.replace(value = listOf("theirs"), stamp = 77L)
+        assertTrue(store.undoReplace(stamp = 77L, previous = listOf("mine")))
+        assertEquals(listOf("mine"), store.data.value)
+        assertEquals("mine", file.readText())
+        assertFalse(backup(stamp = 77L).exists())
+    }
+
+    @Test
+    fun `a file that couldn't be set aside is never replaced`() = runTest {
+        file.writeText("#garbled")
+        aside(at = 1_000L).writeText("older")
+        val store = loaded()
+        assertFalse(store.replace(value = listOf("theirs"), stamp = 77L))
+        assertEquals("#garbled", file.readText())
+    }
+
+    @Test
+    fun `with no saved file there is nothing to back up, and undoing leaves no file`() =
+        runTest {
+            val store = loaded()
+            file.delete()
+            assertTrue(store.replace(value = listOf("theirs"), stamp = 77L))
+            assertFalse(backup(stamp = 77L).exists())
+            assertTrue(store.undoReplace(stamp = 77L, previous = listOf("seed")))
+            assertFalse(file.exists())
+        }
 }

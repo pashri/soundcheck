@@ -23,11 +23,34 @@ class FakeStore<T : Any>(initial: T?) : Store<T> {
     /** Set to act as if an unreadable file couldn't be set aside, so nothing is saved. */
     override val unopened: MutableStateFlow<Boolean> = MutableStateFlow(false)
 
+    /** Set false to act as if [replace] couldn't write (storage full). */
+    var replaces: Boolean = true
+
+    /** Set false to act as if [undoReplace] couldn't put the backup back. */
+    var undoes: Boolean = true
+
+    /** Every backup [replace] kept, by stamp, holding the document as it was then. */
+    val backups: MutableMap<Long, T?> = mutableMapOf()
+
     /** The document now; the test fails if it hasn't loaded. */
     val value: T get() = checkNotNull(_data.value)
 
     override fun edit(change: (T) -> T) {
         _data.value = _data.value?.let(change)
+    }
+
+    override suspend fun replace(value: T, stamp: Long): Boolean {
+        if (!replaces) return false
+        backups[stamp] = _data.value
+        _data.value = value
+        return true
+    }
+
+    override suspend fun undoReplace(stamp: Long, previous: T): Boolean {
+        if (!undoes) return false
+        backups.remove(stamp)
+        _data.value = previous
+        return true
     }
 
     /**
