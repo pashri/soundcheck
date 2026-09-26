@@ -100,7 +100,8 @@ class SettingsViewModel(
             val text = withContext(context = worker) {
                 ExportCodec.encode(Backup(library = saved, settings = current))
             }
-            val written = files.write(uri = uri, text = text)
+            val emptyBefore = files.sizeOf(uri).let { it == null || it == 0L }
+            val written = files.write(uri = uri, text = text, deleteOnFailure = emptyBefore)
             val done = "Saved a backup of ${libraryCounts(saved)}."
             backup.value = BackupView(message = if (written) done else EXPORT_FAILED)
         }

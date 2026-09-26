@@ -22,7 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -485,14 +485,25 @@ private fun HoldToRecord(panel: RecordPanel, actions: SoundsActions) {
     )
 }
 
-/** The recent loudness as a row of bars, like the design's waveform; TalkBack skips it. */
+/**
+ * The recent loudness as a row of bars, like the design's waveform; TalkBack skips it. It
+ * takes the width it is given, up to [LEVELS_MAX_WIDTH], and shows as many of the latest
+ * levels as fit, so it never spills out of the panel at the largest display size.
+ */
 @Composable
 private fun Levels(levels: List<Float>) {
     val color = Manuscript.colors.accent
-    Canvas(modifier = Modifier.width(200.dp).height(24.dp).clearAndSetSemantics {}) {
+    Canvas(
+        modifier = Modifier
+            .widthIn(max = LEVELS_MAX_WIDTH)
+            .fillMaxWidth()
+            .height(24.dp)
+            .clearAndSetSemantics {},
+    ) {
         val step = 5.dp.toPx()
         val middle = size.height / 2
-        levels.forEachIndexed { index, level ->
+        val fits = (size.width / step).toInt()
+        levels.takeLast(n = fits).forEachIndexed { index, level ->
             val loudness = level.coerceIn(minimumValue = 0f, maximumValue = 1f)
             val half = maxOf(a = 1.dp.toPx(), b = loudness * middle)
             val x = index * step + 2.dp.toPx()
@@ -510,3 +521,4 @@ private fun Levels(levels: List<Float>) {
 private val LABEL_STYLE: TextStyle = ManuscriptType.displayItalic.copy(fontSize = 24.sp)
 private val HEADLINE_STYLE: TextStyle = ManuscriptType.body.copy(fontWeight = FontWeight.Medium)
 private const val RING_ALPHA = 0.22f
+private val LEVELS_MAX_WIDTH = 200.dp
