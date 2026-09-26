@@ -15,7 +15,13 @@ import org.pashri.soundcheck.warmup.Sound
 import org.pashri.soundcheck.warmup.SoundId
 import org.pashri.soundcheck.warmup.StepKey
 
-/** Reads and writes the library as JSON. */
+/**
+ * Reads and writes the library as JSON.
+ *
+ * [decode] requires the file's `version` to equal [VERSION] exactly, and unknown keys are
+ * not ignored (an added or renamed field fails to parse). Adding a field therefore means a
+ * new [VERSION] plus a migration from the previous version's format.
+ */
 object LibraryCodec : TextCodec<Library> {
     /** The format this build writes; a file with any other version is refused. */
     const val VERSION: Int = 1

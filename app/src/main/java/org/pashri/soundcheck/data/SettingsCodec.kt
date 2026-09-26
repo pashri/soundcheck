@@ -6,7 +6,13 @@ import org.pashri.soundcheck.warmup.Range
 import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.WarmupSettings
 
-/** Reads and writes the Warm-up settings as JSON. */
+/**
+ * Reads and writes the Warm-up settings as JSON.
+ *
+ * [decode] requires the file's `version` to equal [VERSION] exactly, and unknown keys are
+ * not ignored (an added or renamed field fails to parse). Adding a field therefore means a
+ * new [VERSION] plus a migration from the previous version's format.
+ */
 object SettingsCodec : TextCodec<WarmupSettings> {
     /** The format this build writes; a file with any other version is refused. */
     const val VERSION: Int = 1

@@ -1,7 +1,9 @@
 package org.pashri.soundcheck.data
 
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import kotlinx.coroutines.CoroutineDispatcher
@@ -46,7 +48,8 @@ internal val DocumentJson: Json = Json { prettyPrint = true }
  * replaced by the seed; if it can't even be moved, the seed is shown but nothing is saved,
  * so the file is never overwritten. Every save writes the whole document to a temporary
  * file and renames it over [file], so the file is always either the old document or the
- * new one.
+ * new one. The temporary file is synced to storage before the rename, so a power cut leaves
+ * either the old or the new document.
  *
  * @param file where the document lives.
  * @param codec turns the document into text and back.
@@ -70,9 +73,14 @@ class DocumentStore<T : Any>(
     /** True when an unreadable file couldn't be set aside; it must never be overwritten. */
     private var keepingUnreadable = false
 
+    private val _setAside = MutableStateFlow(false)
+
     override val data: StateFlow<T?> = _data.asStateFlow()
 
     override val saveFailed: StateFlow<Boolean> = _saveFailed.asStateFlow()
+
+    /** True once an unreadable file has been moved aside and replaced by [seed]. */
+    val setAside: StateFlow<Boolean> = _setAside.asStateFlow()
 
     /**
      * Reads the document from [file], or saves [seed] there if there is no file. Call once.
@@ -103,7 +111,9 @@ class DocumentStore<T : Any>(
     private fun readOrSeed(): T {
         if (file.exists()) {
             readOrNull()?.let { return it }
-            if (!trySetAside()) {
+            if (trySetAside()) {
+                _setAside.value = true
+            } else {
                 keepingUnreadable = true
                 _saveFailed.value = true
                 return seed()
@@ -143,7 +153,11 @@ class DocumentStore<T : Any>(
         val directory = checkNotNull(file.absoluteFile.parentFile)
         directory.mkdirs()
         val temporary = File(directory, "${file.name}.tmp")
-        temporary.writeText(codec.encode(value))
+        val bytes = codec.encode(value).toByteArray(StandardCharsets.UTF_8)
+        FileOutputStream(temporary).use { out ->
+            out.write(bytes)
+            out.fd.sync()
+        }
         Files.move(
             temporary.toPath(),
             file.toPath(),

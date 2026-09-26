@@ -1,7 +1,14 @@
 package org.pashri.soundcheck.data
 
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -13,6 +20,30 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+
+/**
+ * Waits until this file's content stops changing, so a real background save has settled.
+ *
+ * @param afterStableFor how long the content must be unchanged to count as settled, in ms.
+ * @param timeoutMs how long to wait in total before giving up, in ms.
+ * @return the file's content once it has settled, or whatever it is at the timeout.
+ */
+private fun File.readText(afterStableFor: Long, timeoutMs: Long): String {
+    var last: String? = null
+    var stableSince = System.currentTimeMillis()
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+        val current = if (exists()) readText() else null
+        if (current != last) {
+            last = current
+            stableSince = System.currentTimeMillis()
+        } else if (System.currentTimeMillis() - stableSince > afterStableFor) {
+            break
+        }
+        Thread.sleep(10)
+    }
+    return readText()
+}
 
 /** One line per item; a document starting with "#" can't be read. */
 private object LinesCodec : TextCodec<List<String>> {
@@ -106,6 +137,45 @@ class DocumentStoreTest {
     }
 
     @Test
+    fun `a save that genuinely overlaps another still ends with the newest document`() {
+        val reachedGate = CountDownLatch(1)
+        val releaseGate = CountDownLatch(1)
+        var gated = false
+        val codec = object : TextCodec<List<String>> {
+            override fun encode(value: List<String>): String {
+                if (value == listOf("seed", "1") && !gated) {
+                    gated = true
+                    reachedGate.countDown()
+                    releaseGate.await()
+                }
+                return value.joinToString(separator = "\n")
+            }
+
+            override fun decode(text: String): List<String> =
+                if (text.isEmpty()) emptyList() else text.split("\n")
+        }
+        val scope = CoroutineScope(Dispatchers.Default + Job())
+        val store = DocumentStore(
+            file = file,
+            codec = codec,
+            seed = { listOf("seed") },
+            scope = scope,
+            io = Dispatchers.IO,
+            clockMs = { now },
+        )
+        runBlocking { store.load().join() }
+        store.edit { it + "1" }
+        assertTrue(reachedGate.await(2, TimeUnit.SECONDS))
+        store.edit { it + "2" }
+        // Give an unguarded second save every chance to land on disk while the first is
+        // still gated, so a missing mutex would let the first overwrite it once released.
+        Thread.sleep(300)
+        releaseGate.countDown()
+        assertEquals("seed\n1\n2", file.readText(afterStableFor = 200, timeoutMs = 2_000))
+        scope.cancel()
+    }
+
+    @Test
     fun `edits before the file is read are ignored`() = runTest {
         val store = store()
         store.edit { listOf("early") }
@@ -120,6 +190,16 @@ class DocumentStoreTest {
         assertEquals(listOf("seed"), loaded().data.value)
         assertEquals("#garbled", aside(at = 1_000L).readText())
         assertEquals("seed", file.readText())
+    }
+
+    @Test
+    fun `an unreadable file being set aside is reported`() = runTest {
+        file.writeText("#garbled")
+        val store = store()
+        assertFalse(store.setAside.value)
+        store.load()
+        advanceUntilIdle()
+        assertTrue(store.setAside.value)
     }
 
     @Test

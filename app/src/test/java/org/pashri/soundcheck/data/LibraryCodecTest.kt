@@ -29,7 +29,7 @@ class LibraryCodecTest {
             Pattern(
                 id = PatternId("p-2"),
                 name = "Minor sigh",
-                notes = PatternNotation.parse("♭3e 2e 1w"),
+                notes = PatternNotation.parse("♭3e ♯4e 2e 1w"),
                 keyChord = KeyChord.MINOR,
             ),
         ),
@@ -84,7 +84,7 @@ class LibraryCodecTest {
 
     @Test
     fun `a malformed note is refused`() {
-        refuses(fixture.replace("♭3e 2e 1w", "b3e 2e 1w"))
+        refuses(fixture.replace("♭3e ♯4e 2e 1w", "b3e ♯4e 2e 1w"))
     }
 
     @Test
