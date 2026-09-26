@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
@@ -24,6 +23,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import org.pashri.soundcheck.ui.components.accidentalWidth
+import org.pashri.soundcheck.ui.components.drawAccidentalGlyph
+import org.pashri.soundcheck.ui.components.spacePath
 import org.pashri.soundcheck.ui.components.spokenMusic
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptColors
@@ -192,7 +194,12 @@ private class StaffPainter(
     }
 
     private fun DrawScope.drawTrebleClef(origin: Offset) {
-        val path = spacePath(origin = origin, start = TREBLE_START, curves = TREBLE_CURVES)
+        val path = spacePath(
+            origin = origin,
+            gap = gap,
+            start = TREBLE_START,
+            curves = TREBLE_CURVES,
+        )
         drawPath(
             path = path,
             color = colors.ink,
@@ -206,7 +213,7 @@ private class StaffPainter(
     }
 
     private fun DrawScope.drawBassClef(origin: Offset) {
-        val path = spacePath(origin = origin, start = BASS_START, curves = BASS_CURVES)
+        val path = spacePath(origin = origin, gap = gap, start = BASS_START, curves = BASS_CURVES)
         drawPath(
             path = path,
             color = colors.ink,
@@ -221,25 +228,6 @@ private class StaffPainter(
             )
         }
     }
-
-    /**
-     * A path in staff spaces from [origin]: from [start] through cubic curves, six numbers
-     * each. The clefs and the ♭'s bowl are drawn with it.
-     */
-    private fun spacePath(origin: Offset, start: Pair<Float, Float>, curves: List<Float>): Path =
-        Path().apply {
-            moveTo(x = origin.x + gap * start.first, y = origin.y + gap * start.second)
-            curves.chunked(size = 6).forEach { c ->
-                cubicTo(
-                    x1 = origin.x + gap * c[0],
-                    y1 = origin.y + gap * c[1],
-                    x2 = origin.x + gap * c[2],
-                    y2 = origin.y + gap * c[3],
-                    x3 = origin.x + gap * c[4],
-                    y3 = origin.y + gap * c[5],
-                )
-            }
-        }
 
     private fun DrawScope.drawNote(note: StaffNote, x: Float, color: Color) {
         val y = yOf(note.step)
@@ -303,53 +291,18 @@ private class StaffPainter(
      * head's left; nothing for a plain natural.
      */
     private fun DrawScope.drawAccidental(note: StaffNote, x: Float, y: Float) {
-        val glyph = when (note.accidental) {
-            Accidental.FLAT -> FLAT_GLYPH
-            Accidental.SHARP -> SHARP_GLYPH
-            Accidental.NATURAL -> if (note.courtesyNatural) NATURAL_GLYPH else return
-        }
-        val left = x - headWidth / 2 - gap * (ACCIDENTAL_SPACE + glyph.width)
-        val origin = Offset(x = left, y = y)
-        glyph.lines.forEach { line ->
-            drawLine(
-                color = colors.ink,
-                start = origin + Offset(x = gap * line.x1, y = gap * line.y1),
-                end = origin + Offset(x = gap * line.x2, y = gap * line.y2),
-                strokeWidth = gap * line.width,
-            )
-        }
-        glyph.bowlStart?.let { start ->
-            drawPath(
-                path = spacePath(origin = origin, start = start, curves = glyph.bowl),
-                color = colors.ink,
-                style = Stroke(width = gap * FLAT_BOWL_STROKE, cap = StrokeCap.Round),
-            )
-        }
+        val plain = note.accidental == Accidental.NATURAL && !note.courtesyNatural
+        if (plain) return
+        val width = accidentalWidth(accidental = note.accidental)
+        val left = x - headWidth / 2 - gap * (ACCIDENTAL_SPACE + width)
+        drawAccidentalGlyph(
+            accidental = note.accidental,
+            origin = Offset(x = left, y = y),
+            gap = gap,
+            color = colors.ink,
+        )
     }
 }
-
-/**
- * A straight stroke of an accidental, in staff spaces from the glyph's left edge at its
- * note's centre line; y grows downwards.
- */
-private class GlyphLine(
-    val x1: Float,
-    val y1: Float,
-    val x2: Float,
-    val y2: Float,
-    val width: Float,
-)
-
-/**
- * An accidental drawn as strokes: its [width] in staff spaces, its straight [lines], and for
- * a ♭ the bowl, from [bowlStart] through the cubic curves in [bowl] (six numbers each).
- */
-private class AccidentalGlyph(
-    val width: Float,
-    val lines: List<GlyphLine>,
-    val bowlStart: Pair<Float, Float>? = null,
-    val bowl: List<Float> = emptyList(),
-)
 
 /**
  * Whether a key's mark gets an outline. At night the key's vermilion sits about 1.4:1 and
@@ -395,40 +348,6 @@ private const val FLAG_DROP = 1.5f
 private const val FLAG_WIDTH = 0.2f
 private const val LEDGER_REACH = 0.8f
 private const val ACCIDENTAL_SPACE = 0.2f
-
-/** A ♯, 2.5 spaces tall: two thin uprights, the left one lower, and two thick rising bars. */
-private val SHARP_GLYPH = AccidentalGlyph(
-    width = 1.0f,
-    lines = listOf(
-        GlyphLine(x1 = 0.3f, y1 = -1.05f, x2 = 0.3f, y2 = 1.25f, width = 0.12f),
-        GlyphLine(x1 = 0.7f, y1 = -1.25f, x2 = 0.7f, y2 = 1.05f, width = 0.12f),
-        GlyphLine(x1 = 0f, y1 = -0.3f, x2 = 1.0f, y2 = -0.6f, width = 0.32f),
-        GlyphLine(x1 = 0f, y1 = 0.6f, x2 = 1.0f, y2 = 0.3f, width = 0.32f),
-    ),
-)
-
-/** A ♭, 2.2 spaces tall: an upright rising well above the note, with a bowl round it. */
-private val FLAT_GLYPH = AccidentalGlyph(
-    width = 0.9f,
-    lines = listOf(GlyphLine(x1 = 0.08f, y1 = -1.75f, x2 = 0.08f, y2 = 0.45f, width = 0.13f)),
-    bowlStart = 0.08f to 0.45f,
-    bowl = listOf(
-        0.55f, 0.15f, 0.95f, -0.25f, 0.7f, -0.5f,
-        0.5f, -0.7f, 0.2f, -0.5f, 0.08f, -0.2f,
-    ),
-)
-private const val FLAT_BOWL_STROKE = 0.17f
-
-/** A ♮, 2.5 spaces tall: offset uprights joined by two thick rising bars. */
-private val NATURAL_GLYPH = AccidentalGlyph(
-    width = 0.72f,
-    lines = listOf(
-        GlyphLine(x1 = 0.08f, y1 = -1.25f, x2 = 0.08f, y2 = 0.5f, width = 0.12f),
-        GlyphLine(x1 = 0.64f, y1 = -0.5f, x2 = 0.64f, y2 = 1.25f, width = 0.12f),
-        GlyphLine(x1 = 0.08f, y1 = -0.2f, x2 = 0.64f, y2 = -0.42f, width = 0.3f),
-        GlyphLine(x1 = 0.08f, y1 = 0.42f, x2 = 0.64f, y2 = 0.2f, width = 0.3f),
-    ),
-)
 
 /** The clefs, in staff spaces from the line each curls round; y grows downwards. */
 private const val CLEF_LEFT = 0.9f

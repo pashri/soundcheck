@@ -9,20 +9,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -46,7 +46,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,7 +58,9 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
+import org.pashri.soundcheck.ui.components.AccentButton
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
+import org.pashri.soundcheck.ui.components.OutlineButton
 import org.pashri.soundcheck.ui.components.ScreenHeader
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
@@ -317,50 +318,32 @@ private fun AccentChip(
     }
 }
 
+/**
+ * Tap tempo and Start/Stop, side by side. Both keep their inner padding and grow taller when
+ * a large font wraps a label, rather than letting the text reach the border.
+ */
 @Composable
 private fun TransportButtons(running: Boolean, actions: MetronomeActions) {
-    val colors = Manuscript.colors
-    val shape = RoundedCornerShape(6.dp)
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 56.dp)
-                .clip(shape)
-                .border(width = 1.dp, color = colors.ink, shape = shape)
-                .clickable(role = Role.Button, onClick = actions::tap),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(text = "Tap tempo", style = ManuscriptType.button, color = colors.ink)
-        }
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 56.dp)
-                .clip(shape)
-                .background(colors.accent)
-                .clickable(role = Role.Button, onClick = actions::toggle),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = if (running) ManuscriptIcons.Stop else ManuscriptIcons.Play,
-                contentDescription = null,
-                tint = colors.onAccent,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = if (running) "Stop" else "Start",
-                style = ManuscriptType.button.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.onAccent,
-            )
-        }
+        OutlineButton(
+            text = "Tap tempo",
+            onClick = actions::tap,
+            modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = TRANSPORT_HEIGHT),
+        )
+        AccentButton(
+            text = if (running) "Stop" else "Start",
+            onClick = actions::toggle,
+            modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = TRANSPORT_HEIGHT),
+            icon = if (running) ManuscriptIcons.Stop else ManuscriptIcons.Play,
+        )
     }
 }
+
+/** The Metronome's two big buttons are at least this tall. */
+private val TRANSPORT_HEIGHT = 56.dp
 
 private object PreviewActions : MetronomeActions {
     override fun slower() = Unit

@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -40,6 +41,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.pashri.soundcheck.ui.theme.Manuscript
@@ -90,16 +92,29 @@ fun BackHeader(
 
 /**
  * The title with its note on the right. At large text sizes the note moves under the title
- * rather than squeezing it: the title never gives up width to the note.
+ * rather than squeezing it or touching it: the title never gives up width to the note, and
+ * the two keep at least [TITLE_NOTE_GAP] apart on one line.
+ *
+ * @param title the screen's title.
+ * @param onRename opens a rename dialog when the title is tapped, or null.
+ * @param trailing a short uppercase note such as "A4 = 440 Hz", or null.
+ * @param top the space above the title.
+ * @param noteLift how far the note's bottom sits above the title's bottom.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TitleAndNote(title: String, onRename: (() -> Unit)?, trailing: String?) {
+internal fun TitleAndNote(
+    title: String,
+    onRename: (() -> Unit)?,
+    trailing: String?,
+    top: Dp = 0.dp,
+    noteLift: Dp = 8.dp,
+) {
     FlowRow(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(start = 24.dp, end = 24.dp, top = top, bottom = 14.dp),
+        horizontalArrangement = SpaceBetweenAtLeast(minimum = TITLE_NOTE_GAP),
     ) {
         HeaderTitle(title = title, onRename = onRename, modifier = Modifier)
         if (trailing != null) {
@@ -109,7 +124,7 @@ private fun TitleAndNote(title: String, onRename: (() -> Unit)?, trailing: Strin
                 color = Manuscript.colors.muted,
                 modifier = Modifier
                     .align(alignment = Alignment.Bottom)
-                    .padding(bottom = 8.dp),
+                    .padding(bottom = noteLift),
             )
         }
     }
@@ -149,15 +164,18 @@ private fun HeaderTitle(title: String, onRename: (() -> Unit)?, modifier: Modifi
 }
 
 /**
- * A row of joined buttons, exactly one of which is chosen, such as the Voice Types. Each
- * button grows in height to fit its label at large font sizes; all grow together.
+ * Joined buttons, exactly one of which is chosen, such as the Voice Types. They sit in one
+ * row while every label's longest word fits its button; at large sizes they wrap onto more
+ * rows (four become two rows of two) rather than break a word. Buttons in a row grow in
+ * height together to fit their labels.
  *
  * @param options the choices, in order.
  * @param selected the chosen one.
  * @param label each choice's text.
  * @param onSelect called with the choice tapped.
- * @param modifier modifier for the row.
+ * @param modifier modifier for the group.
  * @param spoken what TalkBack says for each choice.
+ * @param mark draws a choice in place of its label, in the given ink, or null for the label.
  */
 @Composable
 fun <T> Segmented(
@@ -167,40 +185,87 @@ fun <T> Segmented(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     spoken: (T) -> String = { spokenMusic(label(it)) },
+    mark: (@Composable (option: T, ink: Color) -> Unit)? = null,
 ) {
     val colors = Manuscript.colors
-    Row(
+    val widest = rememberWidestWord(texts = options.map(label), style = ManuscriptType.button)
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
             .clip(ControlShape)
             .border(width = 1.dp, color = colors.ink, shape = ControlShape)
             .selectableGroup(),
     ) {
-        options.forEach { option ->
-            val on = option == selected
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .heightIn(min = 48.dp)
-                    .background(if (on) colors.ink else Color.Transparent)
-                    .selectable(
-                        selected = on,
-                        role = Role.RadioButton,
-                        onClick = { onSelect(option) },
-                    )
-                    .semantics { contentDescription = spoken(option) }
-                    .padding(horizontal = 4.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = label(option),
-                    style = ManuscriptType.button,
-                    color = if (on) colors.paper else colors.ink,
-                    textAlign = TextAlign.Center,
+        val padding = with(receiver = LocalDensity.current) {
+            (SEGMENT_PADDING * 2 + SEGMENT_SLACK).toPx()
+        }
+        val columns = if (mark != null) options.size else fittingColumns(
+            count = options.size,
+            widest = widest + padding,
+            available = constraints.maxWidth.toFloat(),
+        )
+        Column {
+            options.chunked(size = columns).forEachIndexed { index, row ->
+                if (index > 0) HorizontalDivider(thickness = 1.dp, color = colors.ink)
+                SegmentRow(
+                    row = row,
+                    columns = columns,
+                    cell = { option ->
+                        Segment(
+                            on = option == selected,
+                            text = label(option),
+                            spoken = spoken(option),
+                            onClick = { onSelect(option) },
+                            mark = mark?.let { draw -> { ink -> draw(option, ink) } },
+                        )
+                    },
                 )
             }
+        }
+    }
+}
+
+/** One row of a [Segmented] group, with empty space after a short last row. */
+@Composable
+private fun <T> SegmentRow(row: List<T>, columns: Int, cell: @Composable (T) -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+        row.forEach { option ->
+            Box(modifier = Modifier.weight(1f).fillMaxHeight()) { cell(option) }
+        }
+        repeat(times = columns - row.size) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+@Composable
+private fun Segment(
+    on: Boolean,
+    text: String,
+    spoken: String,
+    onClick: () -> Unit,
+    mark: (@Composable (ink: Color) -> Unit)?,
+) {
+    val colors = Manuscript.colors
+    val ink = if (on) colors.paper else colors.ink
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .heightIn(min = 48.dp)
+            .background(if (on) colors.ink else Color.Transparent)
+            .selectable(selected = on, role = Role.RadioButton, onClick = onClick)
+            .semantics { contentDescription = spoken }
+            .padding(horizontal = SEGMENT_PADDING, vertical = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (mark != null) {
+            mark(ink)
+        } else {
+            Text(
+                text = text,
+                style = ManuscriptType.button,
+                color = ink,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
@@ -358,6 +423,15 @@ fun SwitchRow(
 }
 
 private val STEPPER_SYMBOL = 22.dp
+
+/** The least space between a header's title and its note on one line. */
+private val TITLE_NOTE_GAP = 12.dp
+
+/** The space either side of a segment's label. */
+private val SEGMENT_PADDING = 4.dp
+
+/** Room for the group's border and rounding when judging whether a label fits. */
+private val SEGMENT_SLACK = 2.dp
 
 /** 24 sp values: the baseline 30 sp down, 10 sp above the bottom, room for any accidental. */
 private val VALUE_ABOVE_BASELINE = 30.sp
