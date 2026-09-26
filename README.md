@@ -4,7 +4,7 @@ A vocal warm-up that runs hands-free on a sampled grand piano, with a Tuner and 
 Metronome, for Android.
 
 [**Download Soundcheck 1.0.0 (APK)**](https://github.com/pashri/soundcheck/releases/latest)
-· Android 11 or later · free, with no ads or accounts
+· Android 11 or later · free and open source ([MIT](LICENSE)), with no ads or accounts
 
 <p align="center">
   <img src="docs/screenshots/tuner.png" width="240" alt="The Tuner reading a note: its name, octave, needle and cents">
@@ -290,9 +290,17 @@ computer's debug key instead, prints a warning, and gives it versionName
 `1.0.0-debugkey`, for trying the minified build on an emulator; that APK is for testing
 only.
 
+## Licence
+
+Soundcheck's code is released under the [MIT License](LICENSE). The fonts and piano samples
+it bundles keep their own licences, listed below.
+
 ## Credits
 
 Instrument Serif, IBM Plex Sans and IBM Plex Mono are used under the SIL Open Font License.
+
+Audio runs through Google's [Oboe](https://github.com/google/oboe) library, used under the
+Apache License 2.0.
 
 The piano is the [Salamander Grand Piano V3](https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html)
 by Alexander Holm, used under the
