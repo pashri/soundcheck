@@ -22,6 +22,16 @@ fun spokenMusic(text: String): String = SPOKEN_SYMBOLS.entries
     .trim()
 
 /**
+ * What TalkBack says for a merged row such as "Lowest B♭2": its parts in order, each with
+ * its music read as words, so a label beside a value isn't dropped.
+ *
+ * @param parts the row's texts, e.g. its label, value and detail; null parts are left out.
+ * @return e.g. "Lowest, B flat 2".
+ */
+fun spokenRow(parts: List<String?>): String =
+    parts.filterNotNull().joinToString(separator = ", ") { spokenMusic(text = it) }
+
+/**
  * Text that may hold ♭, ♯, ♮, − or arrows, which TalkBack reads as words.
  *
  * @param text what to show.

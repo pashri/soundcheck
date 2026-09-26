@@ -23,8 +23,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,18 +73,21 @@ fun LinkCard(
     detail: String? = null,
 ) {
     val colors = Manuscript.colors
-    val action = if (onClick != null) {
-        Modifier.clickable(role = Role.Button, onClick = onClick)
-    } else {
-        Modifier.semantics(mergeDescendants = true) {}
-    }
+    val spoken = spokenRow(parts = listOf(label, value, detail))
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(ControlShape)
-            .border(1.dp, colors.rule, ControlShape)
-            .then(action)
+            .border(width = 1.dp, color = colors.rule, shape = ControlShape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .clearAndSetSemantics {
+                contentDescription = spoken
+                if (onClick != null) {
+                    role = Role.Button
+                    onClick(label = null, action = { onClick.invoke(); true })
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -126,7 +132,7 @@ fun OutlineButton(
         modifier = modifier
             .heightIn(min = 48.dp)
             .clip(ControlShape)
-            .border(1.dp, tint, ControlShape)
+            .border(width = 1.dp, color = tint, shape = ControlShape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .semantics { if (description != null) contentDescription = description }
             .padding(horizontal = 16.dp, vertical = 10.dp),

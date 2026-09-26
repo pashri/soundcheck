@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -254,7 +255,8 @@ fun StepperRow(
         modifier = modifier.fillMaxWidth().padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
+        val spoken = spokenRow(parts = listOf(label, value, detail))
+        Column(Modifier.weight(1f).clearAndSetSemantics { contentDescription = spoken }) {
             Text(text = label, style = ManuscriptType.label, color = colors.muted)
             MusicText(
                 text = value,

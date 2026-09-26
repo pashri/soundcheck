@@ -7,6 +7,7 @@ import org.pashri.soundcheck.music.Pitch
 import org.pashri.soundcheck.warmup.RangeOffset
 import org.pashri.soundcheck.warmup.RoundTrip
 import org.pashri.soundcheck.warmup.StarterProgrammes
+import org.pashri.soundcheck.warmup.StepKey
 
 class StepTextTest {
     private val steps = StarterProgrammes.WARM_UP.steps
@@ -46,5 +47,23 @@ class StepTextTest {
             "Its notes reach past the piano's keys here. It will be skipped.",
             fitWarning(RoundTrip.DoesNotFit(neededHalfSteps = 0, availableHalfSteps = 21)),
         )
+    }
+
+    @Test
+    fun `a Step row is read as one stop with its number, Sound, summary and warning`() {
+        val row = StepRow(
+            key = StepKey(value = "s1"),
+            number = 2,
+            sound = "mim",
+            meta = "Triad · 90 bpm · from low · top −3",
+            warning = "Needs 19 half-steps; this Step's Range has 18. It will be skipped.",
+        )
+        assertEquals(
+            "Step 2, mim, Triad · 90 bpm · from low · top minus 3, " +
+                "Needs 19 half-steps; this Step's Range has 18. It will be skipped.",
+            spokenStep(row = row),
+        )
+        val plain = row.copy(meta = "Triad", warning = null)
+        assertEquals("Step 2, mim, Triad", spokenStep(row = plain))
     }
 }

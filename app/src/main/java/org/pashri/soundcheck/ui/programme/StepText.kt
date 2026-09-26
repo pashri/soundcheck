@@ -1,5 +1,6 @@
 package org.pashri.soundcheck.ui.programme
 
+import org.pashri.soundcheck.ui.components.spokenRow
 import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.RangeOffset
 import org.pashri.soundcheck.warmup.RoundTrip
@@ -60,6 +61,15 @@ fun fitWarning(trip: RoundTrip): String? {
     return "Needs $needed; this Step's Range has ${tooWide.availableHalfSteps}. " +
         "It will be skipped."
 }
+
+/**
+ * What TalkBack says for a Step's row in the Programme editor, as one stop.
+ *
+ * @param row the Step's row.
+ * @return e.g. "Step 2, mim, Triad · 90 bpm · from low, " followed by any fit warning.
+ */
+fun spokenStep(row: StepRow): String =
+    spokenRow(parts = listOf("Step ${row.number}", row.sound, row.meta, row.warning))
 
 private fun halfStepsText(count: Int): String =
     if (count == 1) "1 half-step" else "$count half-steps"

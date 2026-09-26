@@ -25,4 +25,18 @@ class SpokenTest {
     fun `plain text is left alone`() {
         assertEquals("Tenor · C3 – A4", spokenMusic("Tenor · C3 – A4"))
     }
+
+    @Test
+    fun `a merged row is read as its label and then its music text as words`() {
+        assertEquals("Lowest, B flat 2", spokenRow(parts = listOf("Lowest", "B♭2")))
+        assertEquals(
+            "YOUR RANGE, Tenor · C3 – A4, top minus 3",
+            spokenRow(parts = listOf("YOUR RANGE", "Tenor · C3 – A4", "top −3")),
+        )
+    }
+
+    @Test
+    fun `a merged row leaves out a missing detail`() {
+        assertEquals("Tempo, 90 bpm", spokenRow(parts = listOf("Tempo", "90 bpm", null)))
+    }
 }

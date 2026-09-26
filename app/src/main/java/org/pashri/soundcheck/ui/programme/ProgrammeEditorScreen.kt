@@ -39,8 +39,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
@@ -305,11 +308,8 @@ private fun StepEntry(
         CustomAccessibilityAction(label = "Move down") { onMoveDown(); true }
             .takeIf { !position.isLast },
     )
-    val open = if (onOpen != null) {
-        Modifier.clickable(role = Role.Button, onClick = onOpen)
-    } else {
-        Modifier
-    }
+    val open = if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier
+    val spoken = spokenStep(row = row)
     Column(modifier.fillMaxWidth().background(colors.paper)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -327,14 +327,21 @@ private fun StepEntry(
                 text = row.number.toString(),
                 style = ManuscriptType.label,
                 color = colors.muted,
-                modifier = Modifier.widthIn(min = 24.dp),
+                modifier = Modifier.widthIn(min = 24.dp).clearAndSetSemantics {},
             )
             Row(
                 modifier = Modifier
                     .weight(1f)
                     .heightIn(min = 48.dp)
                     .then(open)
-                    .semantics(mergeDescendants = true) { customActions = moves }
+                    .clearAndSetSemantics {
+                        contentDescription = spoken
+                        customActions = moves
+                        if (onOpen != null) {
+                            role = Role.Button
+                            onClick(label = null, action = { onOpen.invoke(); true })
+                        }
+                    }
                     .padding(start = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -414,7 +421,10 @@ private fun StepHandle(
 private fun StepWarning(text: String) {
     val colors = Manuscript.colors
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 52.dp, bottom = 10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clearAndSetSemantics {}
+            .padding(start = 52.dp, bottom = 10.dp),
         verticalAlignment = Alignment.Top,
     ) {
         Icon(
