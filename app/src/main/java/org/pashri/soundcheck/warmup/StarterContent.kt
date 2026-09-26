@@ -11,11 +11,11 @@ object StarterPatterns {
         keyChord = KeyChord.MAJOR,
     )
 
-    /** A major arpeggio that holds the octave over four quick notes. */
+    /** A major arpeggio that repeats the octave four times. */
     val ARPEGGIO_8_HOLD: Pattern = starter(
         id = "arpeggio-8-hold",
         name = "Arpeggio 8-hold",
-        notation = "1 3 5 8e 8e 8e 8e 5 3 1h",
+        notation = "1 3 5 8 8 8 8 5 3 1",
         defaultLength = NoteLength.QUARTER,
         keyChord = KeyChord.MAJOR,
     )
