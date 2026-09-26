@@ -15,12 +15,13 @@ class ExclusiveMic(private val mic: MicInput) : MicInput {
 
     override fun open(): MicSession? {
         if (!busy.compareAndSet(false, true)) return null
-        val session = mic.open()
-        if (session == null) {
-            busy.set(false)
-            return null
+        var session: MicSession? = null
+        try {
+            session = mic.open()
+        } finally {
+            if (session == null) busy.set(false)
         }
-        return OnlySession(session)
+        return session?.let(::OnlySession)
     }
 
     /** The one open session; closing it a second time frees nothing. */
@@ -47,10 +48,12 @@ const val MIC_OPEN_RETRY_MS: Long = 100L
  * Opens the microphone, trying again for a moment in case the other tool that listens (the
  * Tuner or the Sounds recorder) is still letting go of it.
  *
- * @return an open session, or null if every try failed.
+ * @param stillWanted checked before each try; once it says false, no more tries are made.
+ * @return an open session, or null if every try failed or the microphone stopped being wanted.
  */
-suspend fun MicInput.openRetrying(): MicSession? {
+suspend fun MicInput.openRetrying(stillWanted: () -> Boolean = { true }): MicSession? {
     repeat(times = MIC_OPEN_TRIES) { attempt ->
+        if (!stillWanted()) return null
         open()?.let { return it }
         if (attempt < MIC_OPEN_TRIES - 1) delay(MIC_OPEN_RETRY_MS)
     }

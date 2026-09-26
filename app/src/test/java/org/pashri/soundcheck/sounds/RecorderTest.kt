@@ -1,6 +1,7 @@
 package org.pashri.soundcheck.sounds
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -10,10 +11,15 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.audio.ExclusiveMic
 import org.pashri.soundcheck.audio.FakeFocusGate
 import org.pashri.soundcheck.audio.FakeMicInput
 import org.pashri.soundcheck.audio.Tool
+import org.pashri.soundcheck.audio.MicInput
 import org.pashri.soundcheck.audio.ToolArbiter
+import org.pashri.soundcheck.tuner.MicStatus
+import org.pashri.soundcheck.tuner.Tuner
+import org.pashri.soundcheck.tuner.TunerState
 
 /**
  * The fake microphone delivers one 1 024-frame hop every 21 ms of test time, and silence
@@ -26,8 +32,17 @@ class RecorderTest {
     private val arbiter = ToolArbiter()
     private val takes = mutableListOf<Take>()
 
-    private fun TestScope.recorder(): Recorder =
-        Recorder(mic = mic, focus = focus, arbiter = arbiter, scope = backgroundScope)
+    private fun TestScope.recorder(input: MicInput = mic): Recorder =
+        Recorder(
+            mic = input,
+            focus = focus,
+            arbiter = arbiter,
+            scope = backgroundScope,
+            worker = StandardTestDispatcher(testScheduler),
+        )
+
+    private fun TestScope.tuner(input: MicInput): Tuner =
+        Tuner(mic = input, scope = backgroundScope, worker = StandardTestDispatcher(testScheduler))
 
     /** [hops] hops of 1 024 frames at [level], the sign alternating frame by frame. */
     private fun hops(hops: Int, level: Float): FloatArray =
@@ -174,5 +189,86 @@ class RecorderTest {
         wait(63)
         assertEquals(listOf(0.5f, 0.5f, 0.25f), recorder.levels.value)
         recorder.cancel()
+    }
+
+    @Test
+    fun `stopping while the microphone is tried gives up at once`() = runTest {
+        mic.available = false
+        val recorder = recorder()
+        recorder.start { takes += it }
+        wait(150)
+        recorder.stop()
+        mic.available = true
+        wait(500)
+        assertEquals(listOf<Take>(Take.TooQuiet), takes)
+        assertEquals(0, mic.timesOpened)
+        assertEverythingHandedBack(recorder)
+    }
+
+    @Test
+    fun `another tool starting while the microphone is tried interrupts the take`() = runTest {
+        mic.available = false
+        val recorder = recorder()
+        recorder.start { takes += it }
+        wait(150)
+        arbiter.claim(tool = Tool.WARM_UP, onEvicted = {})
+        mic.available = true
+        wait(500)
+        assertEquals(listOf<Take>(Take.Interrupted), takes)
+        assertEquals(0, mic.timesOpened)
+        assertEquals(Tool.WARM_UP, arbiter.current)
+        assertFalse(focus.held)
+        assertFalse(recorder.recording.value)
+    }
+
+    @Test
+    fun `a microphone that dies mid-take says so and hands everything back`() = runTest {
+        mic.play(hops(hops = 40, level = 0.3f))
+        val recorder = recorder()
+        recorder.start { takes += it }
+        wait(300)
+        mic.breakMic()
+        wait(100)
+        assertEquals(listOf<Take>(Take.MicUnavailable), takes)
+        assertEverythingHandedBack(recorder)
+    }
+
+    @Test
+    fun `the recorder waits for the Tuner to let go of the shared microphone`() = runTest {
+        val shared = ExclusiveMic(mic)
+        val tuner = tuner(input = shared)
+        tuner.start()
+        wait(50)
+        val recorder = recorder(input = shared)
+        recorder.start { takes += it }
+        wait(150)
+        assertEquals(1, mic.timesOpened)
+        tuner.stop()
+        wait(150)
+        assertEquals(2, mic.timesOpened)
+        assertEquals(1, mic.openNow)
+        assertEquals(1, mic.mostOpenAtOnce)
+        recorder.stop()
+        wait(100)
+        assertEquals(listOf<Take>(Take.TooQuiet), takes)
+    }
+
+    @Test
+    fun `the Tuner waits for the recorder to let go of the shared microphone`() = runTest {
+        val shared = ExclusiveMic(mic)
+        val recorder = recorder(input = shared)
+        recorder.start { takes += it }
+        wait(50)
+        val tuner = tuner(input = shared)
+        tuner.start()
+        wait(150)
+        assertEquals(TunerState(), tuner.state.value)
+        assertEquals(1, mic.timesOpened)
+        recorder.stop()
+        wait(150)
+        assertEquals(MicStatus.Listening, tuner.state.value.mic)
+        assertEquals(2, mic.timesOpened)
+        assertEquals(1, mic.mostOpenAtOnce)
+        tuner.stop()
     }
 }

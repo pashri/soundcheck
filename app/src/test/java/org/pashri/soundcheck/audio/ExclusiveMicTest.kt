@@ -3,6 +3,7 @@ package org.pashri.soundcheck.audio
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class ExclusiveMicTest {
@@ -38,6 +39,14 @@ class ExclusiveMicTest {
         fake.available = false
         assertNull(mic.open())
         fake.available = true
+        assertNotNull(mic.open())
+    }
+
+    @Test
+    fun `a microphone that throws as it opens doesn't stay taken`() {
+        fake.onOpen = { throw IllegalStateException("no microphone") }
+        assertThrows(IllegalStateException::class.java) { mic.open() }
+        fake.onOpen = null
         assertNotNull(mic.open())
     }
 }

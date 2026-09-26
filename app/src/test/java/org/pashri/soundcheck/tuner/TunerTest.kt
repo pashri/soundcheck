@@ -171,9 +171,10 @@ class TunerTest {
         runTest {
             mic.available = false
             val tuner = tuner()
-            mic.onOpen = { tuner.stop() }
+            var tries = 0
+            mic.onOpen = { if (++tries == MIC_OPEN_TRIES) tuner.stop() }
             tuner.start()
-            runCurrent()
+            micGivesUp()
             assertEquals(TunerState(), tuner.state.value)
         }
 
