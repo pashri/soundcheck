@@ -87,7 +87,9 @@ data class ProgrammeLinks(
  * @property delete deletes it.
  * @property addStep adds a Step (and opens it, once Steps have an editor).
  * @property removeStep removes a Step.
- * @property moveStep moves a Step from one position to another.
+ * @property moveStep moves a Step from one position to another, for a drag.
+ * @property nudgeStep moves a Step, by its key, up (−1) or down (+1) one place, for the
+ *     menu and TalkBack.
  * @property start plays the Programme.
  */
 data class ProgrammeEditorActions(
@@ -97,6 +99,7 @@ data class ProgrammeEditorActions(
     val addStep: () -> Unit,
     val removeStep: (StepKey) -> Unit,
     val moveStep: (Int, Int) -> Unit,
+    val nudgeStep: (StepKey, Int) -> Unit,
     val start: () -> Unit,
 )
 
@@ -125,6 +128,7 @@ fun ProgrammeEditorRoute(factory: ViewModelProvider.Factory, links: ProgrammeLin
                 },
                 removeStep = viewModel::removeStep,
                 moveStep = viewModel::moveStep,
+                nudgeStep = viewModel::nudgeStep,
                 start = {
                     askForNotifications()
                     if (viewModel.start()) links.openPlaying()
@@ -284,8 +288,8 @@ private fun StepList(
                         )
                     },
                     onOpen = actions.links.editStep?.let { edit -> { edit(row.key) } },
-                    onMoveUp = { actions.moveStep(index, index - 1) },
-                    onMoveDown = { actions.moveStep(index, index + 1) },
+                    onMoveUp = { actions.nudgeStep(row.key, -1) },
+                    onMoveDown = { actions.nudgeStep(row.key, 1) },
                     onRemove = { onRemove(row.key) },
                 )
             }

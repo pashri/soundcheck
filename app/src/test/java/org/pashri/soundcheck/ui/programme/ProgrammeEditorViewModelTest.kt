@@ -156,4 +156,23 @@ class ProgrammeEditorViewModelTest {
                 shown(viewModel).rows[2].warning,
             )
         }
+
+    @Test
+    fun `a Step's menu moves the Step it was opened on, even after the list changed`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel()
+            viewModel.moveStep(from = 0, to = 5)
+            viewModel.nudgeStep(key = StepKey("starter-1"), by = -1)
+            assertEquals(
+                listOf(
+                    "starter-2",
+                    "starter-3",
+                    "starter-4",
+                    "starter-5",
+                    "starter-1",
+                    "starter-6",
+                ),
+                keys(),
+            )
+        }
 }
