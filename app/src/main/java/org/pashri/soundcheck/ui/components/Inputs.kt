@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -81,23 +83,35 @@ fun BackHeader(
             Spacer(Modifier.width(4.dp))
             MusicText(text = backLabel, style = ManuscriptType.body, color = colors.ink)
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            HeaderTitle(title = title, onRename = onRename, modifier = Modifier.weight(1f))
-            if (trailing != null) {
-                Text(
-                    text = trailing,
-                    style = ManuscriptType.label,
-                    color = colors.muted,
-                    modifier = Modifier.padding(start = 12.dp, bottom = 8.dp),
-                )
-            }
-        }
+        TitleAndNote(title = title, onRename = onRename, trailing = trailing)
         HorizontalDivider(thickness = 1.dp, color = colors.rule)
+    }
+}
+
+/**
+ * The title with its note on the right. At large text sizes the note moves under the title
+ * rather than squeezing it: the title never gives up width to the note.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TitleAndNote(title: String, onRename: (() -> Unit)?, trailing: String?) {
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 24.dp, bottom = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        HeaderTitle(title = title, onRename = onRename, modifier = Modifier)
+        if (trailing != null) {
+            Text(
+                text = trailing,
+                style = ManuscriptType.label,
+                color = Manuscript.colors.muted,
+                modifier = Modifier
+                    .align(alignment = Alignment.Bottom)
+                    .padding(bottom = 8.dp),
+            )
+        }
     }
 }
 
