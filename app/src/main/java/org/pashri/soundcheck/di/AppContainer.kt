@@ -233,6 +233,7 @@ class AppContainer(context: Context) {
             files = sharedFiles,
             today = LocalDate::now,
             clockMs = System::currentTimeMillis,
+            worker = Dispatchers.Default,
         )
     }
 

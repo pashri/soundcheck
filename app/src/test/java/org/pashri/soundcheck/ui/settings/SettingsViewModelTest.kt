@@ -68,6 +68,7 @@ class SettingsViewModelTest {
             files = files,
             today = { LocalDate.of(2026, 9, 26) },
             clockMs = { 42L },
+            worker = dispatcher,
         ).create(SettingsViewModel::class.java)
 
     /** Picks [text] as the file to import and waits for it to be read. */

@@ -4,12 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import java.time.LocalDate
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.data.Backup
 import org.pashri.soundcheck.data.ExportCodec
 import org.pashri.soundcheck.data.ExportRead
@@ -35,6 +37,7 @@ import org.pashri.soundcheck.warmup.withVoiceType
  * @param files the files the person picks.
  * @param today the date, for naming a backup.
  * @param clockMs the time, for naming the copies an import keeps.
+ * @param worker where a backup is encoded and decoded, off the main thread.
  */
 class SettingsViewModel(
     private val settings: Store<WarmupSettings>,
@@ -42,6 +45,7 @@ class SettingsViewModel(
     private val files: SharedFiles,
     private val today: () -> LocalDate,
     private val clockMs: () -> Long,
+    private val worker: CoroutineDispatcher,
 ) : ViewModel(), SettingsActions {
     private val backup = MutableStateFlow(BackupView())
 
@@ -93,7 +97,9 @@ class SettingsViewModel(
         val saved = library.data.value ?: return
         val current = settings.data.value ?: return
         viewModelScope.launch {
-            val text = ExportCodec.encode(Backup(library = saved, settings = current))
+            val text = withContext(worker) {
+                ExportCodec.encode(Backup(library = saved, settings = current))
+            }
             val written = files.write(uri = uri, text = text)
             val done = "Saved a backup of ${libraryCounts(saved)}."
             backup.value = BackupView(message = if (written) done else EXPORT_FAILED)
@@ -105,7 +111,7 @@ class SettingsViewModel(
         backup.value = BackupView()
         viewModelScope.launch {
             val text = files.read(uri)
-            val read = text?.let(::readExport)
+            val read = text?.let { withContext(worker) { readExport(it) } }
             if (read is ExportRead.Valid) {
                 chosen = read.backup
                 backup.value = BackupView(question = libraryCounts(read.backup.library))
@@ -159,6 +165,7 @@ class SettingsViewModel(
      * @param files the files the person picks.
      * @param today the date.
      * @param clockMs the time in ms.
+     * @param worker where a backup is encoded and decoded.
      */
     class Factory(
         private val settings: Store<WarmupSettings>,
@@ -166,6 +173,7 @@ class SettingsViewModel(
         private val files: SharedFiles,
         private val today: () -> LocalDate,
         private val clockMs: () -> Long,
+        private val worker: CoroutineDispatcher,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = SettingsViewModel(
@@ -174,6 +182,7 @@ class SettingsViewModel(
             files = files,
             today = today,
             clockMs = clockMs,
+            worker = worker,
         ) as T
     }
 
