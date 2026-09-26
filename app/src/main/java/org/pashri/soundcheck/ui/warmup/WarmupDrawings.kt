@@ -31,6 +31,7 @@ import org.pashri.soundcheck.ui.components.spokenMusic
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptColors
 import org.pashri.soundcheck.ui.theme.SerifFamily
+import org.pashri.soundcheck.ui.theme.contrastRatio
 import org.pashri.soundcheck.warmup.Accidental
 
 /**
@@ -100,11 +101,8 @@ fun RangeKeyboard(view: KeyboardView, modifier: Modifier = Modifier) {
             val topLeft = Offset(x = index * white, y = 0f)
             val whole = Size(width = white, height = size.height)
             val pressed = key.pitch == view.pressed
-            drawRect(
-                color = whiteColor(mark = key.mark, pressed = pressed, colors = colors),
-                topLeft = topLeft,
-                size = whole,
-            )
+            val fill = keyFill(mark = key.mark, pressed = pressed, black = false, colors = colors)
+            drawRect(color = fill, topLeft = topLeft, size = whole)
             if (pressed) drawPressShadow(topLeft = topLeft, width = white, alpha = WHITE_SHADOW)
             drawRect(
                 color = colors.keyBorder,
@@ -112,22 +110,31 @@ fun RangeKeyboard(view: KeyboardView, modifier: Modifier = Modifier) {
                 size = whole,
                 style = Stroke(width = 1.dp.toPx()),
             )
-            if (key.mark.outlined) drawOutline(topLeft = topLeft, size = whole, colors = colors)
+            if (key.mark.outlined) {
+                drawOutline(
+                    topLeft = topLeft,
+                    size = whole,
+                    color = markRing(fill = fill, colors = colors),
+                )
+            }
         }
         val blackWidth = white * BLACK_WIDTH
         view.blacks.forEach { key ->
             val topLeft = Offset(x = (key.afterWhite + 1) * white - blackWidth / 2, y = 0f)
             val whole = Size(width = blackWidth, height = size.height * BLACK_HEIGHT)
             val pressed = key.pitch == view.pressed
-            drawRect(
-                color = blackColor(mark = key.mark, pressed = pressed, colors = colors),
-                topLeft = topLeft,
-                size = whole,
-            )
+            val fill = keyFill(mark = key.mark, pressed = pressed, black = true, colors = colors)
+            drawRect(color = fill, topLeft = topLeft, size = whole)
             if (pressed) {
                 drawPressShadow(topLeft = topLeft, width = blackWidth, alpha = BLACK_SHADOW)
             }
-            if (key.mark.outlined) drawOutline(topLeft = topLeft, size = whole, colors = colors)
+            if (key.mark.outlined) {
+                drawOutline(
+                    topLeft = topLeft,
+                    size = whole,
+                    color = markRing(fill = fill, colors = colors),
+                )
+            }
         }
     }
 }
@@ -315,16 +322,17 @@ private class StaffPainter(
 /**
  * Whether a key's mark gets an outline. At night the key's vermilion sits about 1.4:1 and
  * the top note's pale rose about 1.3:1 against a white key, too close to see, so a marked
- * key is ringed in the key edge colour, which stands out against white keys in both themes.
+ * key is ringed in the key edge colour, which stands out against white keys in both themes
+ * (or, on the day's pressed vermilion, in a white key's colour; see [markRing]).
  */
 private val KeyMark.outlined: Boolean
     get() = this == KeyMark.ROOT || this == KeyMark.TOP
 
-/** A [MARK_OUTLINE] ring just inside a marked key's edges. */
-private fun DrawScope.drawOutline(topLeft: Offset, size: Size, colors: ManuscriptColors) {
+/** A [MARK_OUTLINE] ring in [color] just inside a marked key's edges. */
+private fun DrawScope.drawOutline(topLeft: Offset, size: Size, color: Color) {
     val inset = MARK_OUTLINE.toPx() / 2
     drawRect(
-        color = colors.keyBorder,
+        color = color,
         topLeft = topLeft + Offset(x = inset, y = inset),
         size = Size(width = size.width - 2 * inset, height = size.height - 2 * inset),
         style = Stroke(width = MARK_OUTLINE.toPx()),
@@ -348,24 +356,46 @@ private fun DrawScope.drawPressShadow(topLeft: Offset, width: Float, alpha: Floa
     )
 }
 
-/** A white key's fill; the key and the top note keep theirs when pressed. */
-private fun whiteColor(mark: KeyMark, pressed: Boolean, colors: ManuscriptColors): Color =
-    when {
-        mark == KeyMark.ROOT -> colors.accent
-        mark == KeyMark.TOP -> colors.topKey
+/**
+ * A key's fill on the keyboard. A pressed key darkens, or for a black key lightens a little;
+ * the key and the top note darken to their own pressed shades, so the press shows on them
+ * too.
+ *
+ * @param mark what the key shows.
+ * @param pressed whether it is the key of the note being sung.
+ * @param black whether it is a black key.
+ * @param colors the palette.
+ * @return the fill.
+ */
+internal fun keyFill(
+    mark: KeyMark,
+    pressed: Boolean,
+    black: Boolean,
+    colors: ManuscriptColors,
+): Color = when (mark) {
+    KeyMark.ROOT -> if (pressed) colors.accentPressed else colors.accent
+    KeyMark.TOP -> if (pressed) colors.topKeyPressed else colors.topKey
+    KeyMark.SUNG, KeyMark.PLAIN -> when {
+        black && pressed -> colors.blackKeyPressed
+        black -> colors.blackKey
         pressed -> colors.keyPressed
         mark == KeyMark.SUNG -> colors.keyTint
         else -> colors.key
     }
+}
 
-/** A black key's fill; the key and the top note keep theirs when pressed. */
-private fun blackColor(mark: KeyMark, pressed: Boolean, colors: ManuscriptColors): Color =
-    when {
-        mark == KeyMark.ROOT -> colors.accent
-        mark == KeyMark.TOP -> colors.topKey
-        pressed -> colors.blackKeyPressed
-        else -> colors.blackKey
-    }
+/**
+ * The ring round a marked key with [fill]: the key edge colour, or a white key's colour on a
+ * fill too dark for the edge to show at 3:1 (the day's pressed vermilion).
+ *
+ * @param fill the marked key's fill, from [keyFill].
+ * @param colors the palette.
+ * @return the ring's colour.
+ */
+internal fun markRing(fill: Color, colors: ManuscriptColors): Color {
+    val edge = contrastRatio(foreground = colors.keyBorder, background = fill)
+    return if (edge >= RING_CONTRAST) colors.keyBorder else colors.key
+}
 
 /** Proportions of the design's staff (a 10-unit gap), as multiples of the gap. */
 private const val HEAD_WIDTH = 1.3f
@@ -413,6 +443,7 @@ private const val BASS_DOT_RADIUS = 0.16f
 /** Proportions of the design's keyboard: 26-wide white keys, 16-wide black keys 40 of 64 high. */
 private val KEYBOARD_HEIGHT = 64.dp
 private val MARK_OUTLINE = 2.dp
+private const val RING_CONTRAST = 3.0
 private const val BLACK_WIDTH = 16f / 26f
 private const val BLACK_HEIGHT = 40f / 64f
 

@@ -90,6 +90,16 @@ class ContrastTest {
         }
     }
 
+    @Test
+    fun `a pressed key or top note differs in lightness from its plain mark`() {
+        palettes.forEach { (theme, c) ->
+            val root = contrastRatio(foreground = c.accentPressed, background = c.accent)
+            assertTrue("$theme pressed key mark is ${"%.2f".format(root)}:1", root >= 1.3)
+            val top = contrastRatio(foreground = c.topKeyPressed, background = c.topKey)
+            assertTrue("$theme pressed top note is ${"%.2f".format(top)}:1", top >= 1.3)
+        }
+    }
+
     private companion object {
         const val MINIMUM_TEXT_CONTRAST = 4.5
     }
