@@ -175,7 +175,7 @@ private fun IterationPanel(view: IterationView, active: Boolean) {
             text = view.keyLabel,
             style = ManuscriptType.displayNumber.copy(
                 fontSize = keySize,
-                lineHeight = keySize,
+                lineHeight = keySize * KEY_LINE_HEIGHT,
                 lineHeightStyle = LineHeightStyle(
                     alignment = LineHeightStyle.Alignment.Center,
                     trim = LineHeightStyle.Trim.None,
@@ -394,4 +394,12 @@ private fun WarmupNightPreview() {
 
 private val SOUND_LABEL_SIZE = 72.dp
 private val KEY_LABEL_SIZE = 40.dp
+
+/**
+ * The key's line height, in key sizes. Compose grows a Text past its line height to fit the
+ * ink of what it draws, and ♭ and ♯ come from a fallback font that reaches further than the
+ * letters; a line with room for both keeps the key row, and the cells under it, still.
+ */
+private const val KEY_LINE_HEIGHT = 1.5f
+
 private val CELL_HEIGHT = 14.dp
