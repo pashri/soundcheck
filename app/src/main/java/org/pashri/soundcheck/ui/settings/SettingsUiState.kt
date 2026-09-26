@@ -85,9 +85,13 @@ private const val NEXT_START = "Applies from the next Start."
 /** The Range section's supporting text: a Programme already playing keeps its Range. */
 const val RANGE_NOTE: String = NEXT_START
 
+/** The headphone button follows the setting at once; focus and mixing wait for a Start. */
+private const val AUDIO_TIMING =
+    "The headphone button switches straight away; the rest applies from the next Start."
+
 private const val PAUSING_NOTE =
-    "Off: your podcast pauses, and the headphone button controls Soundcheck. $NEXT_START"
+    "Off: your podcast pauses, and the headphone button controls Soundcheck. $AUDIO_TIMING"
 
 private const val MIXING_NOTE =
     "On: your podcast keeps playing under Soundcheck, the headphone button stays with it, " +
-        "and a phone call won't pause the Warm-up. $NEXT_START"
+        "and a phone call won't pause the Warm-up. $AUDIO_TIMING"
