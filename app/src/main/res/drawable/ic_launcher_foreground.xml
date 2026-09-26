@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Waveform on a staff: six vermilion bars standing on a faint five-line staff. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M18,38H90M18,45H90M18,52H90M18,59H90M18,66H90"
+        android:strokeWidth="2"
+        android:strokeColor="#1D1B18"
+        android:strokeAlpha="0.35" />
+    <path
+        android:pathData="M32,47V57M41,42V62M50,35V69M59,40V64M68,30V74M77,44V60"
+        android:strokeWidth="5"
+        android:strokeColor="#C23B22"
+        android:strokeLineCap="round" />
+</vector>
