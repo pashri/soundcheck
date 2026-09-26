@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.paddingFromBaseline
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -125,23 +126,37 @@ private fun PatternEntry(
     onEdit: () -> Unit,
 ) {
     val colors = Manuscript.colors
-    val action = if (picking) {
-        Modifier.selectable(selected = row.chosen, role = Role.RadioButton, onClick = onOpen)
+    val rowAction = if (picking) {
+        Modifier
     } else {
         Modifier.clickable(role = Role.Button, onClick = onOpen)
     }
+    val innerAction = if (picking) {
+        Modifier.selectable(selected = row.chosen, role = Role.RadioButton, onClick = onOpen)
+    } else {
+        Modifier
+    }
     Column {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .then(rowAction)
+                .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).then(action),
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).then(innerAction),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(text = row.name, style = NAME_STYLE, color = colors.ink)
-                    MusicText(text = row.detail, style = ManuscriptType.body, color = colors.muted)
+                    MusicText(
+                        text = row.detail,
+                        style = ManuscriptType.body,
+                        color = colors.muted,
+                        modifier = Modifier.paddingFromBaseline(top = 20.sp, bottom = 6.sp),
+                    )
                     Text(text = row.usage, style = ManuscriptType.label, color = colors.muted)
                 }
                 if (row.chosen) {

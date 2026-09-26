@@ -159,7 +159,7 @@ class PatternEditorViewModel(
 
     private fun editNote(change: (PatternNote) -> PatternNote) {
         val index = currentIndex()
-        edit { it.withNote(index, change) }
+        edit { it.withNote(index = index, change = change) }
     }
 
     private fun edit(change: (Pattern) -> Pattern) {

@@ -185,7 +185,11 @@ private fun NoteChips(notes: List<NoteChip>, onSelect: (Int) -> Unit) {
                     .heightIn(min = 48.dp)
                     .clip(ControlShape)
                     .background(if (chip.selected) colors.accent else Color.Transparent)
-                    .border(1.dp, if (chip.selected) colors.accent else colors.faint, ControlShape)
+                    .border(
+                        width = 1.dp,
+                        color = if (chip.selected) colors.accent else colors.faint,
+                        shape = ControlShape,
+                    )
                     .selectable(
                         selected = chip.selected,
                         role = Role.RadioButton,
@@ -223,7 +227,7 @@ private fun NoteTools(state: PatternEditorUiState, actions: PatternEditorActions
             modifier = Modifier
                 .size(48.dp)
                 .clip(ControlShape)
-                .border(1.dp, tint, ControlShape)
+                .border(width = 1.dp, color = tint, shape = ControlShape)
                 .clickable(
                     enabled = state.canDeleteNote,
                     role = Role.Button,
@@ -249,10 +253,15 @@ private fun KeyChordChips(selected: KeyChord, onSelect: (KeyChord) -> Unit) {
             val on = chord == selected
             Box(
                 modifier = Modifier
+                    .widthIn(min = 48.dp)
                     .heightIn(min = 48.dp)
                     .clip(ControlShape)
                     .background(if (on) colors.accent else Color.Transparent)
-                    .border(1.dp, if (on) colors.accent else colors.faint, ControlShape)
+                    .border(
+                        width = 1.dp,
+                        color = if (on) colors.accent else colors.faint,
+                        shape = ControlShape,
+                    )
                     .selectable(
                         selected = on,
                         role = Role.RadioButton,
