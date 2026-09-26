@@ -8,6 +8,7 @@ import org.pashri.soundcheck.warmup.Accidental
 import org.pashri.soundcheck.warmup.NoteLength
 import org.pashri.soundcheck.warmup.Pattern
 import org.pashri.soundcheck.warmup.PatternNotation
+import org.pashri.soundcheck.warmup.PatternNote
 import org.pashri.soundcheck.warmup.Range
 
 /**
@@ -70,7 +71,13 @@ enum class NoteHead {
  * @property head filled or open.
  * @property stemTop the step the stem rises to, or null for a whole note, which has none.
  * @property flag whether the stem carries a flag: an eighth not beamed to a neighbour.
- * @property accidental the ♭ or ♯ written before the head, from the note's real pitch.
+ * @property accidental the ♭ or ♯ written before the head: the note is spelled on the key's
+ *     letter plus its degree (the 3rd in E is G♯, ♭7 in D♭ is C♭), and the accidental is how
+ *     far its real pitch sits from that letter. A note that would need a double ♭ or ♯ is
+ *     spelled as the app names keys instead.
+ * @property courtesyNatural whether a ♮ is written before the head, as a reminder: this note
+ *     is natural, and the last earlier note on the same step carried a ♭ or ♯. Drawn by the
+ *     Warm-up screen's staff.
  * @property ledgers the steps of the short lines the note needs above or below the staff.
  */
 data class StaffNote(
@@ -79,6 +86,7 @@ data class StaffNote(
     val stemTop: Int?,
     val flag: Boolean,
     val accidental: Accidental,
+    val courtesyNatural: Boolean,
     val ledgers: List<Int>,
 )
 
@@ -92,14 +100,15 @@ data class StaffBeam(val first: Int, val last: Int)
 
 /**
  * A Pattern on a five-line staff in one key, as the Warm-up design draws it, with a clef and
- * no key signature, so every black-key note carries its accidental. Every stem points up, as
- * in the design.
+ * no key signature, so every note off its letter's natural carries its accidental, spelled
+ * from the key's letter. Every stem points up, as in the design.
  *
  * @property clef the clef.
  * @property notes each Pattern note, in order.
  * @property beams the groups of eighths joined by a beam.
- * @property top the highest step anything reaches: stems, beams, heads and the clef.
- * @property bottom the lowest step anything reaches.
+ * @property top the highest step anything reaches: stems, beams, heads, accidentals and the
+ *     clef.
+ * @property bottom the lowest step anything reaches, accidentals included.
  */
 data class StaffLayout(
     val clef: Clef,
@@ -147,25 +156,31 @@ const val CLEF_GAPS: Float = 3.5f
  *     Step's round trip never does.
  */
 fun staffLayout(pattern: Pattern, key: Pitch, clef: Clef): StaffLayout {
-    val pitches = pattern.pitchesIn(key)
-    val steps = pitches.map { stepOf(pitch = it, clef = clef) }
+    val spellings = pattern.notes.zip(other = pattern.pitchesIn(key)) { note, pitch ->
+        spelling(note = note, key = key, pitch = pitch)
+    }
+    val steps = spellings.map { it.letter - letterOf(clef.bottomLine) }
     val beams = beamsOf(pattern)
     val notes = pattern.notes.indices.map { index ->
         val beam = beams.firstOrNull { index in it.first..it.last }
         staffNote(
             length = pattern.notes[index].length,
-            pitch = pitches[index],
             step = steps[index],
+            accidental = spellings[index].accidental,
+            courtesyNatural = needsCourtesyNatural(
+                index = index,
+                steps = steps,
+                spellings = spellings,
+            ),
             stemFrom = beam?.let { (it.first..it.last).maxOf { at -> steps[at] } },
         )
     }
-    val highest = notes.maxOf { it.stemTop ?: (it.step + 1) }
     return StaffLayout(
         clef = clef,
         notes = notes,
         beams = beams,
-        top = maxOf(a = maxOf(a = STAFF_SPAN, b = clef.top), b = highest),
-        bottom = minOf(a = clef.bottom, b = steps.min() - 1),
+        top = maxOf(a = maxOf(a = STAFF_SPAN, b = clef.top), b = notes.maxOf { topOf(it) }),
+        bottom = minOf(a = clef.bottom, b = notes.minOf { bottomOf(it) }),
     )
 }
 
@@ -198,18 +213,72 @@ fun staffView(pattern: Pattern, key: Pitch, clef: Clef, now: Int?): StaffView = 
 fun staffGap(width: Dp, notes: Int): Dp =
     minOf(a = STAFF_GAP, b = width / (notes * GAPS_PER_NOTE + CLEF_GAPS))
 
-private fun staffNote(length: NoteLength, pitch: Pitch, step: Int, stemFrom: Int?): StaffNote =
-    StaffNote(
-        step = step,
-        head = if (length.eighths >= NoteLength.HALF.eighths) NoteHead.HOLLOW else NoteHead.FILLED,
-        stemTop = if (length == NoteLength.WHOLE) null else (stemFrom ?: step) + STEM_STEPS,
-        flag = length == NoteLength.EIGHTH && stemFrom == null,
-        accidental = ACCIDENTAL_OF[pitch.midi % HALF_STEPS_PER_OCTAVE],
-        ledgers = ledgersFor(at = step),
-    )
+private fun staffNote(
+    length: NoteLength,
+    step: Int,
+    accidental: Accidental,
+    courtesyNatural: Boolean,
+    stemFrom: Int?,
+): StaffNote = StaffNote(
+    step = step,
+    head = if (length.eighths >= NoteLength.HALF.eighths) NoteHead.HOLLOW else NoteHead.FILLED,
+    stemTop = if (length == NoteLength.WHOLE) null else (stemFrom ?: step) + STEM_STEPS,
+    flag = length == NoteLength.EIGHTH && stemFrom == null,
+    accidental = accidental,
+    courtesyNatural = courtesyNatural,
+    ledgers = ledgersFor(at = step),
+)
 
-/** How many letters [pitch] is above [clef]'s lowest line. */
-private fun stepOf(pitch: Pitch, clef: Clef): Int = letterOf(pitch) - letterOf(clef.bottomLine)
+/**
+ * A note's letter (counted as in [letterOf]) and the accidental that brings it to its pitch.
+ */
+private data class Spelling(val letter: Int, val accidental: Accidental)
+
+/**
+ * Spells [note] on the key's letter plus its degree, and gives it the accidental that is the
+ * difference between its real [pitch] and that letter's natural, compared in MIDI numbers so
+ * B♯ and C♭ come out right across the octave. A note that would need a double ♭ or ♯ falls
+ * back to the app's key spellings.
+ */
+private fun spelling(note: PatternNote, key: Pitch, pitch: Pitch): Spelling {
+    val letter = letterOf(key) + note.degree - 1
+    val natural = letter / LETTERS_PER_OCTAVE * HALF_STEPS_PER_OCTAVE +
+        NATURAL_OF[letter % LETTERS_PER_OCTAVE]
+    val accidental = Accidental.entries.firstOrNull { it.halfSteps == pitch.midi - natural }
+    return if (accidental != null) {
+        Spelling(letter = letter, accidental = accidental)
+    } else {
+        Spelling(
+            letter = letterOf(pitch),
+            accidental = ACCIDENTAL_OF[pitch.midi % HALF_STEPS_PER_OCTAVE],
+        )
+    }
+}
+
+/** Whether the note at [index] is natural while the last earlier note on its step was not. */
+private fun needsCourtesyNatural(
+    index: Int,
+    steps: List<Int>,
+    spellings: List<Spelling>,
+): Boolean {
+    val earlier = (0 until index).lastOrNull { steps[it] == steps[index] } ?: return false
+    return spellings[index].accidental == Accidental.NATURAL &&
+        spellings[earlier].accidental != Accidental.NATURAL
+}
+
+/** Whether a ♭, ♯ or ♮ glyph is drawn before [note]'s head. */
+private fun hasGlyph(note: StaffNote): Boolean =
+    note.accidental != Accidental.NATURAL || note.courtesyNatural
+
+/** The highest step [note] reaches: its stem, or its head and any accidental glyph. */
+private fun topOf(note: StaffNote): Int {
+    val head = note.step + 1 + if (hasGlyph(note)) ACCIDENTAL_REACH else 0
+    return maxOf(a = note.stemTop ?: head, b = head)
+}
+
+/** The lowest step [note] reaches: its head, or its accidental glyph below it. */
+private fun bottomOf(note: StaffNote): Int =
+    note.step - 1 - if (hasGlyph(note)) ACCIDENTAL_REACH else 0
 
 /** A pitch's letter counted up from C in MIDI's lowest octave: seven letters an octave. */
 private fun letterOf(pitch: Pitch): Int =
@@ -245,9 +314,17 @@ private const val MIDDLE_C = 60
 private const val LOW_G = 55
 private const val LETTERS_PER_OCTAVE = 7
 
+/** How far an accidental glyph reaches beyond its note head, above and below, in steps. */
+private const val ACCIDENTAL_REACH = 2
+
+/** Each letter's natural pitch class, C = 0 to B = 11. */
+private val NATURAL_OF = listOf(0, 2, 4, 5, 7, 9, 11)
+
 /**
- * Each pitch class's letter (C = 0 to B = 6) and accidental, in the spellings the app uses
- * for keys: C, D♭, D, E♭, E, F, F♯, G, A♭, A, B♭, B.
+ * Each pitch class's letter (C = 0 to B = 6), with [ACCIDENTAL_OF] its accidental, in the
+ * spellings the app uses for keys: C, D♭, D, E♭, E, F, F♯, G, A♭, A, B♭, B. It spells the
+ * key itself, the clef's lowest line and the rare note that would need a double ♭ or ♯; every
+ * other note is spelled from the key's letter by `spelling`.
  */
 private val LETTER_OF = listOf(0, 1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 6)
 

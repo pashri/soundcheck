@@ -212,4 +212,113 @@ class StaffLayoutTest {
         assertEquals(STAFF_GAP, staffGap(width = 342.dp, notes = 10))
         assertEquals(3.1814f, staffGap(width = 342.dp, notes = 40).value, 0.001f)
     }
+
+    @Test
+    fun `notes are spelled from the key's letter, so the Triad in E has G sharp`() {
+        val layout = staffLayout(
+            pattern = StarterPatterns.TRIAD,
+            key = Pitch.parse("E4"),
+            clef = Clef.TREBLE,
+        )
+        assertEquals(listOf(0, 2, 4, 2, 0), layout.notes.map { it.step })
+        assertEquals(
+            listOf(1, 3),
+            layout.notes.indices.filter { layout.notes[it].accidental == Accidental.SHARP },
+        )
+        assertTrue(layout.notes.none { it.accidental == Accidental.FLAT })
+    }
+
+    @Test
+    fun `the 5-note scale in F sharp climbs one step a note, with B natural as its 4th`() {
+        val layout = staffLayout(
+            pattern = StarterPatterns.FIVE_NOTE_SCALE,
+            key = Pitch.parse("F♯4"),
+            clef = Clef.TREBLE,
+        )
+        assertEquals(listOf(1, 2, 3, 4, 5), layout.notes.take(n = 5).map { it.step })
+        assertEquals(
+            listOf(
+                Accidental.SHARP,
+                Accidental.SHARP,
+                Accidental.SHARP,
+                Accidental.NATURAL,
+                Accidental.SHARP,
+            ),
+            layout.notes.take(n = 5).map { it.accidental },
+        )
+    }
+
+    @Test
+    fun `a flattened 7th in D flat is C flat on the C step`() {
+        val layout = staffLayout(
+            pattern = pattern(notation = "1 ♭7"),
+            key = Pitch.parse("D♭4"),
+            clef = Clef.TREBLE,
+        )
+        assertEquals(listOf(-1, 5), layout.notes.map { it.step })
+        assertEquals(listOf(Accidental.FLAT, Accidental.FLAT), layout.notes.map { it.accidental })
+    }
+
+    @Test
+    fun `a raised 5th in C is G sharp on the G step`() {
+        val layout = staffLayout(
+            pattern = pattern(notation = "1 ♯5"),
+            key = c4,
+            clef = Clef.TREBLE,
+        )
+        assertEquals(listOf(-2, 2), layout.notes.map { it.step })
+        assertEquals(Accidental.SHARP, layout.notes[1].accidental)
+    }
+
+    @Test
+    fun `a note that would need a double flat falls back to its plain spelling`() {
+        val layout = staffLayout(
+            pattern = pattern(notation = "♭6"),
+            key = Pitch.parse("D♭4"),
+            clef = Clef.TREBLE,
+        )
+        assertEquals(3, layout.notes.single().step)
+        assertEquals(Accidental.NATURAL, layout.notes.single().accidental)
+    }
+
+    @Test
+    fun `a natural after a flat on the same step gets a courtesy natural`() {
+        val layout = staffLayout(
+            pattern = pattern(notation = "1 2 ♭3 3 3 ♭3 1"),
+            key = c4,
+            clef = Clef.TREBLE,
+        )
+        assertEquals(
+            listOf(3),
+            layout.notes.indices.filter { layout.notes[it].courtesyNatural },
+        )
+    }
+
+    @Test
+    fun `the staff leaves room for an accidental below the lowest note and on a high whole`() {
+        val sharp = staffLayout(
+            pattern = pattern(notation = "1"),
+            key = Pitch.parse("F♯2"),
+            clef = Clef.BASS,
+        )
+        assertEquals(-4, sharp.bottom)
+        val plain = staffLayout(
+            pattern = pattern(notation = "1"),
+            key = Pitch.parse("G2"),
+            clef = Clef.BASS,
+        )
+        assertEquals(-1, plain.bottom)
+        val flatWhole = staffLayout(
+            pattern = pattern(notation = "1w"),
+            key = Pitch.parse("B♭5"),
+            clef = Clef.TREBLE,
+        )
+        assertEquals(14, flatWhole.top)
+        val plainWhole = staffLayout(
+            pattern = pattern(notation = "1w"),
+            key = Pitch.parse("B5"),
+            clef = Clef.TREBLE,
+        )
+        assertEquals(12, plainWhole.top)
+    }
 }
