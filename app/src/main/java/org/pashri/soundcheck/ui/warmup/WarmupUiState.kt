@@ -9,6 +9,8 @@ import org.pashri.soundcheck.warmup.Range
 import org.pashri.soundcheck.warmup.RoundTrip
 import org.pashri.soundcheck.warmup.Sound
 import org.pashri.soundcheck.warmup.SoundId
+import org.pashri.soundcheck.warmup.StartOutcome
+import org.pashri.soundcheck.warmup.Step
 import org.pashri.soundcheck.warmup.firstStep
 import org.pashri.soundcheck.warmup.nextStep
 
@@ -45,11 +47,16 @@ data class IterationView(
  * @property stepCount how many Steps the Programme has.
  * @property soundLabel what to sing, e.g. "mim".
  * @property stepDetail the Pattern and Direction, e.g. "on Arpeggio 8-hold, starting low".
+ * @property staff the Step's Pattern on a staff in the Iteration's key and the Range's
+ *     clef, with the note being sung, or null if the Step doesn't fit the Range.
  * @property iterations the key and progress, or null if the Step doesn't fit the Range.
+ * @property keyboard the Step's Range as a keyboard with the key marked, or null if the Step
+ *     doesn't fit the Range.
  * @property nextSound the next Step's Sound, or null on the last Step.
  * @property nextDetail the next Step's Pattern, e.g. "on Double arpeggio", or null.
  * @property active whether a Programme is playing or paused.
  * @property playing whether it is playing.
+ * @property problem why the Programme is paused when nobody paused it, or null.
  */
 data class WarmupUiState(
     val programmeName: String,
@@ -57,11 +64,14 @@ data class WarmupUiState(
     val stepCount: Int,
     val soundLabel: String,
     val stepDetail: String,
+    val staff: StaffView?,
     val iterations: IterationView?,
+    val keyboard: KeyboardView?,
     val nextSound: String?,
     val nextDetail: String?,
     val active: Boolean,
     val playing: Boolean,
+    val problem: String?,
 ) {
     /** The note in the header, e.g. "STEP 3 / 6". */
     val stepLabel: String
@@ -98,6 +108,9 @@ interface WarmupActions {
  * @param programme the Programme to offer when nothing is playing; it has at least one Step.
  * @param range the Range to offer it on.
  * @param sounds the Sound library, for labels.
+ * @param note the index of the Pattern note being sung, or null.
+ * @param busy whether the last Resume, Next or Previous was refused because another app
+ *     holds the sound.
  * @return what to show.
  */
 fun warmupUiState(
@@ -105,6 +118,8 @@ fun warmupUiState(
     programme: Programme,
     range: Range,
     sounds: List<Sound>,
+    note: Int? = null,
+    busy: Boolean = false,
 ): WarmupUiState {
     val shown = playback?.programme ?: programme
     val shownRange = playback?.range ?: range
@@ -118,6 +133,19 @@ fun warmupUiState(
         stepCount = shown.steps.size,
         soundLabel = labelOf(id = step.soundId, sounds = sounds, fallback = step.soundLabel),
         stepDetail = "on ${step.pattern.name}, ${startingText(step.direction)}",
+        staff = trip?.let {
+            staffView(
+                pattern = step.pattern,
+                key = it.keys[playback?.iteration ?: 0],
+                clef = clefFor(shownRange),
+                now = note,
+                stepKeys = it.keys,
+            )
+        },
+        keyboard = trip?.let {
+            keyboardFor(step = step, range = shownRange, trip = it, now = playback?.iteration)
+                ?.pressing(note)
+        },
         iterations = trip?.let {
             iterationView(
                 trip = it,
@@ -132,8 +160,24 @@ fun warmupUiState(
         nextDetail = next?.let { "on ${it.pattern.name}" },
         active = playback != null,
         playing = playback?.playing == true,
+        problem = when {
+            playback?.outputFailed == true -> OUTPUT_STOPPED_MESSAGE
+            busy && playback?.playing == false -> startProblemMessage(StartOutcome.AUDIO_BUSY)
+            else -> null
+        },
     )
 }
+
+/**
+ * This state with note [note] lit on the staff and its key pressed on the keyboard.
+ * Everything else, the keyboard's keys included, stays the same instance, so the screen
+ * redraws only the moving note and the pressed key as the Pattern plays.
+ *
+ * @param note the index of the Pattern note being sung, or null.
+ * @return the state with [note] lit.
+ */
+fun WarmupUiState.withNote(note: Int?): WarmupUiState =
+    copy(staff = staff?.lit(note), keyboard = keyboard?.pressing(note))
 
 /**
  * The key and progress for Iteration [now] of a round trip.
@@ -214,8 +258,37 @@ fun keyLabel(key: Pitch, chord: KeyChord): String = when (chord) {
     else -> "${key.pitchClassName}${chord.label}"
 }
 
+/** What the playing screen says when the sound output failed or wouldn't start. */
+const val OUTPUT_STOPPED_MESSAGE: String = "The sound stopped. Press Resume to try again."
+
 private fun labelOf(id: SoundId, sounds: List<Sound>, fallback: String): String =
     sounds.firstOrNull { it.id == id }?.label ?: fallback
+
+/**
+ * The keyboard for Iteration [now] of [step]: its Range with the Range Offset, the key the
+ * Iteration is in (the starting key before the first) and the Pattern's sung span, with the
+ * top note named as the staff spells it, and nothing pressed.
+ */
+private fun keyboardFor(
+    step: Step,
+    range: Range,
+    trip: RoundTrip.Fits,
+    now: Int?,
+): KeyboardView? {
+    val key = trip.keys[now ?: 0]
+    val notes = step.pattern.notes
+    // keyboardView marks key + span.highest as TOP; span.highest is this note's halfSteps.
+    val top = notes.indices.maxBy { notes[it].halfSteps }
+    return range.offsetBy(step.rangeOffset)?.let { sung ->
+        keyboardView(
+            range = sung,
+            key = key,
+            span = step.pattern.span,
+            topName = spelledName(pattern = step.pattern, key = key, index = top),
+            notes = step.pattern.pitchesIn(key),
+        )
+    }
+}
 
 private fun startingText(direction: Direction): String =
     if (direction == Direction.START_LOW) "starting low" else "starting high"

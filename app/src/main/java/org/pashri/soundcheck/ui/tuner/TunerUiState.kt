@@ -70,6 +70,9 @@ enum class TunerMode {
     /** The microphone couldn't be opened; offers to try again. */
     MicUnavailable,
 
+    /** Another app is using the microphone, so Android feeds the Tuner silence. */
+    MicSilenced,
+
     /** A Warm-up started, so the Tuner stopped listening; offers to listen instead. */
     Yielded,
 }
@@ -92,8 +95,10 @@ const val NEEDLE_SWING_DEGREES: Float = 70f
  * @param cents the offset from the note; values beyond ±50 pin to the end of the scale.
  * @return degrees from upright, negative to the flat side.
  */
-fun needleDegrees(cents: Double): Float =
-    (cents.coerceIn(-MAX_CENTS, MAX_CENTS) / MAX_CENTS * NEEDLE_SWING_DEGREES).toFloat()
+fun needleDegrees(cents: Double): Float {
+    val clamped = cents.coerceIn(minimumValue = -MAX_CENTS, maximumValue = MAX_CENTS)
+    return (clamped / MAX_CENTS * NEEDLE_SWING_DEGREES).toFloat()
+}
 
 private const val MAX_CENTS = 50.0
 
@@ -117,13 +122,16 @@ data class TunerUiState(
             access == MicAccess.Blocked -> TunerMode.OpenSettings
             access != MicAccess.Granted -> TunerMode.AskPermission
             yielded -> TunerMode.Yielded
+            mic == MicStatus.Silenced -> TunerMode.MicSilenced
             mic == MicStatus.Unavailable -> TunerMode.MicUnavailable
             else -> TunerMode.Listening
         }
 
     /** The frequency under the note, e.g. "109.7 Hz", or "listening…" with no note. */
     val hzLabel: String
-        get() = note?.let { String.format(Locale.ROOT, "%.1f Hz", it.hz) } ?: "listening…"
+        get() = note?.let {
+            String.format(locale = Locale.ROOT, format = "%.1f Hz", it.hz)
+        } ?: "listening…"
 
     /** The big italic line, e.g. "4 cents flat", or an invitation with no note. */
     val readingLabel: String
@@ -142,6 +150,7 @@ data class TunerUiState(
             TunerMode.AskPermission -> ASK_MESSAGE
             TunerMode.OpenSettings -> SETTINGS_MESSAGE
             TunerMode.MicUnavailable -> UNAVAILABLE_MESSAGE
+            TunerMode.MicSilenced -> SILENCED_MESSAGE
             TunerMode.Yielded -> YIELDED_MESSAGE
         }
 
@@ -159,6 +168,11 @@ data class TunerUiState(
         val UNAVAILABLE_MESSAGE = TunerMessage(
             title = "The microphone isn't available",
             body = "Another app may be using it.",
+            button = "Try again",
+        )
+        val SILENCED_MESSAGE = TunerMessage(
+            title = "Another app is using the microphone",
+            body = "The Tuner will hear you again as soon as that app lets go of it.",
             button = "Try again",
         )
         val YIELDED_MESSAGE = TunerMessage(

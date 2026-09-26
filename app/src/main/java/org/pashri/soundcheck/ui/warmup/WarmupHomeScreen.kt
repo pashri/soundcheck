@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -26,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -46,6 +48,8 @@ import org.pashri.soundcheck.ui.components.LinkCard
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
 import org.pashri.soundcheck.ui.components.OutlineButton
 import org.pashri.soundcheck.ui.components.SectionLabel
+import org.pashri.soundcheck.ui.components.fittingColumns
+import org.pashri.soundcheck.ui.components.rememberWidestWord
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SerifFamily
@@ -272,26 +276,49 @@ private fun ProgrammeEntry(card: ProgrammeCard, onEdit: (() -> Unit)?, onStart: 
     }
 }
 
+/**
+ * The Patterns and Sounds cards, side by side while their longest words fit, stacked at large
+ * sizes rather than breaking a word.
+ */
 @Composable
 private fun LibraryTiles(state: WarmupHomeUiState, links: HomeLinks) {
-    Row(
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        LinkCard(
-            label = "LIBRARY",
-            value = "Patterns ${state.patternCount}",
-            onClick = links.openPatterns,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+    val patterns = "Patterns ${state.patternCount}"
+    val sounds = "Sounds ${state.soundCount}"
+    val label = rememberWidestWord(texts = listOf(LIBRARY), style = ManuscriptType.label)
+    val value = rememberWidestWord(texts = listOf(patterns, sounds), style = ManuscriptType.chip)
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val density = LocalDensity.current
+        val columns = fittingColumns(
+            count = 2,
+            widest = maxOf(a = label, b = value) + with(receiver = density) { TILE_CHROME.toPx() },
+            available = constraints.maxWidth.toFloat(),
+            spacing = with(receiver = density) { TILE_GAP.toPx() },
         )
-        LinkCard(
-            label = "LIBRARY",
-            value = "Sounds ${state.soundCount}",
-            onClick = links.openSounds,
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-        )
+        val tiles: @Composable (Modifier) -> Unit = { tile ->
+            LinkCard(
+                label = LIBRARY,
+                value = patterns,
+                onClick = links.openPatterns,
+                modifier = tile,
+            )
+            LinkCard(label = LIBRARY, value = sounds, onClick = links.openSounds, modifier = tile)
+        }
+        if (columns == 2) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(TILE_GAP),
+            ) { tiles(Modifier.weight(1f).fillMaxHeight()) }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(TILE_GAP)) { tiles(Modifier) }
+        }
     }
 }
+
+private const val LIBRARY = "LIBRARY"
+private val TILE_GAP = 10.dp
+
+/** A Library card's padding, chevron and border around its words. */
+private val TILE_CHROME = 54.dp
 
 private fun summary(card: ProgrammeCard, ink: Color): AnnotatedString = buildAnnotatedString {
     if (card.sounds.isNotEmpty()) {

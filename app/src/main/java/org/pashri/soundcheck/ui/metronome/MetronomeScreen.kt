@@ -9,20 +9,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,7 +47,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,16 +59,23 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
+import org.pashri.soundcheck.ui.components.AccentButton
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
+import org.pashri.soundcheck.ui.components.OutlineButton
 import org.pashri.soundcheck.ui.components.ScreenHeader
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SoundcheckTheme
+import org.pashri.soundcheck.ui.warmup.rememberNotificationPrompt
 
 /**
- * The Metronome tab, wired to its view model. Stops the Metronome when its screen leaves
- * composition (switching tabs) or the app leaves the foreground, but not on a configuration
- * change, until background playback arrives with the playback service.
+ * The Metronome tab, wired to its view model. While the screen shows, the headphone button
+ * can start and stop the Metronome. Leaving the screen (switching tabs, the screen off, the
+ * app in the background) never stops it: a playing or paused Metronome keeps the button,
+ * and a stopped one gives it back. The Stop button ends it; off screen, the headphone
+ * button and the notification pause it instead, and back on screen it shows as paused, with
+ * Resume and Stop. A configuration change isn't leaving. The first Start ever asks to show
+ * notifications, for the Metronome's notification.
  *
  * @param factory builds the [MetronomeViewModel].
  */
@@ -77,18 +84,43 @@ fun MetronomeRoute(factory: ViewModelProvider.Factory) {
     val viewModel: MetronomeViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
-    // ON_STOP also fires on a config change (rotation, dark-theme toggle); only stop when the
-    // app is actually leaving the screen, not being recreated in place.
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        if (activity?.isChangingConfigurations != true) viewModel.stop()
+    LifecycleEventEffect(event = Lifecycle.Event.ON_START) { viewModel.onShown() }
+    // ON_STOP also fires on a config change (rotation, dark-theme toggle); only count the
+    // screen as gone when the app is actually leaving it, not being recreated in place.
+    LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
+        if (activity?.isChangingConfigurations != true) viewModel.onHidden()
     }
     // popUpTo(start) { saveState = true } keeps this entry (Metronome is the start
     // destination) on the back stack across tab switches, and the outgoing destination is
-    // normally removed from composition before ON_STOP is delivered, so also stop here.
-    DisposableEffect(viewModel) {
-        onDispose { if (activity?.isChangingConfigurations != true) viewModel.stop() }
+    // normally removed from composition before ON_STOP is delivered, so also hide here.
+    DisposableEffect(key1 = viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.onHidden() }
     }
-    MetronomeScreen(state = state, actions = viewModel)
+    val askForNotifications by rememberUpdatedState(newValue = rememberNotificationPrompt())
+    val actions = remember(key1 = viewModel) {
+        AsksBeforeStart(
+            actions = viewModel,
+            running = { viewModel.uiState.value.running },
+            ask = { askForNotifications() },
+        )
+    }
+    MetronomeScreen(state = state, actions = actions)
+}
+
+/**
+ * The screen's actions, asking to show notifications (once ever, see
+ * [rememberNotificationPrompt]) just before a Start, so the Metronome's notification can
+ * appear while it plays with the screen off.
+ */
+private class AsksBeforeStart(
+    private val actions: MetronomeActions,
+    private val running: () -> Boolean,
+    private val ask: () -> Unit,
+) : MetronomeActions by actions {
+    override fun toggle() {
+        if (!running()) ask()
+        actions.toggle()
+    }
 }
 
 /**
@@ -99,9 +131,9 @@ fun MetronomeRoute(factory: ViewModelProvider.Factory) {
  */
 @Composable
 fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
-    Column(Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
         ScreenHeader(title = "Metronome", trailing = state.accentLabel)
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -123,7 +155,7 @@ fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
                 Spacer(Modifier.height(22.dp))
                 AccentPicker(selected = state.accentEvery, onSelect = actions::setAccent)
                 Spacer(Modifier.height(22.dp))
-                TransportButtons(running = state.running, actions = actions)
+                TransportButtons(state = state, actions = actions)
             }
         }
     }
@@ -132,15 +164,25 @@ fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
 @Composable
 private fun TempoReadout(state: MetronomeUiState) {
     val colors = Manuscript.colors
-    val numberSize = with(LocalDensity.current) { BPM_NUMBER_SIZE.toSp() }
-    Text(state.tempoMarking, style = ManuscriptType.displayItalic, color = colors.muted)
+    val numberSize = with(receiver = LocalDensity.current) { BPM_NUMBER_SIZE.toSp() }
+    Text(text = state.tempoMarking, style = ManuscriptType.displayItalic, color = colors.muted)
     Text(
         text = state.bpm.toString(),
         style = ManuscriptType.displayNumber.copy(fontSize = numberSize),
         color = colors.ink,
         modifier = Modifier.semantics { contentDescription = "${state.bpm} beats per minute" },
     )
-    Text("BEATS PER MINUTE", style = ManuscriptType.label, color = colors.muted)
+    Text(text = "BEATS PER MINUTE", style = ManuscriptType.label, color = colors.muted)
+    state.caption?.let {
+        Text(
+            text = it,
+            style = ManuscriptType.label,
+            color = colors.accent,
+            modifier = Modifier
+                .padding(top = 6.dp)
+                .semantics { contentDescription = "Paused" },
+        )
+    }
 }
 
 @Composable
@@ -149,7 +191,7 @@ private fun BeatRow(beats: Int, playing: Int?, beatIndex: Long?) {
     // With one notehead and no per-beat position (accent off), flash it briefly on every
     // beat instead, so a single mark still gives a visible pulse.
     var flashing by remember { mutableStateOf(false) }
-    LaunchedEffect(beatIndex) {
+    LaunchedEffect(key1 = beatIndex) {
         if (beats == 1 && beatIndex != null) {
             try {
                 flashing = true
@@ -169,7 +211,7 @@ private fun BeatRow(beats: Int, playing: Int?, beatIndex: Long?) {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.Bottom,
     ) {
-        repeat(beats) { i ->
+        repeat(times = beats) { i ->
             val lit = if (beats == 1) flashing else i == playing
             BeatMark(accented = i == 0 && beats > 1, playing = lit)
         }
@@ -183,22 +225,28 @@ private fun BeatMark(accented: Boolean, playing: Boolean) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Canvas(Modifier.size(18.dp, 12.dp)) {
-            if (accented) drawPath(accentMark(size), colors.ink, style = Stroke(1.8.dp.toPx()))
+        Canvas(modifier = Modifier.size(width = 18.dp, height = 12.dp)) {
+            if (accented) {
+                drawPath(
+                    path = accentMark(size = size),
+                    color = colors.ink,
+                    style = Stroke(width = 1.8.dp.toPx()),
+                )
+            }
         }
-        Canvas(Modifier.size(30.dp, 22.dp)) {
+        Canvas(modifier = Modifier.size(width = 30.dp, height = 22.dp)) {
             val color = if (playing) colors.accent else colors.ink
-            rotate(NOTEHEAD_TILT) {
-                drawOval(color, style = if (playing) Fill else Stroke(2.dp.toPx()))
+            rotate(degrees = NOTEHEAD_TILT) {
+                drawOval(color = color, style = if (playing) Fill else Stroke(width = 2.dp.toPx()))
             }
         }
     }
 }
 
 private fun accentMark(size: Size): Path = Path().apply {
-    moveTo(0f, 0f)
-    lineTo(size.width, size.height / 2)
-    lineTo(0f, size.height)
+    moveTo(x = 0f, y = 0f)
+    lineTo(x = size.width, y = size.height / 2)
+    lineTo(x = 0f, y = size.height)
 }
 
 @Composable
@@ -233,21 +281,35 @@ private fun SquareButton(symbol: String, description: String, onClick: () -> Uni
         modifier = Modifier
             .size(48.dp)
             .clip(shape)
-            .border(1.dp, colors.ink, shape)
+            .border(width = 1.dp, color = colors.ink, shape = shape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(symbol, style = ManuscriptType.button.copy(fontSize = 20.sp), color = colors.ink)
+        Text(
+            text = symbol,
+            style = ManuscriptType.button.copy(fontSize = 20.sp),
+            color = colors.ink,
+        )
     }
 }
 
 @Composable
 private fun AccentPicker(selected: Int?, onSelect: (Int?) -> Unit) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("ACCENT EVERY", style = ManuscriptType.label, color = Manuscript.colors.muted)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "ACCENT EVERY",
+            style = ManuscriptType.label,
+            color = Manuscript.colors.muted,
+        )
         ACCENT_CHOICES.chunked(CHOICES_PER_ROW).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 row.forEach { choice ->
                     AccentChip(
                         choice = choice,
@@ -275,7 +337,11 @@ private fun AccentChip(
             .heightIn(min = 48.dp)
             .clip(shape)
             .background(if (selected) colors.ink else Color.Transparent)
-            .border(1.dp, if (selected) colors.ink else colors.faint, shape)
+            .border(
+                width = 1.dp,
+                color = if (selected) colors.ink else colors.faint,
+                shape = shape,
+            )
             .selectable(
                 selected = selected,
                 role = Role.RadioButton,
@@ -291,47 +357,33 @@ private fun AccentChip(
     }
 }
 
+/**
+ * Tap tempo and Start/Stop, side by side. Both keep their inner padding and grow taller when
+ * a large font wraps a label, rather than letting the text reach the border.
+ */
 @Composable
-private fun TransportButtons(running: Boolean, actions: MetronomeActions) {
-    val colors = Manuscript.colors
-    val shape = RoundedCornerShape(6.dp)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 56.dp)
-                .clip(shape)
-                .border(1.dp, colors.ink, shape)
-                .clickable(role = Role.Button, onClick = actions::tap),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("Tap tempo", style = ManuscriptType.button, color = colors.ink)
-        }
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 56.dp)
-                .clip(shape)
-                .background(colors.accent)
-                .clickable(role = Role.Button, onClick = actions::toggle),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = if (running) ManuscriptIcons.Stop else ManuscriptIcons.Play,
-                contentDescription = null,
-                tint = colors.onAccent,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = if (running) "Stop" else "Start",
-                style = ManuscriptType.button.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.onAccent,
-            )
-        }
+private fun TransportButtons(state: MetronomeUiState, actions: MetronomeActions) {
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        // While paused, Stop takes Tap tempo's place, so a paused Metronome can be ended.
+        OutlineButton(
+            text = if (state.paused) "Stop" else "Tap tempo",
+            onClick = if (state.paused) actions::stop else actions::tap,
+            modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = TRANSPORT_HEIGHT),
+        )
+        AccentButton(
+            text = state.startLabel,
+            onClick = actions::toggle,
+            modifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = TRANSPORT_HEIGHT),
+            icon = if (state.running) ManuscriptIcons.Stop else ManuscriptIcons.Play,
+        )
     }
 }
+
+/** The Metronome's two big buttons are at least this tall. */
+private val TRANSPORT_HEIGHT = 56.dp
 
 private object PreviewActions : MetronomeActions {
     override fun slower() = Unit
@@ -340,13 +392,17 @@ private object PreviewActions : MetronomeActions {
     override fun setAccent(every: Int?) = Unit
     override fun tap() = Unit
     override fun toggle() = Unit
+    override fun stop() = Unit
 }
 
 @Preview(widthDp = 390, heightDp = 844)
 @Composable
 private fun MetronomeDayPreview() {
     SoundcheckTheme(dark = false) {
-        MetronomeScreen(MetronomeUiState(beatInBar = 1, running = true), PreviewActions)
+        MetronomeScreen(
+            state = MetronomeUiState(beatInBar = 1, running = true),
+            actions = PreviewActions,
+        )
     }
 }
 
@@ -354,7 +410,7 @@ private fun MetronomeDayPreview() {
 @Composable
 private fun MetronomeNightPreview() {
     SoundcheckTheme(dark = true) {
-        MetronomeScreen(MetronomeUiState(accentEvery = 8), PreviewActions)
+        MetronomeScreen(state = MetronomeUiState(accentEvery = 8), actions = PreviewActions)
     }
 }
 

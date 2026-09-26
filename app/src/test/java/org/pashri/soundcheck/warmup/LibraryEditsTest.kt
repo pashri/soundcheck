@@ -201,4 +201,25 @@ class LibraryEditsTest {
         assertEquals(listOf("a", "d", "b", "c"), letters.moved(from = 3, to = 1))
         assertEquals(listOf("b", "a"), listOf("a", "b").moved(from = 0, to = 1))
     }
+
+    @Test
+    fun `a Step moved by its key goes up or down one place`() {
+        val third = StepRef(programmeId = starter.id, key = StepKey("starter-3"))
+        assertEquals(
+            listOf("starter-1", "starter-3", "starter-2", "starter-4", "starter-5", "starter-6"),
+            keys(of = library.moveStepBy(ref = third, by = -1)),
+        )
+        assertEquals(
+            listOf("starter-1", "starter-2", "starter-4", "starter-3", "starter-5", "starter-6"),
+            keys(of = library.moveStepBy(ref = third, by = 1)),
+        )
+    }
+
+    @Test
+    fun `a Step moved past either end, or gone, stays put`() {
+        val first = StepRef(programmeId = starter.id, key = StepKey("starter-1"))
+        assertEquals(library, library.moveStepBy(ref = first, by = -1))
+        val gone = StepRef(programmeId = starter.id, key = StepKey("gone"))
+        assertEquals(library, library.moveStepBy(ref = gone, by = 1))
+    }
 }

@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.pashri.soundcheck.audio.SampleIds
 import org.pashri.soundcheck.audio.SoundOutput
@@ -21,6 +22,8 @@ import org.pashri.soundcheck.piano.Piano
  * @property iteration the Iteration sounding (or resuming), from 0; null during the
  *     Announcement, the gap, the Demo and the pause between Steps.
  * @property playing false while paused.
+ * @property outputFailed true while paused because the sound output failed or wouldn't
+ *     start, rather than because anyone paused; false again once the Programme plays.
  */
 data class Playback(
     val programme: Programme,
@@ -28,6 +31,7 @@ data class Playback(
     val stepIndex: Int,
     val iteration: Int?,
     val playing: Boolean,
+    val outputFailed: Boolean = false,
 )
 
 /**
@@ -53,6 +57,15 @@ class ProgrammePlayer(
 
     /** The Programme playing or paused, or null when stopped. */
     val playback: StateFlow<Playback?> = _playback.asStateFlow()
+
+    private val _note = MutableStateFlow<Int?>(null)
+
+    /**
+     * The index of the Pattern note being sung now, in the Demo or an Iteration; null during
+     * an Announcement, a gap or a Key Chord, and whenever nothing is playing. It changes with
+     * every note, so only the playing screen follows it.
+     */
+    val note: StateFlow<Int?> = _note.asStateFlow()
 
     private var loop: Job? = null
     private var tail: Job? = null
@@ -99,6 +112,7 @@ class ProgrammePlayer(
         }
         val point = pausePoint(current) ?: return stop()
         halt(fade)
+        _note.value = null
         resumeAt = point
         _playback.value =
             current.copy(stepIndex = point.step, iteration = point.iteration, playing = false)
@@ -151,16 +165,23 @@ class ProgrammePlayer(
         }
         resumeAt = null
         _playback.value = null
+        _note.value = null
         announcements.keep(emptySet())
     }
 
     private fun startAt(base: Playback, point: ResumePoint): Boolean {
         cancelLoop()
+        _note.value = null
         output.fadeOut()
-        val target = base.copy(stepIndex = point.step, iteration = point.iteration, playing = true)
+        val target = base.copy(
+            stepIndex = point.step,
+            iteration = point.iteration,
+            playing = true,
+            outputFailed = false,
+        )
         if (!output.start()) {
             resumeAt = point
-            _playback.value = target.copy(playing = false)
+            _playback.value = target.copy(playing = false, outputFailed = true)
             return false
         }
         resumeAt = null
@@ -219,6 +240,7 @@ class ProgrammePlayer(
     private suspend fun tick(base: Playback): Boolean {
         if (output.hasFailed()) {
             pause(fade = false)
+            _playback.update { it?.copy(outputFailed = true) }
             return false
         }
         val now = output.framePosition()
@@ -231,6 +253,7 @@ class ProgrammePlayer(
             return false
         }
         _playback.value = base.copy(stepIndex = current.step, iteration = current.iterationAt(now))
+        _note.value = current.noteAt(now)
         return true
     }
 
@@ -390,4 +413,7 @@ private class Segment(
 
     fun iterationAt(now: Long): Int? =
         prepared.timeline.iterationAt(maxOf(a = now - origin, b = from))?.index
+
+    fun noteAt(now: Long): Int? =
+        prepared.timeline.noteAt(maxOf(a = now - origin, b = from))
 }

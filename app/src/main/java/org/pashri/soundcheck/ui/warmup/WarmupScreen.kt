@@ -32,9 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -102,7 +104,9 @@ fun WarmupScreen(state: WarmupUiState, actions: WarmupActions) {
             ) {
                 Column {
                     StepHeading(state)
-                    state.iterations?.let { IterationPanel(view = it, active = state.active) }
+                    state.iterations?.let {
+                        IterationPanel(view = it, keyboard = state.keyboard, active = state.active)
+                    }
                     NextStep(state)
                 }
                 Transport(state = state, actions = actions)
@@ -121,10 +125,11 @@ private fun StepHeading(state: WarmupUiState) {
         color = colors.ink,
     )
     Text(text = state.stepDetail, style = ManuscriptType.body, color = colors.muted)
+    state.staff?.let { PatternStaff(view = it, modifier = Modifier.padding(top = 8.dp)) }
 }
 
 @Composable
-private fun IterationPanel(view: IterationView, active: Boolean) {
+private fun IterationPanel(view: IterationView, keyboard: KeyboardView?, active: Boolean) {
     val colors = Manuscript.colors
     val keySize = with(receiver = LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
     Spacer(Modifier.height(24.dp))
@@ -150,6 +155,10 @@ private fun IterationPanel(view: IterationView, active: Boolean) {
                 contentDescription = spokenProgress(view = view, active = active)
             },
         )
+    }
+    keyboard?.let {
+        Spacer(Modifier.height(12.dp))
+        RangeKeyboard(view = it)
     }
     Spacer(Modifier.height(12.dp))
     IterationCells(view)
@@ -230,6 +239,17 @@ private fun Transport(state: WarmupUiState, actions: WarmupActions) {
         modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        state.problem?.let { problem ->
+            Text(
+                text = problem,
+                style = ManuscriptType.body,
+                color = colors.accentText,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),

@@ -100,7 +100,9 @@ class SettingsViewModel(
             val text = withContext(context = worker) {
                 ExportCodec.encode(Backup(library = saved, settings = current))
             }
-            val written = files.write(uri = uri, text = text)
+            // Only a file known to be empty may go; an unknown size could be an old backup.
+            val emptyBefore = files.sizeOf(uri) == 0L
+            val written = files.write(uri = uri, text = text, deleteOnFailure = emptyBefore)
             val done = "Saved a backup of ${libraryCounts(saved)}."
             backup.value = BackupView(message = if (written) done else EXPORT_FAILED)
         }

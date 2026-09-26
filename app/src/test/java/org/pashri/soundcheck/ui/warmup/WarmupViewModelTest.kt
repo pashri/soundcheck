@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -14,14 +15,17 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
+import org.pashri.soundcheck.audio.FakeSoundOutput
 import org.pashri.soundcheck.data.FakeStore
 import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StarterSounds
+import org.pashri.soundcheck.warmup.StartOutcome
 import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.WarmupController
 import org.pashri.soundcheck.warmup.renameSound
@@ -119,4 +123,96 @@ class WarmupViewModelTest {
         runCurrent()
         assertEquals(true, controller.playback.value?.playing)
     }
+
+    @Test
+    fun `the note being sung lights up on the staff`() = runTest(context = dispatcher) {
+        val viewModel = viewModel(playing())
+        assertNull(state(viewModel)?.staff?.now)
+        advanceTimeBy(1_200)
+        assertEquals(0, state(viewModel)?.staff?.now)
+    }
+
+    @Test
+    fun `a new note relights the staff and keeps everything else as it was`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            advanceTimeBy(1_200)
+            val first = checkNotNull(state(viewModel))
+            assertEquals(0, first.staff?.now)
+            var next = first
+            while (next.staff?.now == 0) {
+                advanceTimeBy(50)
+                next = checkNotNull(state(viewModel))
+            }
+            assertEquals(1, next.staff?.now)
+            assertSame(first.keyboard?.whites, next.keyboard?.whites)
+            assertSame(first.keyboard?.blacks, next.keyboard?.blacks)
+            assertSame(first.keyboard?.notes, next.keyboard?.notes)
+            assertSame(first.iterations, next.iterations)
+            assertSame(first.staff?.layout, next.staff?.layout)
+            val pressed = first.keyboard?.copy(pressed = first.keyboard?.notes?.get(1))
+            assertEquals(
+                first.copy(staff = first.staff?.copy(now = 1), keyboard = pressed),
+                next,
+            )
+        }
+
+    @Test
+    fun `the keyboard presses the note being sung, and nothing while paused`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            assertNull(state(viewModel)?.keyboard?.pressed)
+            advanceTimeBy(1_200)
+            assertEquals("C3", state(viewModel)?.keyboard?.pressed?.name)
+            viewModel.playPause()
+            assertNull(state(viewModel)?.staff?.now)
+            assertNull(state(viewModel)?.keyboard?.pressed)
+        }
+
+    @Test
+    fun `the keyboard presses nothing during a Key Chord`() = runTest(context = dispatcher) {
+        val viewModel = viewModel(playing())
+        var now = checkNotNull(state(viewModel))
+        while (now.iterations?.now != 0) {
+            advanceTimeBy(20)
+            now = checkNotNull(state(viewModel))
+        }
+        assertNull(now.staff?.now)
+        assertNull(now.keyboard?.pressed)
+    }
+
+    @Test
+    fun `a failed output says the sound stopped`() = runTest(context = dispatcher) {
+        val output = FakeSoundOutput(clockMs = { testScheduler.currentTime })
+        val controller = testController(focus = focus, output = output)
+        controller.play(programme = StarterProgrammes.WARM_UP, range = VoiceType.TENOR.range)
+        val viewModel = viewModel(controller)
+        advanceTimeBy(1_000)
+        output.failed = true
+        advanceTimeBy(200)
+        assertEquals(false, state(viewModel)?.playing)
+        assertEquals(OUTPUT_STOPPED_MESSAGE, state(viewModel)?.problem)
+        viewModel.playPause()
+        assertEquals(true, state(viewModel)?.playing)
+        assertNull(state(viewModel)?.problem)
+    }
+
+    @Test
+    fun `a resume another app refuses says so, until the Programme plays`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            focus.loseFocus()
+            runCurrent()
+            focus.grant = false
+            viewModel.playPause()
+            assertEquals(false, state(viewModel)?.playing)
+            assertEquals(
+                startProblemMessage(StartOutcome.AUDIO_BUSY),
+                state(viewModel)?.problem,
+            )
+            focus.grant = true
+            viewModel.playPause()
+            assertEquals(true, state(viewModel)?.playing)
+            assertNull(state(viewModel)?.problem)
+        }
 }

@@ -146,6 +146,49 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `a failed export leaves an existing file that had something in it`() =
+        runTest(context = dispatcher) {
+            files.files[uri] = "their old backup"
+            files.writes = false
+            val viewModel = viewModel()
+            viewModel.exportTo(uri)
+            runCurrent()
+            assertEquals("their old backup", files.files[uri])
+        }
+
+    @Test
+    fun `a failed export removes the fresh empty file it was given`() =
+        runTest(context = dispatcher) {
+            files.files[uri] = ""
+            files.writes = false
+            val viewModel = viewModel()
+            viewModel.exportTo(uri)
+            runCurrent()
+            assertFalse(uri in files.files)
+        }
+
+    @Test
+    fun `a failed export keeps a file whose size couldn't be read`() =
+        runTest(context = dispatcher) {
+            files.files[uri] = "their old backup"
+            files.reportedSizes[uri] = null
+            files.writes = false
+            val viewModel = viewModel()
+            viewModel.exportTo(uri)
+            runCurrent()
+            assertEquals("their old backup", files.files[uri])
+        }
+
+    @Test
+    fun `a successful export keeps the file it wrote`() = runTest(context = dispatcher) {
+        files.files[uri] = ""
+        val viewModel = viewModel()
+        viewModel.exportTo(uri)
+        runCurrent()
+        assertTrue(uri in files.files)
+    }
+
+    @Test
     fun `a picked backup is asked about, with its counts, before anything changes`() =
         runTest(context = dispatcher) {
             val state = pick(viewModel = viewModel(), text = ExportCodec.encode(theirs))

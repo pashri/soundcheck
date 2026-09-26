@@ -21,13 +21,14 @@ class NotificationPostsTest {
     }
 
     @Test
-    fun `the session is there before the settings load and stays once they load`() {
+    fun `the session is made once the settings load, before any Programme can show`() {
         val before = sessionChange(hasSession = false, settings = null)
-        val after = sessionChange(hasSession = true, settings = WarmupSettings.DEFAULT)
+        val after = sessionChange(hasSession = false, settings = WarmupSettings.DEFAULT)
 
-        assertEquals(SessionChange.CREATE, before)
-        assertEquals(SessionChange.KEEP, after)
-        assertFalse(repostsAfter(change = after, inForeground = true))
+        assertEquals(SessionChange.KEEP, before)
+        assertEquals(SessionChange.CREATE, after)
+        assertFalse(repostsAfter(change = after, inForeground = false))
+        assertTrue(repostsAfter(change = after, inForeground = true))
     }
 
     @Test

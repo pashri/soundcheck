@@ -2,9 +2,11 @@ package org.pashri.soundcheck.ui.tuner
 
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -46,8 +48,35 @@ class TunerViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() =
-        TunerViewModel(mic, focus, worker = dispatcher, arbiter = arbiter)
+    /** Every view model a test made; cleared when the test ends. */
+    private val stores = mutableListOf<ViewModelStore>()
+
+    private fun viewModel(): TunerViewModel {
+        val store = ViewModelStore().also { stores.add(it) }
+        val factory = TunerViewModel.Factory(
+            mic = mic,
+            focus = focus,
+            worker = dispatcher,
+            arbiter = arbiter,
+        )
+        return ViewModelProvider(store = store, factory = factory)[TunerViewModel::class.java]
+    }
+
+    /**
+     * Runs a test, then clears every view model it made, even after a failed assertion, so a
+     * Tuner that never stops listening fails its test instead of spinning virtual time
+     * forever. The timeout stops anything else that would hang.
+     */
+    private fun tunerTest(body: suspend TestScope.() -> Unit): TestResult =
+        runTest(context = dispatcher, timeout = TEST_TIMEOUT) {
+            try {
+                body()
+            } finally {
+                stores.forEach { it.clear() }
+                stores.clear()
+                runCurrent()
+            }
+        }
 
     private fun TestScope.state(viewModel: TunerViewModel): TunerUiState {
         runCurrent()
@@ -67,7 +96,7 @@ class TunerViewModelTest {
 
     @Test
     fun `before the permission is known it offers to allow the microphone`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
             assertEquals(TunerMode.AskPermission, state(viewModel).mode)
@@ -75,7 +104,7 @@ class TunerViewModelTest {
         }
 
     @Test
-    fun `it asks on open only once`() = runTest(dispatcher) {
+    fun `it asks on open only once`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = false)
         assertTrue(viewModel.shouldAskOnOpen())
@@ -87,7 +116,7 @@ class TunerViewModelTest {
 
     @Test
     fun `it does not ask on open when the permission is already granted`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             assertFalse(viewModel.shouldAskOnOpen())
@@ -96,10 +125,10 @@ class TunerViewModelTest {
 
     @Test
     fun `with the permission granted it listens while shown and hears a note`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
-            mic.play(Signals.sine(110.0, size = 12 * HOP_SIZE))
+            mic.play(Signals.sine(hz = 110.0, size = 12 * HOP_SIZE))
             hops(12)
             val state = state(viewModel)
             assertEquals(TunerMode.Listening, state.mode)
@@ -109,7 +138,7 @@ class TunerViewModelTest {
         }
 
     @Test
-    fun `allowing the microphone in the dialog starts listening`() = runTest(dispatcher) {
+    fun `allowing the microphone in the dialog starts listening`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = false)
         viewModel.onPermissionResult(granted = true, canAskAgain = false)
@@ -121,7 +150,7 @@ class TunerViewModelTest {
 
     @Test
     fun `a first refusal offers the dialog again and never opens the microphone`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
             viewModel.onPermissionResult(granted = false, canAskAgain = true)
@@ -132,7 +161,7 @@ class TunerViewModelTest {
 
     @Test
     fun `a refusal Android will not ask again sends the user to settings`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
             viewModel.onPermissionResult(granted = false, canAskAgain = true)
@@ -146,7 +175,7 @@ class TunerViewModelTest {
 
     @Test
     fun `coming back from settings with the microphone allowed starts listening`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
             viewModel.onPermissionResult(granted = false, canAskAgain = true)
@@ -161,7 +190,7 @@ class TunerViewModelTest {
 
     @Test
     fun `hiding the screen releases the microphone and showing it again reopens it`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             hops(2)
@@ -178,7 +207,7 @@ class TunerViewModelTest {
 
     @Test
     fun `a permission answer that arrives while hidden does not open the microphone`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
             viewModel.stop()
@@ -189,7 +218,7 @@ class TunerViewModelTest {
 
     @Test
     fun `being shown again while listening keeps the one microphone`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             hops(2)
@@ -201,7 +230,7 @@ class TunerViewModelTest {
 
     @Test
     fun `focus is acquired once per listening run, not on every onShown`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             hops(2)
@@ -213,7 +242,7 @@ class TunerViewModelTest {
 
     @Test
     fun `an unavailable microphone offers to try again and trying again listens`() =
-        runTest(dispatcher) {
+        tunerTest {
             mic.available = false
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
@@ -228,7 +257,7 @@ class TunerViewModelTest {
 
     @Test
     fun `retrying with the microphone still unavailable does not hold focus`() =
-        runTest(dispatcher) {
+        tunerTest {
             mic.available = false
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
@@ -251,20 +280,28 @@ class TunerViewModelTest {
         )
         answers.forEach { (asked, expected) ->
             val (previous, granted, canAskAgain) = asked
-            val access = micAccessAfterRequest(previous, granted, canAskAgain)
+            val access = micAccessAfterRequest(
+                previous = previous,
+                granted = granted,
+                canAskAgain = canAskAgain,
+            )
             assertEquals("$asked", expected, access)
         }
     }
 
     @Test
     fun `a dismissed first dialog maps to denied, not blocked`() {
-        val access = micAccessAfterRequest(MicAccess.Unknown, granted = false, canAskAgain = false)
+        val access = micAccessAfterRequest(
+            previous = MicAccess.Unknown,
+            granted = false,
+            canAskAgain = false,
+        )
         assertEquals(MicAccess.Denied, access)
     }
 
     @Test
     fun `dismissing the very first dialog offers it again rather than settings`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = false)
             viewModel.onPermissionResult(granted = false, canAskAgain = false)
@@ -274,7 +311,7 @@ class TunerViewModelTest {
         }
 
     @Test
-    fun `nothing is heard before the screen is shown`() = runTest(dispatcher) {
+    fun `nothing is heard before the screen is shown`() = tunerTest {
         val viewModel = viewModel()
         hops(5)
         assertNull(state(viewModel).note)
@@ -282,7 +319,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `listening holds audio focus so a podcast pauses`() = runTest(dispatcher) {
+    fun `listening holds audio focus so a podcast pauses`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
         hops(1)
@@ -292,7 +329,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `focus is never taken while the microphone is not allowed`() = runTest(dispatcher) {
+    fun `focus is never taken while the microphone is not allowed`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = false)
         runCurrent()
@@ -306,7 +343,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `hiding the screen hands focus back`() = runTest(dispatcher) {
+    fun `hiding the screen hands focus back`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
         hops(1)
@@ -316,7 +353,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `losing the permission stops listening and hands focus back`() = runTest(dispatcher) {
+    fun `losing the permission stops listening and hands focus back`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
         hops(1)
@@ -330,7 +367,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `a microphone that will not open hands focus back`() = runTest(dispatcher) {
+    fun `a microphone that will not open hands focus back`() = tunerTest {
         mic.available = false
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
@@ -340,7 +377,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `a microphone that dies mid-tune hands focus back`() = runTest(dispatcher) {
+    fun `a microphone that dies mid-tune hands focus back`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
         hops(2)
@@ -351,7 +388,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `trying again after a failure takes focus again`() = runTest(dispatcher) {
+    fun `trying again after a failure takes focus again`() = tunerTest {
         mic.available = false
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
@@ -365,7 +402,7 @@ class TunerViewModelTest {
 
     @Test
     fun `a microphone that will not open never takes focus, even on retry`() =
-        runTest(dispatcher) {
+        tunerTest {
             mic.available = false
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
@@ -378,7 +415,7 @@ class TunerViewModelTest {
         }
 
     @Test
-    fun `allowing the microphone in the dialog takes focus`() = runTest(dispatcher) {
+    fun `allowing the microphone in the dialog takes focus`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = false)
         viewModel.onPermissionResult(granted = true, canAskAgain = false)
@@ -389,7 +426,7 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `hiding and showing the screen again takes focus again`() = runTest(dispatcher) {
+    fun `hiding and showing the screen again takes focus again`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
         hops(1)
@@ -405,11 +442,16 @@ class TunerViewModelTest {
 
     @Test
     fun `closing the view model hands focus back and releases the microphone`() =
-        runTest(dispatcher) {
+        tunerTest {
             val store = ViewModelStore()
-            val factory =
-                TunerViewModel.Factory(mic, focus, worker = dispatcher, arbiter = arbiter)
-            val viewModel = ViewModelProvider(store, factory)[TunerViewModel::class.java]
+            val factory = TunerViewModel.Factory(
+                mic = mic,
+                focus = focus,
+                worker = dispatcher,
+                arbiter = arbiter,
+            )
+            val viewModel =
+                ViewModelProvider(store = store, factory = factory)[TunerViewModel::class.java]
             viewModel.onShown(granted = true)
             hops(1)
             store.clear()
@@ -419,12 +461,12 @@ class TunerViewModelTest {
         }
 
     @Test
-    fun `losing focus to another app keeps the tuner listening`() = runTest(dispatcher) {
+    fun `losing focus to another app keeps the tuner listening`() = tunerTest {
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
         hops(1)
         focus.loseFocus()
-        mic.play(Signals.sine(110.0, size = 12 * HOP_SIZE))
+        mic.play(Signals.sine(hz = 110.0, size = 12 * HOP_SIZE))
         hops(12)
         assertEquals(MicStatus.Listening, state(viewModel).mic)
         assertEquals("A", state(viewModel).note?.name)
@@ -433,11 +475,11 @@ class TunerViewModelTest {
     }
 
     @Test
-    fun `refused focus does not stop the tuner tuning`() = runTest(dispatcher) {
+    fun `refused focus does not stop the tuner tuning`() = tunerTest {
         focus.grant = false
         val viewModel = viewModel()
         viewModel.onShown(granted = true)
-        mic.play(Signals.sine(110.0, size = 12 * HOP_SIZE))
+        mic.play(Signals.sine(hz = 110.0, size = 12 * HOP_SIZE))
         hops(12)
         assertEquals(TunerMode.Listening, state(viewModel).mode)
         assertEquals("A", state(viewModel).note?.name)
@@ -446,9 +488,9 @@ class TunerViewModelTest {
 
     @Test
     fun `a Warm-up that is playing pauses when the Tuner starts listening`() =
-        runTest(dispatcher) {
+        tunerTest {
             var evicted = false
-            arbiter.claim(Tool.WARM_UP, onEvicted = { evicted = true })
+            arbiter.claim(tool = Tool.WARM_UP, onEvicted = { evicted = true })
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             assertTrue(evicted)
@@ -458,11 +500,11 @@ class TunerViewModelTest {
 
     @Test
     fun `the Tuner gives way to a Warm-up and offers to listen instead`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             hops(1)
-            arbiter.claim(Tool.WARM_UP, onEvicted = {})
+            arbiter.claim(tool = Tool.WARM_UP, onEvicted = {})
             assertEquals(TunerMode.Yielded, state(viewModel).mode)
             hops(1)
             assertEquals(0, mic.openNow)
@@ -475,11 +517,11 @@ class TunerViewModelTest {
 
     @Test
     fun `a Tuner that yielded does not reclaim on re-show, only on retry`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             hops(1)
-            arbiter.claim(Tool.WARM_UP, onEvicted = {})
+            arbiter.claim(tool = Tool.WARM_UP, onEvicted = {})
             assertEquals(TunerMode.Yielded, state(viewModel).mode)
             viewModel.onShown(granted = true)
             hops(1)
@@ -495,11 +537,11 @@ class TunerViewModelTest {
 
     @Test
     fun `a Tuner that yielded listens again on re-show once nothing holds the slot`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             hops(1)
-            arbiter.claim(Tool.WARM_UP, onEvicted = {})
+            arbiter.claim(tool = Tool.WARM_UP, onEvicted = {})
             viewModel.stop()
             arbiter.release(Tool.WARM_UP)
             viewModel.onShown(granted = true)
@@ -511,12 +553,12 @@ class TunerViewModelTest {
 
     @Test
     fun `a Tuner that yielded stays yielded on re-show while a paused Warm-up holds the slot`() =
-        runTest(dispatcher) {
+        tunerTest {
             val viewModel = viewModel()
             viewModel.onShown(granted = true)
             hops(1)
             var evicted = false
-            arbiter.claim(Tool.WARM_UP, onEvicted = { evicted = true })
+            arbiter.claim(tool = Tool.WARM_UP, onEvicted = { evicted = true })
             viewModel.stop()
             viewModel.onShown(granted = true)
             hops(1)
@@ -527,3 +569,6 @@ class TunerViewModelTest {
             viewModel.stop()
         }
 }
+
+/** Real time a Tuner view model test may take before it counts as hung. */
+private val TEST_TIMEOUT = 10.seconds

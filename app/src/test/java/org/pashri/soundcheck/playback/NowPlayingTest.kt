@@ -2,6 +2,7 @@ package org.pashri.soundcheck.playback
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.pashri.soundcheck.metronome.MetronomeStatus
 import org.pashri.soundcheck.ui.warmup.WarmupUiState
 import org.pashri.soundcheck.ui.warmup.warmupUiState
 import org.pashri.soundcheck.warmup.Playback
@@ -58,5 +59,32 @@ class NowPlayingTest {
             NowPlaying(title = "Warm-up", text = "", subText = "", playing = false),
             nowPlaying(null),
         )
+    }
+
+    @Test
+    fun `the Metronome's notification gives its tempo and accent`() {
+        val status = MetronomeStatus(bpm = 96, accentEvery = 4, running = true)
+        val expected = NowPlaying(
+            title = "Metronome",
+            text = "96 bpm · accent 4",
+            subText = "",
+            playing = true,
+        )
+        assertEquals(expected, metronomeNowPlaying(status))
+    }
+
+    @Test
+    fun `a paused Metronome says so in its title`() {
+        val status = MetronomeStatus(bpm = 96, accentEvery = 4, running = false, paused = true)
+        val now = metronomeNowPlaying(status)
+        assertEquals("Metronome · paused", now.title)
+        assertEquals("96 bpm · accent 4", now.text)
+        assertEquals(false, now.playing)
+    }
+
+    @Test
+    fun `a Metronome without an accent says so`() {
+        val status = MetronomeStatus(bpm = 72, accentEvery = null, running = true)
+        assertEquals("72 bpm · no accent", metronomeNowPlaying(status).text)
     }
 }

@@ -29,6 +29,9 @@ class WarmupController(
     /** The Programme playing or paused, or null when stopped. */
     val playback: StateFlow<Playback?> = player.playback
 
+    /** The index of the Pattern note being sung, or null; see [ProgrammePlayer.note]. */
+    val note: StateFlow<Int?> = player.note
+
     private var holdsFocus = false
     private var pausedByFocus = false
 

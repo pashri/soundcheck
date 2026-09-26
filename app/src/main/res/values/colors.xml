@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Manuscript paper by day; LaunchThemeTest keeps it equal to DayColors.paper. -->
+    <color name="paper">#F4EEE3</color>
+    <!-- The icon's paper; LauncherIconTest keeps it equal to DayColors.paper. -->
+    <color name="ic_launcher_background">#F4EEE3</color>
+</resources>

@@ -3,6 +3,8 @@ package org.pashri.soundcheck.data
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
+import java.io.IOException
+import java.io.OutputStream
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -50,5 +52,56 @@ class SharedFilesTest {
         assertFalse(
             writeWhole(open = { throw UnsupportedOperationException("mode wt") }, text = "x"),
         )
+    }
+
+    @Test
+    fun `a write that fails part-way removes a fresh, empty document`() {
+        var discarded = 0
+        val failing = object : OutputStream() {
+            override fun write(b: Int) {
+                throw IOException("disk full")
+            }
+        }
+        assertFalse(
+            writeWhole(
+                open = { failing },
+                text = "backup",
+                deleteOnFailure = true,
+                discard = { discarded++ },
+            ),
+        )
+        assertEquals(1, discarded)
+    }
+
+    @Test
+    fun `a failed write to an existing, non-empty document is never removed`() {
+        var discarded = 0
+        val failing = object : OutputStream() {
+            override fun write(b: Int) {
+                throw IOException("disk full")
+            }
+        }
+        assertFalse(
+            writeWhole(
+                open = { failing },
+                text = "backup",
+                deleteOnFailure = false,
+                discard = { discarded++ },
+            ),
+        )
+        assertEquals(0, discarded)
+    }
+
+    @Test
+    fun `a file written whole is never removed`() {
+        var discarded = 0
+        val written = writeWhole(
+            open = { ByteArrayOutputStream() },
+            text = "x",
+            deleteOnFailure = true,
+            discard = { discarded++ },
+        )
+        assertTrue(written)
+        assertEquals(0, discarded)
     }
 }

@@ -30,6 +30,8 @@ class ExclusiveMic(private val mic: MicInput) : MicInput {
 
         override suspend fun read(buffer: FloatArray): Int = session.read(buffer)
 
+        override fun isSilenced(): Boolean = session.isSilenced()
+
         override fun close() {
             if (!closed.compareAndSet(false, true)) return
             session.close()

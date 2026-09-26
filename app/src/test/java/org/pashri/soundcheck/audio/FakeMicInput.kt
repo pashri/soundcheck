@@ -19,6 +19,9 @@ class FakeMicInput : MicInput {
     /** Whether [open] succeeds; set false to act like a refused microphone. */
     var available: Boolean = true
 
+    /** Whether each session reports that Android is silencing it for another app. */
+    var silenced: Boolean = false
+
     /** How many times the microphone was opened. */
     var timesOpened: Int = 0
         private set
@@ -42,7 +45,7 @@ class FakeMicInput : MicInput {
         if (!available) return null
         timesOpened++
         openNow++
-        mostOpenAtOnce = maxOf(mostOpenAtOnce, openNow)
+        mostOpenAtOnce = maxOf(a = mostOpenAtOnce, b = openNow)
         return Session()
     }
 
@@ -54,7 +57,7 @@ class FakeMicInput : MicInput {
     fun play(signal: FloatArray) {
         require(signal.size % HOP_SIZE == 0) { "play whole hops" }
         for (start in signal.indices step HOP_SIZE) {
-            queued.addLast(signal.copyOfRange(start, start + HOP_SIZE))
+            queued.addLast(signal.copyOfRange(fromIndex = start, toIndex = start + HOP_SIZE))
         }
     }
 
@@ -70,7 +73,7 @@ class FakeMicInput : MicInput {
         private var closed = false
 
         override suspend fun read(buffer: FloatArray): Int {
-            withContext(NonCancellable) { delay(HOP_MS) }
+            withContext(context = NonCancellable) { delay(HOP_MS) }
             currentCoroutineContext().ensureActive()
             onHop?.invoke()
             if (broken) return -1
@@ -78,6 +81,8 @@ class FakeMicInput : MicInput {
             if (next == null) buffer.fill(0f) else next.copyInto(buffer)
             return buffer.size
         }
+
+        override fun isSilenced(): Boolean = silenced
 
         override fun close() {
             if (closed) return

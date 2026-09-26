@@ -116,6 +116,24 @@ fun Library.moveStep(programmeId: ProgrammeId, from: Int, to: Int): Library =
     }
 
 /**
+ * Moves one Step up or down its Programme, found by its key, so a tap made against an older
+ * picture of the list still moves the Step it was aimed at.
+ *
+ * @param ref the Step.
+ * @param by how many places to move: −1 is up one, +1 down one.
+ * @return the reordered library; unchanged if the Step is gone or would leave the list.
+ */
+fun Library.moveStepBy(ref: StepRef, by: Int): Library =
+    mapProgramme(id = ref.programmeId) { programme ->
+        val from = programme.steps.indexOfFirst { it.key == ref.key }
+        if (from < 0) {
+            programme
+        } else {
+            programme.copy(steps = programme.steps.moved(from = from, to = from + by))
+        }
+    }
+
+/**
  * Adds a Pattern at the end of the library.
  *
  * @param pattern the Pattern; its id is new to the library.

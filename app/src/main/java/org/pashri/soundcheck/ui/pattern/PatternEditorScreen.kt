@@ -41,6 +41,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.pashri.soundcheck.ui.components.AccidentalMark
 import org.pashri.soundcheck.ui.components.BackHeader
 import org.pashri.soundcheck.ui.components.ConfirmDialog
 import org.pashri.soundcheck.ui.components.ControlShape
@@ -148,6 +149,7 @@ fun PatternEditorScreen(
                 label = ::accidentalLabel,
                 onSelect = actions::setAccidental,
                 spoken = ::accidentalSpoken,
+                mark = { accidental, ink -> AccidentalMark(accidental = accidental, color = ink) },
             )
             Segmented(
                 options = NoteLength.entries,

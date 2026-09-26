@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExclusiveMicTest {
@@ -48,5 +49,12 @@ class ExclusiveMicTest {
         assertThrows(IllegalStateException::class.java) { mic.open() }
         fake.onOpen = null
         assertNotNull(mic.open())
+    }
+
+    @Test
+    fun `the one open session reports when Android silences it`() {
+        val session = checkNotNull(mic.open())
+        fake.silenced = true
+        assertTrue(session.isSilenced())
     }
 }

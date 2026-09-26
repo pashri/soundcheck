@@ -21,6 +21,7 @@ import org.pashri.soundcheck.warmup.WarmupSettings
 import org.pashri.soundcheck.warmup.addStep
 import org.pashri.soundcheck.warmup.deleteProgramme
 import org.pashri.soundcheck.warmup.moveStep
+import org.pashri.soundcheck.warmup.moveStepBy
 import org.pashri.soundcheck.warmup.newStep
 import org.pashri.soundcheck.warmup.playSaved
 import org.pashri.soundcheck.warmup.removeStep
@@ -111,6 +112,17 @@ class ProgrammeEditorViewModel(
      */
     fun moveStep(from: Int, to: Int) {
         library.edit { it.moveStep(programmeId = programmeId, from = from, to = to) }
+    }
+
+    /**
+     * Moves a Step up or down one place, found by its key.
+     *
+     * @param key the Step.
+     * @param by −1 for up, +1 for down.
+     */
+    fun nudgeStep(key: StepKey, by: Int) {
+        val ref = StepRef(programmeId = programmeId, key = key)
+        library.edit { it.moveStepBy(ref = ref, by = by) }
     }
 
     /**

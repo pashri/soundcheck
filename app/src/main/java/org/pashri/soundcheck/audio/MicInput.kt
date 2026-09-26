@@ -32,6 +32,15 @@ interface MicSession {
 
     /** Stops capturing and releases the microphone. Safe to call twice. */
     fun close()
+
+    /**
+     * Whether Android is feeding this capture silence because another app is recording
+     * (Android 10 and later can silence one app to give another the microphone). It asks the
+     * system, so call it now and then, not on every read.
+     *
+     * @return true while the capture is silenced.
+     */
+    fun isSilenced(): Boolean = false
 }
 
 /**
@@ -81,7 +90,7 @@ class AndroidMic : MicInput {
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_FLOAT,
         )
-        return maxOf(minimum, BUFFER_FRAMES * Float.SIZE_BYTES)
+        return maxOf(a = minimum, b = BUFFER_FRAMES * Float.SIZE_BYTES)
     }
 
     private companion object {
@@ -101,9 +110,12 @@ class AndroidMic : MicInput {
 private class AudioRecordSession(private val record: AudioRecord) : MicSession {
     private var closed = false
 
-    override suspend fun read(buffer: FloatArray): Int = withContext(Dispatchers.IO) {
+    override suspend fun read(buffer: FloatArray): Int = withContext(context = Dispatchers.IO) {
         record.read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
     }
+
+    override fun isSilenced(): Boolean =
+        record.activeRecordingConfiguration?.isClientSilenced == true
 
     override fun close() {
         if (closed) return
