@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
  * @property accentPressed the Iteration's key while it is being sung: a darker [accent], at
  *     least 1.3:1 off it.
  * @property topKeyPressed the top note's key while it is being sung: a darker [topKey], at
- *     least 1.3:1 off it.
+ *     least 1.3:1 off it by day and 1.8:1 at night, where the pale rose needs more.
  */
 @Immutable
 data class ManuscriptColors(
@@ -91,5 +91,5 @@ val NightColors: ManuscriptColors = ManuscriptColors(
     keyPressed = Color(0xFF8A7A69),
     blackKeyPressed = Color(0xFF4A433B),
     accentPressed = Color(0xFFB8513A),
-    topKeyPressed = Color(0xFFD8988A),
+    topKeyPressed = Color(0xFFC27A6A),
 )

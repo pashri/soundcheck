@@ -96,7 +96,8 @@ class ContrastTest {
             val root = contrastRatio(foreground = c.accentPressed, background = c.accent)
             assertTrue("$theme pressed key mark is ${"%.2f".format(root)}:1", root >= 1.3)
             val top = contrastRatio(foreground = c.topKeyPressed, background = c.topKey)
-            assertTrue("$theme pressed top note is ${"%.2f".format(top)}:1", top >= 1.3)
+            val least = if (theme == "night") 1.8 else 1.3
+            assertTrue("$theme pressed top note is ${"%.2f".format(top)}:1", top >= least)
         }
     }
 
