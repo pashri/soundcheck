@@ -102,6 +102,27 @@ object PlaybackNotifications {
         )
     }
 
+    /**
+     * Tells the system nothing is playing: no title, and paused with only play/pause, so a
+     * finished Programme's title and "playing" state never linger on a session the Metronome
+     * still uses. See [resetsSession].
+     *
+     * @param session the media session.
+     */
+    fun clearSession(session: MediaSessionCompat) {
+        session.setMetadata(null)
+        session.setPlaybackState(
+            PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                .setState(
+                    PlaybackStateCompat.STATE_PAUSED,
+                    PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN,
+                    1f,
+                )
+                .build(),
+        )
+    }
+
     private fun action(context: Context, button: NotificationButton): NotificationCompat.Action =
         NotificationCompat.Action(
             button.icon,

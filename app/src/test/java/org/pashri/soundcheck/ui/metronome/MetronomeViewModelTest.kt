@@ -21,6 +21,9 @@ import org.pashri.soundcheck.audio.Tool
 import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
+import org.pashri.soundcheck.playback.HeadphoneButton
+import org.pashri.soundcheck.playback.PressCounter
+import org.pashri.soundcheck.warmup.testController
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MetronomeViewModelTest {
@@ -40,8 +43,20 @@ class MetronomeViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel() =
-        MetronomeViewModel(output, focus, clockMs = clock, arbiter = arbiter)
+    private fun TestScope.newHeadphones(): HeadphoneButton = HeadphoneButton(
+        arbiter = arbiter,
+        warmup = testController(arbiter = arbiter),
+        scope = backgroundScope,
+    )
+
+    private fun TestScope.viewModel(headphones: HeadphoneButton = newHeadphones()) =
+        MetronomeViewModel(
+            output = output,
+            focus = focus,
+            clockMs = clock,
+            arbiter = arbiter,
+            headphones = headphones,
+        )
 
     private fun TestScope.state(viewModel: MetronomeViewModel): MetronomeUiState {
         runCurrent()
@@ -49,14 +64,14 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `it starts stopped at 96 bpm with an accent every 4`() = runTest(dispatcher) {
+    fun `it starts stopped at 96 bpm with an accent every 4`() = runTest(context = dispatcher) {
         val expected =
             MetronomeUiState(bpm = 96, accentEvery = 4, running = false, beatInBar = null)
         assertEquals(expected, state(viewModel()))
     }
 
     @Test
-    fun `faster and slower move one bpm and stop at the limits`() = runTest(dispatcher) {
+    fun `faster and slower move one bpm and stop at the limits`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.faster()
         assertEquals(97, state(viewModel).bpm)
@@ -69,7 +84,7 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `a tempo outside the range is clamped`() = runTest(dispatcher) {
+    fun `a tempo outside the range is clamped`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.setBpm(1_000)
         assertEquals(MAX_BPM, state(viewModel).bpm)
@@ -78,7 +93,7 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `starting takes audio focus and starts the output`() = runTest(dispatcher) {
+    fun `starting takes audio focus and starts the output`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.toggle()
         assertTrue(state(viewModel).running)
@@ -88,7 +103,7 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `if audio focus is refused the metronome stays stopped`() = runTest(dispatcher) {
+    fun `if audio focus is refused the metronome stays stopped`() = runTest(context = dispatcher) {
         focus.grant = false
         val viewModel = viewModel()
         viewModel.toggle()
@@ -97,16 +112,17 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `if the output will not start audio focus is handed back`() = runTest(dispatcher) {
-        output.startResult = false
-        val viewModel = viewModel()
-        viewModel.toggle()
-        assertFalse(state(viewModel).running)
-        assertFalse(focus.held)
-    }
+    fun `if the output will not start audio focus is handed back`() =
+        runTest(context = dispatcher) {
+            output.startResult = false
+            val viewModel = viewModel()
+            viewModel.toggle()
+            assertFalse(state(viewModel).running)
+            assertFalse(focus.held)
+        }
 
     @Test
-    fun `losing audio focus stops the metronome`() = runTest(dispatcher) {
+    fun `losing audio focus stops the metronome`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.toggle()
         runCurrent()
@@ -117,7 +133,7 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `stopping hands audio focus back`() = runTest(dispatcher) {
+    fun `stopping hands audio focus back`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.toggle()
         runCurrent()
@@ -127,9 +143,9 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `four taps half a second apart set 120 bpm`() = runTest(dispatcher) {
+    fun `four taps half a second apart set 120 bpm`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
-        repeat(4) {
+        repeat(times = 4) {
             viewModel.tap()
             advanceTimeBy(500)
         }
@@ -137,7 +153,7 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `changing tempo while running respaces the clicks`() = runTest(dispatcher) {
+    fun `changing tempo while running respaces the clicks`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.setBpm(120)
         viewModel.toggle()
@@ -151,7 +167,7 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `the beat indicator follows the sounding beat`() = runTest(dispatcher) {
+    fun `the beat indicator follows the sounding beat`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.setBpm(120)
         viewModel.toggle()
@@ -161,7 +177,7 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `with the accent off there is one beat per bar`() = runTest(dispatcher) {
+    fun `with the accent off there is one beat per bar`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.setAccent(null)
         val current = state(viewModel)
@@ -171,7 +187,7 @@ class MetronomeViewModelTest {
 
     @Test
     fun `with the accent off the beat index still advances beat to beat`() =
-        runTest(dispatcher) {
+        runTest(context = dispatcher) {
             val viewModel = viewModel()
             viewModel.setAccent(null)
             viewModel.setBpm(120)
@@ -189,25 +205,44 @@ class MetronomeViewModelTest {
         }
 
     @Test
-    fun `starting the metronome stops the tool that was running`() = runTest(dispatcher) {
-        var evicted = false
-        arbiter.claim(Tool.WARM_UP, onEvicted = { evicted = true })
-        val viewModel = viewModel()
-        viewModel.toggle()
-        assertTrue(evicted)
-        assertEquals(Tool.METRONOME, arbiter.current)
-        viewModel.stop()
-    }
+    fun `starting the metronome stops the tool that was running`() =
+        runTest(context = dispatcher) {
+            var evicted = false
+            arbiter.claim(tool = Tool.WARM_UP, onEvicted = { evicted = true })
+            val viewModel = viewModel()
+            viewModel.toggle()
+            assertTrue(evicted)
+            assertEquals(Tool.METRONOME, arbiter.current)
+            viewModel.stop()
+        }
 
     @Test
-    fun `another tool starting stops the metronome`() = runTest(dispatcher) {
+    fun `another tool starting stops the metronome`() = runTest(context = dispatcher) {
         val viewModel = viewModel()
         viewModel.toggle()
         runCurrent()
-        arbiter.claim(Tool.TUNER, onEvicted = {})
+        arbiter.claim(tool = Tool.TUNER, onEvicted = {})
         assertFalse(state(viewModel).running)
         assertFalse(output.running)
         assertFalse(focus.held)
         assertEquals(Tool.TUNER, arbiter.current)
     }
+
+    @Test
+    fun `a shown Metronome starts and stops with the headphone button, a hidden one doesn't`() =
+        runTest(context = dispatcher) {
+            val headphones = newHeadphones()
+            val viewModel = viewModel(headphones = headphones)
+            viewModel.onShown()
+            headphones.press()
+            advanceTimeBy(PressCounter.WINDOW_MS + 1)
+            assertTrue(state(viewModel).running)
+            headphones.press()
+            advanceTimeBy(PressCounter.WINDOW_MS + 1)
+            assertFalse(state(viewModel).running)
+            viewModel.onHidden()
+            headphones.press()
+            advanceTimeBy(PressCounter.WINDOW_MS + 1)
+            assertFalse(state(viewModel).running)
+        }
 }

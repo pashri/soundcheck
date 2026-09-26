@@ -86,4 +86,24 @@ class MediaKeysTest {
         assertEquals(SessionChange.KEEP, sessionChange(hasSession = true, settings = pausing))
         assertEquals(SessionChange.CREATE, sessionChange(hasSession = false, settings = null))
     }
+
+    @Test
+    fun `with nothing to steer there is no session, even when not mixing`() {
+        val pausing = WarmupSettings.DEFAULT
+        assertEquals(
+            SessionChange.RELEASE,
+            sessionChange(hasSession = true, settings = pausing, needed = false),
+        )
+        assertEquals(
+            SessionChange.KEEP,
+            sessionChange(hasSession = false, settings = pausing, needed = false),
+        )
+    }
+
+    @Test
+    fun `a session kept with no Programme loaded is reset, so no finished title lingers`() {
+        assertTrue(resetsSession(hasSession = true, programmeLoaded = false))
+        assertFalse(resetsSession(hasSession = true, programmeLoaded = true))
+        assertFalse(resetsSession(hasSession = false, programmeLoaded = false))
+    }
 }

@@ -30,6 +30,12 @@ class ToolArbiter {
     val current: Tool?
         get() = holder
 
+    private var lastClaimed: Tool? = null
+
+    /** The tool that claimed the slot most recently, even if it has let go since. */
+    val last: Tool?
+        get() = lastClaimed
+
     /**
      * Takes the slot for [tool], evicting any other tool that holds it. The new holder is
      * recorded before the old one is told, so the old one freeing the slot as it stops
@@ -41,6 +47,7 @@ class ToolArbiter {
     fun claim(tool: Tool, onEvicted: () -> Unit) {
         val previous = evict.takeIf { holder != tool }
         holder = tool
+        lastClaimed = tool
         evict = onEvicted
         previous?.invoke()
     }

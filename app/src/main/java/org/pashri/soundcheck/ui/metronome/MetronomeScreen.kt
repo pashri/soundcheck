@@ -66,9 +66,10 @@ import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SoundcheckTheme
 
 /**
- * The Metronome tab, wired to its view model. Stops the Metronome when its screen leaves
- * composition (switching tabs) or the app leaves the foreground, but not on a configuration
- * change, until background playback arrives with the playback service.
+ * The Metronome tab, wired to its view model. While the screen shows, the headphone button
+ * can start and stop the Metronome. Stops the Metronome and takes the button back when its
+ * screen leaves composition (switching tabs) or the app leaves the foreground, but not on a
+ * configuration change.
  *
  * @param factory builds the [MetronomeViewModel].
  */
@@ -77,16 +78,17 @@ fun MetronomeRoute(factory: ViewModelProvider.Factory) {
     val viewModel: MetronomeViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
+    LifecycleEventEffect(event = Lifecycle.Event.ON_START) { viewModel.onShown() }
     // ON_STOP also fires on a config change (rotation, dark-theme toggle); only stop when the
     // app is actually leaving the screen, not being recreated in place.
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        if (activity?.isChangingConfigurations != true) viewModel.stop()
+    LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
+        if (activity?.isChangingConfigurations != true) viewModel.onHidden()
     }
     // popUpTo(start) { saveState = true } keeps this entry (Metronome is the start
     // destination) on the back stack across tab switches, and the outgoing destination is
     // normally removed from composition before ON_STOP is delivered, so also stop here.
-    DisposableEffect(viewModel) {
-        onDispose { if (activity?.isChangingConfigurations != true) viewModel.stop() }
+    DisposableEffect(key1 = viewModel) {
+        onDispose { if (activity?.isChangingConfigurations != true) viewModel.onHidden() }
     }
     MetronomeScreen(state = state, actions = viewModel)
 }
@@ -99,9 +101,9 @@ fun MetronomeRoute(factory: ViewModelProvider.Factory) {
  */
 @Composable
 fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
-    Column(Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
         ScreenHeader(title = "Metronome", trailing = state.accentLabel)
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,14 +135,14 @@ fun MetronomeScreen(state: MetronomeUiState, actions: MetronomeActions) {
 private fun TempoReadout(state: MetronomeUiState) {
     val colors = Manuscript.colors
     val numberSize = with(LocalDensity.current) { BPM_NUMBER_SIZE.toSp() }
-    Text(state.tempoMarking, style = ManuscriptType.displayItalic, color = colors.muted)
+    Text(text = state.tempoMarking, style = ManuscriptType.displayItalic, color = colors.muted)
     Text(
         text = state.bpm.toString(),
         style = ManuscriptType.displayNumber.copy(fontSize = numberSize),
         color = colors.ink,
         modifier = Modifier.semantics { contentDescription = "${state.bpm} beats per minute" },
     )
-    Text("BEATS PER MINUTE", style = ManuscriptType.label, color = colors.muted)
+    Text(text = "BEATS PER MINUTE", style = ManuscriptType.label, color = colors.muted)
 }
 
 @Composable
@@ -149,7 +151,7 @@ private fun BeatRow(beats: Int, playing: Int?, beatIndex: Long?) {
     // With one notehead and no per-beat position (accent off), flash it briefly on every
     // beat instead, so a single mark still gives a visible pulse.
     var flashing by remember { mutableStateOf(false) }
-    LaunchedEffect(beatIndex) {
+    LaunchedEffect(key1 = beatIndex) {
         if (beats == 1 && beatIndex != null) {
             try {
                 flashing = true
@@ -169,7 +171,7 @@ private fun BeatRow(beats: Int, playing: Int?, beatIndex: Long?) {
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.Bottom,
     ) {
-        repeat(beats) { i ->
+        repeat(times = beats) { i ->
             val lit = if (beats == 1) flashing else i == playing
             BeatMark(accented = i == 0 && beats > 1, playing = lit)
         }
@@ -183,22 +185,28 @@ private fun BeatMark(accented: Boolean, playing: Boolean) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Canvas(Modifier.size(18.dp, 12.dp)) {
-            if (accented) drawPath(accentMark(size), colors.ink, style = Stroke(1.8.dp.toPx()))
+        Canvas(modifier = Modifier.size(width = 18.dp, height = 12.dp)) {
+            if (accented) {
+                drawPath(
+                    path = accentMark(size = size),
+                    color = colors.ink,
+                    style = Stroke(width = 1.8.dp.toPx()),
+                )
+            }
         }
-        Canvas(Modifier.size(30.dp, 22.dp)) {
+        Canvas(modifier = Modifier.size(width = 30.dp, height = 22.dp)) {
             val color = if (playing) colors.accent else colors.ink
-            rotate(NOTEHEAD_TILT) {
-                drawOval(color, style = if (playing) Fill else Stroke(2.dp.toPx()))
+            rotate(degrees = NOTEHEAD_TILT) {
+                drawOval(color = color, style = if (playing) Fill else Stroke(width = 2.dp.toPx()))
             }
         }
     }
 }
 
 private fun accentMark(size: Size): Path = Path().apply {
-    moveTo(0f, 0f)
-    lineTo(size.width, size.height / 2)
-    lineTo(0f, size.height)
+    moveTo(x = 0f, y = 0f)
+    lineTo(x = size.width, y = size.height / 2)
+    lineTo(x = 0f, y = size.height)
 }
 
 @Composable
@@ -233,21 +241,35 @@ private fun SquareButton(symbol: String, description: String, onClick: () -> Uni
         modifier = Modifier
             .size(48.dp)
             .clip(shape)
-            .border(1.dp, colors.ink, shape)
+            .border(width = 1.dp, color = colors.ink, shape = shape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
-        Text(symbol, style = ManuscriptType.button.copy(fontSize = 20.sp), color = colors.ink)
+        Text(
+            text = symbol,
+            style = ManuscriptType.button.copy(fontSize = 20.sp),
+            color = colors.ink,
+        )
     }
 }
 
 @Composable
 private fun AccentPicker(selected: Int?, onSelect: (Int?) -> Unit) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("ACCENT EVERY", style = ManuscriptType.label, color = Manuscript.colors.muted)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "ACCENT EVERY",
+            style = ManuscriptType.label,
+            color = Manuscript.colors.muted,
+        )
         ACCENT_CHOICES.chunked(CHOICES_PER_ROW).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
                 row.forEach { choice ->
                     AccentChip(
                         choice = choice,
@@ -275,7 +297,11 @@ private fun AccentChip(
             .heightIn(min = 48.dp)
             .clip(shape)
             .background(if (selected) colors.ink else Color.Transparent)
-            .border(1.dp, if (selected) colors.ink else colors.faint, shape)
+            .border(
+                width = 1.dp,
+                color = if (selected) colors.ink else colors.faint,
+                shape = shape,
+            )
             .selectable(
                 selected = selected,
                 role = Role.RadioButton,
@@ -295,17 +321,20 @@ private fun AccentChip(
 private fun TransportButtons(running: Boolean, actions: MetronomeActions) {
     val colors = Manuscript.colors
     val shape = RoundedCornerShape(6.dp)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Box(
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = 56.dp)
                 .clip(shape)
-                .border(1.dp, colors.ink, shape)
+                .border(width = 1.dp, color = colors.ink, shape = shape)
                 .clickable(role = Role.Button, onClick = actions::tap),
             contentAlignment = Alignment.Center,
         ) {
-            Text("Tap tempo", style = ManuscriptType.button, color = colors.ink)
+            Text(text = "Tap tempo", style = ManuscriptType.button, color = colors.ink)
         }
         Row(
             modifier = Modifier
@@ -346,7 +375,10 @@ private object PreviewActions : MetronomeActions {
 @Composable
 private fun MetronomeDayPreview() {
     SoundcheckTheme(dark = false) {
-        MetronomeScreen(MetronomeUiState(beatInBar = 1, running = true), PreviewActions)
+        MetronomeScreen(
+            state = MetronomeUiState(beatInBar = 1, running = true),
+            actions = PreviewActions,
+        )
     }
 }
 
@@ -354,7 +386,7 @@ private fun MetronomeDayPreview() {
 @Composable
 private fun MetronomeNightPreview() {
     SoundcheckTheme(dark = true) {
-        MetronomeScreen(MetronomeUiState(accentEvery = 8), PreviewActions)
+        MetronomeScreen(state = MetronomeUiState(accentEvery = 8), actions = PreviewActions)
     }
 }
 

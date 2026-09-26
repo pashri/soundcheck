@@ -17,34 +17,47 @@ import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
 import org.pashri.soundcheck.metronome.Metronome
 import org.pashri.soundcheck.metronome.TapTempo
+import org.pashri.soundcheck.playback.HeadphoneButton
 
 /**
- * Runs the Metronome screen.
+ * Runs the Metronome screen. While the screen shows, one press of the headphone button
+ * starts or stops the Metronome.
  *
  * @param output where clicks play.
  * @param focus audio focus, taken while clicking.
  * @param clockMs a monotonic clock for tap tempo.
  * @param arbiter keeps one tool sounding at a time; starting takes the slot, and another
  *     tool taking it stops the Metronome.
+ * @param headphones the headphone button, offered the Metronome while its screen shows.
  */
 class MetronomeViewModel(
     output: SoundOutput,
     private val focus: FocusGate,
     clockMs: () -> Long,
     private val arbiter: ToolArbiter,
+    private val headphones: HeadphoneButton,
 ) : ViewModel(), MetronomeActions {
-    private val metronome = Metronome(output, viewModelScope)
+    private val metronome = Metronome(output = output, scope = viewModelScope)
     private val tapTempo = TapTempo(clockMs)
     private val settings = MutableStateFlow(MetronomeUiState())
 
+    /** What a headphone press does: the same as the screen's start/stop button. */
+    private val headphoneToggle: () -> Unit = { toggle() }
+
     /** Everything the screen shows. */
-    val uiState: StateFlow<MetronomeUiState> =
-        combine(settings, metronome.beat) { state, beat ->
-            state.copy(beatInBar = beat?.positionInBar, beatIndex = beat?.index)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, MetronomeUiState())
+    val uiState: StateFlow<MetronomeUiState> = combine(
+        flow = settings,
+        flow2 = metronome.beat,
+    ) { state, beat ->
+        state.copy(beatInBar = beat?.positionInBar, beatIndex = beat?.index)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = MetronomeUiState(),
+    )
 
     override fun setBpm(bpm: Int) {
-        val clamped = bpm.coerceIn(MIN_BPM, MAX_BPM)
+        val clamped = bpm.coerceIn(minimumValue = MIN_BPM, maximumValue = MAX_BPM)
         if (clamped == settings.value.bpm) return
         settings.update { it.copy(bpm = clamped) }
         if (settings.value.running) metronome.setTempo(clamped)
@@ -71,6 +84,17 @@ class MetronomeViewModel(
         if (settings.value.running) stop() else start()
     }
 
+    /** The screen is showing: the headphone button can start and stop the Metronome. */
+    fun onShown() {
+        headphones.offerMetronome(headphoneToggle)
+    }
+
+    /** The screen has gone: stops clicking and takes the headphone button back. */
+    fun onHidden() {
+        stop()
+        headphones.withdrawMetronome(headphoneToggle)
+    }
+
     /**
      * Stops clicking, hands audio focus back and frees the tool slot. Safe to call when
      * already stopped.
@@ -83,17 +107,17 @@ class MetronomeViewModel(
     }
 
     override fun onCleared() {
-        stop()
+        onHidden()
     }
 
     private fun start() {
-        arbiter.claim(Tool.METRONOME, onEvicted = ::stop)
+        arbiter.claim(tool = Tool.METRONOME, onEvicted = ::stop)
         if (!focus.acquire(onLost = ::stop)) {
             arbiter.release(Tool.METRONOME)
             return
         }
         val current = settings.value
-        if (!metronome.start(current.bpm, current.accentEvery)) {
+        if (!metronome.start(bpm = current.bpm, accentEvery = current.accentEvery)) {
             focus.release()
             arbiter.release(Tool.METRONOME)
             return
@@ -108,15 +132,22 @@ class MetronomeViewModel(
      * @param focus audio focus.
      * @param clockMs a monotonic clock for tap tempo.
      * @param arbiter keeps one tool sounding at a time.
+     * @param headphones the headphone button.
      */
     class Factory(
         private val output: SoundOutput,
         private val focus: FocusGate,
         private val clockMs: () -> Long,
         private val arbiter: ToolArbiter,
+        private val headphones: HeadphoneButton,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            MetronomeViewModel(output, focus, clockMs = clockMs, arbiter = arbiter) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = MetronomeViewModel(
+            output = output,
+            focus = focus,
+            clockMs = clockMs,
+            arbiter = arbiter,
+            headphones = headphones,
+        ) as T
     }
 }

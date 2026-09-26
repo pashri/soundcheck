@@ -46,7 +46,7 @@ fun mediaKeyAction(keyCode: Int, action: Int, repeatCount: Int): MediaKeyAction 
 }
 
 /**
- * Whether the Warm-up's media session should take the headphone button. With "Play over
+ * Whether Soundcheck's media session should take the headphone button. With "Play over
  * other audio" on, the button stays with the other app.
  *
  * @param settings the saved settings, or null before they have loaded.
@@ -55,12 +55,12 @@ fun mediaKeyAction(keyCode: Int, action: Int, repeatCount: Int): MediaKeyAction 
 fun takesHeadphoneButton(settings: WarmupSettings?): Boolean =
     settings?.playOverOtherAudio != true
 
-/** What the playback service does with its media session when the settings change. */
+/** What happens to the app's one media session when the settings or its users change. */
 enum class SessionChange {
-    /** Make a session, so the headphone button reaches the Warm-up. */
+    /** Make a session, so the headphone button reaches the Warm-up or the Metronome. */
     CREATE,
 
-    /** Release the session, so the headphone button stays with the other app. */
+    /** Release the session: nothing needs it, or the button stays with the other app. */
     RELEASE,
 
     /** Leave things as they are. */
@@ -72,15 +72,35 @@ enum class SessionChange {
  * has no session at all: Android 12 and later route the headphone button to the app that
  * last played audio, even to an inactive session.
  *
- * @param hasSession whether the service holds a session now.
+ * @param hasSession whether the session exists now.
  * @param settings the saved settings, or null before they have loaded.
- * @return the change that makes the session match [takesHeadphoneButton].
+ * @param needed whether anything can take presses (a Programme is loaded or the
+ *     Metronome's screen shows); with nothing, there is no session either.
+ * @return the change that makes the session match [takesHeadphoneButton] and [needed].
  */
-fun sessionChange(hasSession: Boolean, settings: WarmupSettings?): SessionChange {
-    val wanted = takesHeadphoneButton(settings)
+fun sessionChange(
+    hasSession: Boolean,
+    settings: WarmupSettings?,
+    needed: Boolean = true,
+): SessionChange {
+    val wanted = takesHeadphoneButton(settings) && needed
     return when {
         wanted && !hasSession -> SessionChange.CREATE
         !wanted && hasSession -> SessionChange.RELEASE
         else -> SessionChange.KEEP
     }
 }
+
+/**
+ * Whether the media session must be reset to show nothing playing: no title, and paused with
+ * only play/pause. The session outlives a Programme while the Metronome's screen shows, and
+ * must not keep a finished Programme's title or its "playing" state, which on Android 11
+ * would draw other apps' button presses to it.
+ *
+ * @param hasSession whether the session exists.
+ * @param programmeLoaded whether a Programme is playing or paused; while one is, the
+ *     playback service keeps the session showing it.
+ * @return true when the session should be reset now.
+ */
+fun resetsSession(hasSession: Boolean, programmeLoaded: Boolean): Boolean =
+    hasSession && !programmeLoaded

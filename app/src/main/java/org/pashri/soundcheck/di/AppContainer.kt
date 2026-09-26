@@ -38,6 +38,8 @@ import org.pashri.soundcheck.data.clipsNamedByBackups
 import org.pashri.soundcheck.data.sweepUnusedClips
 import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
+import org.pashri.soundcheck.playback.HeadphoneButton
+import org.pashri.soundcheck.playback.MediaButtonSession
 import org.pashri.soundcheck.playback.PlaybackService
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
 import org.pashri.soundcheck.ui.pattern.PatternEditorViewModel
@@ -88,11 +90,14 @@ class AppContainer(context: Context) {
 
     /** Builds the Metronome screen's view model. */
     val metronomeViewModelFactory: ViewModelProvider.Factory by lazy {
+        // Read during composition, but start() does nothing after its first call.
+        mediaButtons.start()
         MetronomeViewModel.Factory(
             output = soundOutput,
             focus = audioFocus,
             clockMs = SystemClock::elapsedRealtime,
             arbiter = toolArbiter,
+            headphones = mediaButtons.button,
         )
     }
 
@@ -332,6 +337,22 @@ class AppContainer(context: Context) {
         )
     }
 
+    /** Where headphone and car buttons go: the Warm-up or the Metronome, last to start wins. */
+    private val headphoneButton: HeadphoneButton by lazy {
+        HeadphoneButton(arbiter = toolArbiter, warmup = warmup, scope = appScope)
+    }
+
+    /** The app's one media session, for the headphone button and the lock-screen card. */
+    val mediaButtons: MediaButtonSession by lazy {
+        MediaButtonSession(
+            context = appContext,
+            button = headphoneButton,
+            warmup = warmup,
+            settings = settings.data,
+            scope = appScope,
+        )
+    }
+
     /** Whether "Play over other audio" is on; read each time a tool asks for focus. */
     private fun playsOverOtherAudio(): Boolean = settings.data.value?.playOverOtherAudio == true
 
@@ -347,6 +368,7 @@ class AppContainer(context: Context) {
                 .distinctUntilChanged()
                 .filter { it }
                 .collect {
+                    mediaButtons.start()
                     val intent = Intent(appContext, PlaybackService::class.java)
                     ContextCompat.startForegroundService(appContext, intent)
                 }
