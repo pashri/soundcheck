@@ -1,8 +1,12 @@
 package org.pashri.soundcheck.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,6 +27,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.pashri.soundcheck.ui.components.BackHeader
+import org.pashri.soundcheck.ui.components.ConfirmDialog
+import org.pashri.soundcheck.ui.components.OutlineButton
 import org.pashri.soundcheck.ui.components.SectionLabel
 import org.pashri.soundcheck.ui.components.Segmented
 import org.pashri.soundcheck.ui.components.StepperRow
@@ -41,20 +47,49 @@ import org.pashri.soundcheck.warmup.VoiceType
 fun SettingsRoute(factory: ViewModelProvider.Factory, onBack: () -> Unit) {
     val viewModel: SettingsViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val exporter = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(BACKUP_TYPE),
+    ) { uri -> uri?.let { viewModel.exportTo(it.toString()) } }
+    val importer = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let { viewModel.importFrom(it.toString()) } }
     val shown = state ?: return
-    SettingsScreen(state = shown, actions = viewModel, onBack = onBack)
+    SettingsScreen(
+        state = shown,
+        actions = viewModel,
+        onBack = onBack,
+        backup = BackupLinks(
+            exportFile = { exporter.launch(viewModel.exportFileName()) },
+            importFile = { importer.launch(arrayOf(ANY_FILE)) },
+        ),
+    )
 }
 
 /**
- * Range, Voice Type, "Play over other audio" and what the headphone button does, in the
- * Manuscript design. Scrolls at large font and display sizes.
+ * Opens the system's file picker for a backup.
+ *
+ * @property exportFile picks where to save a new backup.
+ * @property importFile picks a backup to import.
+ */
+data class BackupLinks(val exportFile: () -> Unit, val importFile: () -> Unit)
+
+/**
+ * Range, Voice Type, "Play over other audio", what the headphone button does, and a backup
+ * of the library and settings, in the Manuscript design. Scrolls at large font and display
+ * sizes.
  *
  * @param state what to show.
  * @param actions what the controls do.
  * @param onBack goes back.
+ * @param backup opens the file pickers for Export… and Import….
  */
 @Composable
-fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, onBack: () -> Unit) {
+fun SettingsScreen(
+    state: SettingsUiState,
+    actions: SettingsActions,
+    onBack: () -> Unit,
+    backup: BackupLinks,
+) {
     val colors = Manuscript.colors
     Column(modifier = Modifier.fillMaxSize().background(colors.paper)) {
         BackHeader(backLabel = "Warm-up", title = "Settings", onBack = onBack)
@@ -112,9 +147,51 @@ fun SettingsScreen(state: SettingsUiState, actions: SettingsActions, onBack: () 
             PressRow(presses = "1 press", action = "Pause, or resume this Iteration")
             PressRow(presses = "2 press", action = "Next Step")
             PressRow(presses = "3 press", action = "Previous Step")
+            HorizontalDivider(thickness = 1.dp, color = colors.rule)
+            BackupSection(state = state, backup = backup)
         }
     }
+    state.importQuestion?.let { counts ->
+        ConfirmDialog(
+            title = "Replace your library?",
+            text = "This backup has $counts. Importing replaces your library and settings; " +
+                "the current ones are kept as a backup on the phone. Recordings stay with " +
+                "every Sound the backup still has.",
+            confirmLabel = "Import",
+            onConfirm = actions::confirmImport,
+            onDismiss = actions::cancelImport,
+        )
+    }
 }
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BackupSection(state: SettingsUiState, backup: BackupLinks) {
+    val colors = Manuscript.colors
+    SectionLabel(text = "BACKUP")
+    Text(text = BACKUP_NOTE, style = ManuscriptType.body, color = colors.muted)
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        OutlineButton(text = "Export…", onClick = backup.exportFile)
+        OutlineButton(text = "Import…", onClick = backup.importFile)
+    }
+    state.backupMessage?.let { message ->
+        Text(
+            text = message,
+            style = ManuscriptType.body,
+            color = colors.ink,
+            modifier = Modifier.heightIn(min = 22.dp),
+        )
+    }
+}
+
+/** What a backup file is saved as. */
+private const val BACKUP_TYPE = "application/json"
+
+/** Any file can be picked to import; one that isn't a backup is refused with a message. */
+private const val ANY_FILE = "*/*"
 
 @Composable
 private fun PressRow(presses: String, action: String) {

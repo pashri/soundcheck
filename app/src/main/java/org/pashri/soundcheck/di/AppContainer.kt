@@ -6,6 +6,7 @@ import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
+import java.time.LocalDate
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -26,10 +27,12 @@ import org.pashri.soundcheck.audio.NativeAudioEngine
 import org.pashri.soundcheck.audio.SoundOutput
 import org.pashri.soundcheck.audio.SpeechSynth
 import org.pashri.soundcheck.audio.ToolArbiter
+import org.pashri.soundcheck.data.AndroidSharedFiles
 import org.pashri.soundcheck.data.ClipFiles
 import org.pashri.soundcheck.data.DocumentStore
 import org.pashri.soundcheck.data.LibraryCodec
 import org.pashri.soundcheck.data.SettingsCodec
+import org.pashri.soundcheck.data.SharedFiles
 import org.pashri.soundcheck.data.Store
 import org.pashri.soundcheck.data.clipsNamedByBackups
 import org.pashri.soundcheck.data.sweepUnusedClips
@@ -219,9 +222,18 @@ class AppContainer(context: Context) {
         )
     }
 
+    /** Files the person picks with the system's file picker, for backups. */
+    private val sharedFiles: SharedFiles by lazy { AndroidSharedFiles(appContext) }
+
     /** Builds the Settings screen's view model. */
     val settingsViewModelFactory: ViewModelProvider.Factory by lazy {
-        SettingsViewModel.Factory(settings = settings)
+        SettingsViewModel.Factory(
+            settings = settings,
+            library = library,
+            files = sharedFiles,
+            today = LocalDate::now,
+            clockMs = System::currentTimeMillis,
+        )
     }
 
     /**

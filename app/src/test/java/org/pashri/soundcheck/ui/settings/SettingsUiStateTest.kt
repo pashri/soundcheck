@@ -1,11 +1,16 @@
 package org.pashri.soundcheck.ui.settings
 
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.music.Pitch
+import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.Range
+import org.pashri.soundcheck.warmup.StarterLibrary
+import org.pashri.soundcheck.warmup.StarterPatterns
+import org.pashri.soundcheck.warmup.StarterSounds
 import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.WarmupSettings
 
@@ -66,5 +71,24 @@ class SettingsUiStateTest {
     @Test
     fun `the Range says when a change takes effect`() {
         assertEquals("Applies from the next Start.", RANGE_NOTE)
+    }
+
+    @Test
+    fun `a library's contents are counted in words`() {
+        assertEquals("1 programme · 8 patterns · 8 sounds", libraryCounts(StarterLibrary.LIBRARY))
+        val small = Library(
+            patterns = listOf(StarterPatterns.TRIAD),
+            sounds = listOf(StarterSounds.HUM),
+            programmes = emptyList(),
+        )
+        assertEquals("0 programmes · 1 pattern · 1 sound", libraryCounts(small))
+    }
+
+    @Test
+    fun `a backup file is named for the day it was made`() {
+        assertEquals(
+            "soundcheck-2026-09-26.json",
+            backupFileName(LocalDate.of(2026, 9, 26)),
+        )
     }
 }
