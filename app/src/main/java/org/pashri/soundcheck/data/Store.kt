@@ -10,6 +10,9 @@ interface Store<T : Any> {
     /** True when the latest change couldn't be saved, until a later save succeeds. */
     val saveFailed: StateFlow<Boolean>
 
+    /** True once an unreadable saved document has been set aside and replaced by the seed. */
+    val setAside: StateFlow<Boolean>
+
     /**
      * Changes the document. The change shows in [data] at once and is saved in the
      * background. Call from the main thread; a change before the document is read is dropped.

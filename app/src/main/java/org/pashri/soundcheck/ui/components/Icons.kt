@@ -33,6 +33,20 @@ object ManuscriptIcons {
 
     /** A right-pointing triangle against a bar: next. */
     val Next: ImageVector = fillIcon("Next", "M6 6l9 6-9 6zM17 6h2v12h-2z")
+
+    /** Two sliders: settings. */
+    val Settings: ImageVector = strokeIcon(
+        "Settings",
+        "M4 7h10M18 7h2M4 17h4M12 17h8",
+        "M14 7a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+        "M8 17a2 2 0 1 0 4 0a2 2 0 1 0 -4 0",
+    )
+
+    /** A chevron pointing right: opens something. */
+    val ChevronRight: ImageVector = strokeIcon("ChevronRight", "M9 5l7 7-7 7")
+
+    /** A chevron pointing left: back. */
+    val ChevronLeft: ImageVector = strokeIcon("ChevronLeft", "M15 5l-7 7 7 7")
 }
 
 private fun strokeIcon(name: String, vararg paths: String): ImageVector =

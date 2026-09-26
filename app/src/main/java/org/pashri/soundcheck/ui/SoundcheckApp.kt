@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -18,27 +19,33 @@ import androidx.navigation.compose.rememberNavController
 import org.pashri.soundcheck.di.AppContainer
 import org.pashri.soundcheck.ui.components.ManuscriptNavBar
 import org.pashri.soundcheck.ui.components.Tab
+import org.pashri.soundcheck.ui.components.tabFor
 import org.pashri.soundcheck.ui.metronome.MetronomeRoute
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.tuner.TunerRoute
-import org.pashri.soundcheck.ui.warmup.WarmupRoute
+import org.pashri.soundcheck.ui.warmup.WarmupRoutes
+import org.pashri.soundcheck.ui.warmup.warmupGraph
 
 /**
  * The whole app: the current tool above the tab bar.
  *
  * @param container shared dependencies.
  * @param openTab a tab to navigate to once, e.g. from the playback notification, or null.
+ *     The Warm-up opens on its playing screen, since only the notification asks for it.
  * @param onTabOpened called once [openTab] has been acted on, so it is not repeated.
  */
 @Composable
 fun SoundcheckApp(container: AppContainer, openTab: Tab? = null, onTabOpened: () -> Unit = {}) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
-    val current = Tab.entries.firstOrNull { it.route == entry?.destination?.route }
-        ?: Tab.Metronome
+    val routes = entry?.destination?.hierarchy?.map { it.route } ?: emptySequence()
+    val current = tabFor(routes) ?: Tab.Metronome
     LaunchedEffect(openTab) {
         openTab?.let {
             navController.openTab(it)
+            if (it == Tab.WarmUp) {
+                navController.navigate(WarmupRoutes.PLAYING) { launchSingleTop = true }
+            }
             onTabOpened()
         }
     }
@@ -61,9 +68,7 @@ fun SoundcheckApp(container: AppContainer, openTab: Tab? = null, onTabOpened: ()
             composable(Tab.Metronome.route) {
                 MetronomeRoute(factory = container.metronomeViewModelFactory)
             }
-            composable(Tab.WarmUp.route) {
-                WarmupRoute(factory = container.warmupViewModelFactory)
-            }
+            warmupGraph(container = container, navController = navController)
         }
         ManuscriptNavBar(current = current, onSelect = { navController.openTab(it) })
     }

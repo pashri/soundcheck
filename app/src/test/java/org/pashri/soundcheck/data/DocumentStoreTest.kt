@@ -163,14 +163,17 @@ class DocumentStoreTest {
             io = Dispatchers.IO,
             clockMs = { now },
         )
-        runBlocking { store.load().join() }
-        store.edit { it + "1" }
-        assertTrue(reachedGate.await(2, TimeUnit.SECONDS))
-        store.edit { it + "2" }
-        // Give an unguarded second save every chance to land on disk while the first is
-        // still gated, so a missing mutex would let the first overwrite it once released.
-        Thread.sleep(300)
-        releaseGate.countDown()
+        try {
+            runBlocking { store.load().join() }
+            store.edit { it + "1" }
+            assertTrue(reachedGate.await(2, TimeUnit.SECONDS))
+            store.edit { it + "2" }
+            // Give an unguarded second save every chance to land on disk while the first is
+            // still gated, so a missing mutex would let the first overwrite it once released.
+            Thread.sleep(300)
+        } finally {
+            releaseGate.countDown()
+        }
         assertEquals("seed\n1\n2", file.readText(afterStableFor = 200, timeoutMs = 2_000))
         scope.cancel()
     }

@@ -167,23 +167,6 @@ fun iterationView(
 }
 
 /**
- * A key label read aloud, with its symbols spelled out: a bundled font glyph such as "♭"
- * doesn't always speak.
- *
- * @param label a key label from [keyLabel], e.g. "E♭ major" or "E♭".
- * @return the label with "♭" read as " flat" and "♯" as " sharp", e.g. "E flat major".
- */
-internal fun spokenKeyLabel(label: String): String {
-    val letter = label.take(1)
-    val rest = label.drop(1)
-    return when {
-        rest.startsWith("♭") -> "$letter flat${rest.drop(1)}"
-        rest.startsWith("♯") -> "$letter sharp${rest.drop(1)}"
-        else -> "$letter$rest"
-    }
-}
-
-/**
  * The Iteration count and direction read aloud, for TalkBack.
  *
  * @param view the key and progress shown.

@@ -6,6 +6,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.music.Pitch
+import org.pashri.soundcheck.ui.components.spokenMusic
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Playback
 import org.pashri.soundcheck.warmup.StarterProgrammes
@@ -117,10 +118,10 @@ class WarmupUiStateTest {
 
     @Test
     fun `a key label is spoken with its symbols spelled out`() {
-        assertEquals("E flat major", spokenKeyLabel("E♭ major"))
-        assertEquals("E flat", spokenKeyLabel("E♭"))
-        assertEquals("C major", spokenKeyLabel("C major"))
-        assertEquals("F sharp7", spokenKeyLabel("F♯7"))
+        assertEquals("E flat major", spokenMusic("E♭ major"))
+        assertEquals("E flat", spokenMusic("E♭"))
+        assertEquals("C major", spokenMusic("C major"))
+        assertEquals("F sharp 7", spokenMusic("F♯7"))
     }
 
     @Test

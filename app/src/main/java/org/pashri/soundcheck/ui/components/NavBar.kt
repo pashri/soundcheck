@@ -46,6 +46,15 @@ enum class Tab(val route: String, val label: String, val icon: ImageVector) {
 fun tabForRoute(route: String?): Tab? = Tab.entries.firstOrNull { it.route == route }
 
 /**
+ * The [Tab] a screen belongs to, from its route and the routes of the graphs around it.
+ *
+ * @param routes the screen's route first, then each enclosing graph's, as
+ *     `NavDestination.hierarchy` lists them.
+ * @return the first [Tab] whose route is among them, or null.
+ */
+fun tabFor(routes: Sequence<String?>): Tab? = routes.firstNotNullOfOrNull(::tabForRoute)
+
+/**
  * Bottom navigation in the Manuscript style: a rule above, and a vermilion bar over the
  * selected tab.
  *

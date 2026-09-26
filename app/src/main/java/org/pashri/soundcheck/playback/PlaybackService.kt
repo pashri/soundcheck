@@ -108,7 +108,7 @@ class PlaybackService : Service() {
                 playback = it,
                 programme = it.programme,
                 range = it.range,
-                sounds = container.sounds,
+                sounds = container.library.data.value?.sounds.orEmpty(),
             )
         }
         val now = nowPlaying(state)

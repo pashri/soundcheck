@@ -79,8 +79,7 @@ class DocumentStore<T : Any>(
 
     override val saveFailed: StateFlow<Boolean> = _saveFailed.asStateFlow()
 
-    /** True once an unreadable file has been moved aside and replaced by [seed]. */
-    val setAside: StateFlow<Boolean> = _setAside.asStateFlow()
+    override val setAside: StateFlow<Boolean> = _setAside.asStateFlow()
 
     /**
      * Reads the document from [file], or saves [seed] there if there is no file. Call once.

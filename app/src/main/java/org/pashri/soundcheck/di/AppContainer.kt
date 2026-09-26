@@ -5,6 +5,8 @@ import android.content.Intent
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,20 +23,24 @@ import org.pashri.soundcheck.audio.NativeAudioEngine
 import org.pashri.soundcheck.audio.SoundOutput
 import org.pashri.soundcheck.audio.SpeechSynth
 import org.pashri.soundcheck.audio.ToolArbiter
+import org.pashri.soundcheck.data.DocumentStore
+import org.pashri.soundcheck.data.LibraryCodec
+import org.pashri.soundcheck.data.SettingsCodec
+import org.pashri.soundcheck.data.Store
 import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
 import org.pashri.soundcheck.playback.PlaybackService
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
+import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
+import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.ProgrammePlayer
-import org.pashri.soundcheck.warmup.Range
-import org.pashri.soundcheck.warmup.Sound
 import org.pashri.soundcheck.warmup.SpokenAnnouncements
-import org.pashri.soundcheck.warmup.StarterProgrammes
+import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StarterSounds
-import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.WarmupController
+import org.pashri.soundcheck.warmup.WarmupSettings
 
 /**
  * Manually constructed dependencies.
@@ -48,6 +54,9 @@ class AppContainer(context: Context) {
 
     /** Work that outlives every screen, such as a Programme playing with the screen off. */
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /** Makes ids for new Programmes, Steps, Patterns and Sounds. */
+    private val newId: () -> String = { UUID.randomUUID().toString() }
 
     /** The one audio output every tool plays through. */
     val soundOutput: SoundOutput by lazy { NativeAudioEngine() }
@@ -87,11 +96,26 @@ class AppContainer(context: Context) {
         )
     }
 
-    /** The Sound library: the starter Sounds until the library screens arrive. */
-    val sounds: List<Sound> = StarterSounds.ALL
+    /**
+     * The Patterns, Sounds and Programmes, saved in the app's files. A fresh install gets the
+     * starter kit.
+     */
+    val library: Store<Library> = DocumentStore(
+        file = File(appContext.filesDir, LIBRARY_FILE),
+        codec = LibraryCodec,
+        seed = { StarterLibrary.LIBRARY },
+        scope = appScope,
+        io = Dispatchers.IO,
+    ).also { it.load() }
 
-    /** The Range Programmes play through: the Tenor preset until Settings arrive. */
-    val warmupRange: Range = VoiceType.TENOR.range
+    /** The Range, Voice Type and "Play over other audio", saved in the app's files. */
+    val settings: Store<WarmupSettings> = DocumentStore(
+        file = File(appContext.filesDir, SETTINGS_FILE),
+        codec = SettingsCodec,
+        seed = { WarmupSettings.DEFAULT },
+        scope = appScope,
+        io = Dispatchers.IO,
+    ).also { it.load() }
 
     /** The sampled grand piano, loaded into [soundOutput] when a Programme first plays. */
     private val piano: Piano by lazy {
@@ -106,8 +130,11 @@ class AppContainer(context: Context) {
 
     /** Plays Programmes; it belongs to the app, not to the Warm-up screen. */
     val warmup: WarmupController by lazy {
-        val announcements =
-            SpokenAnnouncements(output = soundOutput, speech = speech, sounds = sounds)
+        val announcements = SpokenAnnouncements(
+            output = soundOutput,
+            speech = speech,
+            sounds = StarterSounds.ALL,
+        )
         val player = ProgrammePlayer(
             output = soundOutput,
             piano = piano,
@@ -122,20 +149,25 @@ class AppContainer(context: Context) {
         ).also(::keepServiceWhilePlaying)
     }
 
-    /** Builds the Warm-up screen's view model. */
+    /** Builds the playing screen's view model. */
     val warmupViewModelFactory: ViewModelProvider.Factory by lazy {
-        WarmupViewModel.Factory(
+        WarmupViewModel.Factory(controller = warmup, library = library.data)
+    }
+
+    /** Builds the Warm-up home's view model. */
+    val warmupHomeViewModelFactory: ViewModelProvider.Factory by lazy {
+        WarmupHomeViewModel.Factory(
             controller = warmup,
-            programme = StarterProgrammes.WARM_UP,
-            range = warmupRange,
-            sounds = sounds,
+            library = library,
+            settings = settings,
+            newId = newId,
         )
     }
 
     /**
      * Starts the playback service whenever a Programme is loaded; the service stops itself
-     * when it is unloaded. A Programme is only ever loaded by a tap on the Warm-up screen,
-     * so the app is in the foreground and may start a foreground service.
+     * when it is unloaded. A Programme is only ever loaded by a tap on a Warm-up screen, so
+     * the app is in the foreground and may start a foreground service.
      */
     private fun keepServiceWhilePlaying(controller: WarmupController) {
         appScope.launch {
@@ -148,5 +180,10 @@ class AppContainer(context: Context) {
                     ContextCompat.startForegroundService(appContext, intent)
                 }
         }
+    }
+
+    private companion object {
+        const val LIBRARY_FILE = "library.json"
+        const val SETTINGS_FILE = "settings.json"
     }
 }

@@ -1,11 +1,5 @@
 package org.pashri.soundcheck.ui.warmup
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,13 +25,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -52,12 +45,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
 import org.pashri.soundcheck.ui.components.ScreenHeader
+import org.pashri.soundcheck.ui.components.spokenMusic
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SerifFamily
@@ -68,52 +61,24 @@ import org.pashri.soundcheck.warmup.StarterSounds
 import org.pashri.soundcheck.warmup.VoiceType
 
 /**
- * The Warm-up tab, wired to its view model. Unlike the Metronome and the Tuner, leaving the
- * tab or the app doesn't stop anything: a Programme keeps playing in the background. On
- * Android 13 and later, the first Start ever asks to show notifications, for the lock-screen
- * controls; playback goes ahead whatever the answer, and the question is never repeated.
+ * The playing screen, wired to its view model. Leaving it doesn't stop anything: a Programme
+ * keeps playing in the background. When no Programme is loaded (it was stopped, it ended, or
+ * a stale notification opened this screen) it closes itself.
  *
  * @param factory builds the [WarmupViewModel].
+ * @param onFinished closes this screen.
  */
 @Composable
-fun WarmupRoute(factory: ViewModelProvider.Factory) {
+fun WarmupRoute(factory: ViewModelProvider.Factory, onFinished: () -> Unit) {
     val viewModel: WarmupViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val notifications =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    val actions = remember(viewModel, notifications, context) {
-        object : WarmupActions by viewModel {
-            override fun playPause() {
-                if (!viewModel.uiState.value.active && shouldAskForNotifications(context)) {
-                    notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                viewModel.playPause()
-            }
-        }
+    val shown = state
+    if (shown == null) {
+        LaunchedEffect(Unit) { onFinished() }
+        return
     }
-    WarmupScreen(state = state, actions = actions)
+    WarmupScreen(state = shown, actions = viewModel)
 }
-
-/**
- * True once ever, on Android 13 and later without the notification permission: a flag in
- * [PROMPT_PREFS] remembers that the question was asked, across launches.
- */
-private fun shouldAskForNotifications(context: Context): Boolean {
-    if (!needsNotificationPermission(context)) return false
-    val prefs = context.getSharedPreferences(PROMPT_PREFS, Context.MODE_PRIVATE)
-    if (prefs.getBoolean(ASKED_NOTIFICATIONS, false)) return false
-    prefs.edit { putBoolean(ASKED_NOTIFICATIONS, true) }
-    return true
-}
-
-private fun needsNotificationPermission(context: Context): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-        PackageManager.PERMISSION_GRANTED
-
-private const val PROMPT_PREFS = "permission_prompts"
-private const val ASKED_NOTIFICATIONS = "asked_notifications"
 
 /**
  * The playing Programme in the Manuscript design: the Sound, the key, the Iterations, the
@@ -175,7 +140,7 @@ private fun IterationPanel(view: IterationView, active: Boolean) {
             modifier = Modifier
                 .weight(1f, fill = false)
                 .paddingFromBaseline(top = KEY_ABOVE_BASELINE, bottom = KEY_BELOW_BASELINE)
-                .clearAndSetSemantics { contentDescription = spokenKeyLabel(view.keyLabel) },
+                .clearAndSetSemantics { contentDescription = spokenMusic(view.keyLabel) },
         )
         Text(
             text = view.progressLabel,

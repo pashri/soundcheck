@@ -240,4 +240,66 @@ class WarmupControllerTest {
             assertEquals(false, rig.playback?.playing)
             assertEquals(Tool.TUNER, arbiter.current)
         }
+
+    @Test
+    fun `a Programme that starts reports that it is playing`() = runTest {
+        assertEquals(StartOutcome.PLAYING, rig().controller.play(programme, range))
+    }
+
+    @Test
+    fun `a Programme with no Step that fits reports it and takes nothing`() = runTest {
+        val rig = rig()
+        val wide = Programme(
+            name = "Wide",
+            steps = listOf(triad.copy(pattern = StarterPatterns.DOUBLE_ARPEGGIO)),
+        )
+        val empty = Programme(name = "Empty", steps = emptyList())
+        assertEquals(StartOutcome.NOTHING_FITS, rig.controller.play(wide, range))
+        assertEquals(StartOutcome.NOTHING_FITS, rig.controller.play(empty, range))
+        assertEquals(0, focus.acquireCount)
+        assertNull(arbiter.current)
+        assertNull(rig.playback)
+    }
+
+    @Test
+    fun `refused focus reports the audio as busy`() = runTest {
+        focus.grant = false
+        assertEquals(StartOutcome.AUDIO_BUSY, rig().controller.play(programme, range))
+    }
+
+    @Test
+    fun `an output that won't start reports it and waits paused on the first Step`() = runTest {
+        val rig = rig()
+        rig.output.startResult = false
+        assertEquals(StartOutcome.OUTPUT_FAILED, rig.controller.play(programme, range))
+        assertEquals(false, rig.playback?.playing)
+        assertEquals(0, rig.playback?.stepIndex)
+    }
+
+    @Test
+    fun `a saved Programme plays as saved on the saved Range`() = runTest {
+        val rig = rig()
+        val outcome = rig.controller.playSaved(
+            library = StarterLibrary.LIBRARY,
+            settings = WarmupSettings.DEFAULT,
+            id = StarterProgrammes.SAVED_WARM_UP.id,
+        )
+        assertEquals(StartOutcome.PLAYING, outcome)
+        assertEquals(StarterProgrammes.WARM_UP, rig.playback?.programme)
+        assertEquals(VoiceType.TENOR.range, rig.playback?.range)
+    }
+
+    @Test
+    fun `nothing plays before the library and settings load or for a missing Programme`() =
+        runTest {
+            val controller = rig().controller
+            val id = StarterProgrammes.SAVED_WARM_UP.id
+            val library = StarterLibrary.LIBRARY
+            val settings = WarmupSettings.DEFAULT
+            assertNull(controller.playSaved(library = null, settings = settings, id = id))
+            assertNull(controller.playSaved(library = library, settings = null, id = id))
+            val missing = ProgrammeId("x")
+            assertNull(controller.playSaved(library = library, settings = settings, id = missing))
+            assertEquals(0, focus.acquireCount)
+        }
 }
