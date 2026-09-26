@@ -339,6 +339,7 @@ class ProgrammePlayerTest {
             rig.output.startResult = false
             assertFalse(rig.player.play(programme = programme, range = range))
             val expected = at(step = 0, iteration = null, playing = false)
+                .copy(outputFailed = true)
             assertEquals(expected, rig.player.playback.value)
             rig.output.startResult = true
             assertTrue(rig.player.resume())
@@ -451,5 +452,18 @@ class ProgrammePlayerTest {
         assertEquals(0, rig.player.note.value)
         rig.player.stop()
         assertNull(rig.player.note.value)
+    }
+
+    @Test
+    fun `a failed output is reported until the Programme plays again`() = runTest {
+        val rig = rig()
+        rig.player.play(programme = programme, range = range)
+        runUntil(1_000)
+        assertEquals(false, rig.player.playback.value?.outputFailed)
+        rig.output.failed = true
+        runUntil(1_100)
+        assertEquals(true, rig.player.playback.value?.outputFailed)
+        assertTrue(rig.player.resume())
+        assertEquals(false, rig.player.playback.value?.outputFailed)
     }
 }

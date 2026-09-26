@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.pashri.soundcheck.audio.SampleIds
 import org.pashri.soundcheck.audio.SoundOutput
@@ -21,6 +22,8 @@ import org.pashri.soundcheck.piano.Piano
  * @property iteration the Iteration sounding (or resuming), from 0; null during the
  *     Announcement, the gap, the Demo and the pause between Steps.
  * @property playing false while paused.
+ * @property outputFailed true while paused because the sound output failed or wouldn't
+ *     start, rather than because anyone paused; false again once the Programme plays.
  */
 data class Playback(
     val programme: Programme,
@@ -28,6 +31,7 @@ data class Playback(
     val stepIndex: Int,
     val iteration: Int?,
     val playing: Boolean,
+    val outputFailed: Boolean = false,
 )
 
 /**
@@ -169,10 +173,15 @@ class ProgrammePlayer(
         cancelLoop()
         _note.value = null
         output.fadeOut()
-        val target = base.copy(stepIndex = point.step, iteration = point.iteration, playing = true)
+        val target = base.copy(
+            stepIndex = point.step,
+            iteration = point.iteration,
+            playing = true,
+            outputFailed = false,
+        )
         if (!output.start()) {
             resumeAt = point
-            _playback.value = target.copy(playing = false)
+            _playback.value = target.copy(playing = false, outputFailed = true)
             return false
         }
         resumeAt = null
@@ -231,6 +240,7 @@ class ProgrammePlayer(
     private suspend fun tick(base: Playback): Boolean {
         if (output.hasFailed()) {
             pause(fade = false)
+            _playback.update { it?.copy(outputFailed = true) }
             return false
         }
         val now = output.framePosition()

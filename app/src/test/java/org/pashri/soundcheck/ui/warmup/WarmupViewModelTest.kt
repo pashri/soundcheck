@@ -20,10 +20,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
+import org.pashri.soundcheck.audio.FakeSoundOutput
 import org.pashri.soundcheck.data.FakeStore
 import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StarterSounds
+import org.pashri.soundcheck.warmup.StartOutcome
 import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.WarmupController
 import org.pashri.soundcheck.warmup.renameSound
@@ -147,5 +149,40 @@ class WarmupViewModelTest {
             assertSame(first.iterations, next.iterations)
             assertSame(first.staff?.layout, next.staff?.layout)
             assertEquals(first.copy(staff = first.staff?.copy(now = 1)), next)
+        }
+
+    @Test
+    fun `a failed output says the sound stopped`() = runTest(context = dispatcher) {
+        val output = FakeSoundOutput(clockMs = { testScheduler.currentTime })
+        val controller = testController(focus = focus, output = output)
+        controller.play(programme = StarterProgrammes.WARM_UP, range = VoiceType.TENOR.range)
+        val viewModel = viewModel(controller)
+        advanceTimeBy(1_000)
+        output.failed = true
+        advanceTimeBy(200)
+        assertEquals(false, state(viewModel)?.playing)
+        assertEquals(OUTPUT_STOPPED_MESSAGE, state(viewModel)?.problem)
+        viewModel.playPause()
+        assertEquals(true, state(viewModel)?.playing)
+        assertNull(state(viewModel)?.problem)
+    }
+
+    @Test
+    fun `a resume another app refuses says so, until the Programme plays`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            focus.loseFocus()
+            runCurrent()
+            focus.grant = false
+            viewModel.playPause()
+            assertEquals(false, state(viewModel)?.playing)
+            assertEquals(
+                startProblemMessage(StartOutcome.AUDIO_BUSY),
+                state(viewModel)?.problem,
+            )
+            focus.grant = true
+            viewModel.playPause()
+            assertEquals(true, state(viewModel)?.playing)
+            assertNull(state(viewModel)?.problem)
         }
 }

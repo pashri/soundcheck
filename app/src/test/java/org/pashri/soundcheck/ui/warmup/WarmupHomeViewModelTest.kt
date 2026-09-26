@@ -17,6 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
+import org.pashri.soundcheck.audio.FakeSoundOutput
 import org.pashri.soundcheck.data.FakeStore
 import org.pashri.soundcheck.data.Store
 import org.pashri.soundcheck.music.Pitch
@@ -182,4 +183,20 @@ class WarmupHomeViewModelTest {
             settings.setAside.value = true
             assertEquals(SETTINGS_RESTORED_NOTICE, state(viewModel)?.restoredNotice)
         }
+
+    @Test
+    fun `a problem clears once the Programme plays after all`() = runTest(context = dispatcher) {
+        val output = FakeSoundOutput(clockMs = { testScheduler.currentTime })
+        val controller = testController(focus = focus, output = output)
+        val viewModel = viewModel(controller = controller)
+        output.startResult = false
+        assertFalse(viewModel.start(starter))
+        assertEquals(
+            startProblemMessage(StartOutcome.OUTPUT_FAILED),
+            state(viewModel)?.programmes?.single()?.problem,
+        )
+        output.startResult = true
+        controller.resume()
+        assertNull(state(viewModel)?.programmes?.single()?.problem)
+    }
 }

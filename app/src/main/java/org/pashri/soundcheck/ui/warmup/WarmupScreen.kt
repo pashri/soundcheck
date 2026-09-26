@@ -32,9 +32,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -237,6 +239,17 @@ private fun Transport(state: WarmupUiState, actions: WarmupActions) {
         modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        state.problem?.let { problem ->
+            Text(
+                text = problem,
+                style = ManuscriptType.body,
+                color = colors.accentText,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),

@@ -17,6 +17,7 @@ import org.pashri.soundcheck.warmup.SoundId
 import org.pashri.soundcheck.warmup.StarterPatterns
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StarterSounds
+import org.pashri.soundcheck.warmup.StartOutcome
 import org.pashri.soundcheck.warmup.Step
 import org.pashri.soundcheck.warmup.VoiceType
 
@@ -258,5 +259,33 @@ class WarmupUiStateTest {
             val staff = checkNotNull(state(stepIndex = 2, iteration = iteration).staff)
             assertEquals(bounds, staff.reserved)
         }
+    }
+
+    @Test
+    fun `a pause nobody made says why, and an ordinary pause says nothing`() {
+        val paused = Playback(
+            programme = programme,
+            range = tenor,
+            stepIndex = 0,
+            iteration = null,
+            playing = false,
+        )
+        fun problemOf(playback: Playback, busy: Boolean): String? = warmupUiState(
+            playback = playback,
+            programme = programme,
+            range = tenor,
+            sounds = StarterSounds.ALL,
+            busy = busy,
+        ).problem
+        assertEquals(
+            OUTPUT_STOPPED_MESSAGE,
+            problemOf(playback = paused.copy(outputFailed = true), busy = false),
+        )
+        assertEquals(
+            startProblemMessage(StartOutcome.AUDIO_BUSY),
+            problemOf(playback = paused, busy = true),
+        )
+        assertNull(problemOf(playback = paused, busy = false))
+        assertNull(problemOf(playback = paused.copy(playing = true), busy = true))
     }
 }

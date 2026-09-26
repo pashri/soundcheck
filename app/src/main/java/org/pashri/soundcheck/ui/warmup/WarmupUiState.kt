@@ -9,6 +9,7 @@ import org.pashri.soundcheck.warmup.Range
 import org.pashri.soundcheck.warmup.RoundTrip
 import org.pashri.soundcheck.warmup.Sound
 import org.pashri.soundcheck.warmup.SoundId
+import org.pashri.soundcheck.warmup.StartOutcome
 import org.pashri.soundcheck.warmup.Step
 import org.pashri.soundcheck.warmup.firstStep
 import org.pashri.soundcheck.warmup.nextStep
@@ -55,6 +56,7 @@ data class IterationView(
  * @property nextDetail the next Step's Pattern, e.g. "on Double arpeggio", or null.
  * @property active whether a Programme is playing or paused.
  * @property playing whether it is playing.
+ * @property problem why the Programme is paused when nobody paused it, or null.
  */
 data class WarmupUiState(
     val programmeName: String,
@@ -69,6 +71,7 @@ data class WarmupUiState(
     val nextDetail: String?,
     val active: Boolean,
     val playing: Boolean,
+    val problem: String?,
 ) {
     /** The note in the header, e.g. "STEP 3 / 6". */
     val stepLabel: String
@@ -106,6 +109,8 @@ interface WarmupActions {
  * @param range the Range to offer it on.
  * @param sounds the Sound library, for labels.
  * @param note the index of the Pattern note being sung, or null.
+ * @param busy whether the last Resume, Next or Previous was refused because another app
+ *     holds the sound.
  * @return what to show.
  */
 fun warmupUiState(
@@ -114,6 +119,7 @@ fun warmupUiState(
     range: Range,
     sounds: List<Sound>,
     note: Int? = null,
+    busy: Boolean = false,
 ): WarmupUiState {
     val shown = playback?.programme ?: programme
     val shownRange = playback?.range ?: range
@@ -153,6 +159,11 @@ fun warmupUiState(
         nextDetail = next?.let { "on ${it.pattern.name}" },
         active = playback != null,
         playing = playback?.playing == true,
+        problem = when {
+            playback?.outputFailed == true -> OUTPUT_STOPPED_MESSAGE
+            busy && playback?.playing == false -> startProblemMessage(StartOutcome.AUDIO_BUSY)
+            else -> null
+        },
     )
 }
 
@@ -243,6 +254,9 @@ fun keyLabel(key: Pitch, chord: KeyChord): String = when (chord) {
     KeyChord.ROOT_ONLY -> key.pitchClassName
     else -> "${key.pitchClassName}${chord.label}"
 }
+
+/** What the playing screen says when the sound output failed or wouldn't start. */
+const val OUTPUT_STOPPED_MESSAGE: String = "The sound stopped. Press Resume to try again."
 
 private fun labelOf(id: SoundId, sounds: List<Sound>, fallback: String): String =
     sounds.firstOrNull { it.id == id }?.label ?: fallback

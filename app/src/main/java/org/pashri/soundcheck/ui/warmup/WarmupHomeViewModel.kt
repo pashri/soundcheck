@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import org.pashri.soundcheck.data.Store
 import org.pashri.soundcheck.warmup.Library
 import org.pashri.soundcheck.warmup.ProgrammeId
@@ -93,6 +94,12 @@ class WarmupHomeViewModel(
             )
         }
     }.stateIn(scope = viewModelScope, started = SharingStarted.Eagerly, initialValue = null)
+
+    init {
+        viewModelScope.launch {
+            controller.playback.collect { if (it?.playing == true) problem.value = null }
+        }
+    }
 
     /**
      * Plays a Programme, as it is saved now, on the Range from Settings.

@@ -13,11 +13,16 @@ import org.pashri.soundcheck.piano.Piano
  * A [WarmupController] on fakes, running on the test's scheduler, for view model tests.
  *
  * @param focus the audio focus it asks for.
+ * @param output where it plays; pass one to make it fail or refuse to start.
+ * @param arbiter the tool slot it takes; share one with other tools under test.
  * @return the controller.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun TestScope.testController(focus: FocusGate = FakeFocusGate()): WarmupController {
-    val output = FakeSoundOutput(clockMs = { testScheduler.currentTime })
+fun TestScope.testController(
+    focus: FocusGate = FakeFocusGate(),
+    output: FakeSoundOutput = FakeSoundOutput(clockMs = { testScheduler.currentTime }),
+    arbiter: ToolArbiter = ToolArbiter(),
+): WarmupController {
     val player = ProgrammePlayer(
         output = output,
         piano = Piano(source = FakePianoSource(), output = output),
@@ -27,7 +32,7 @@ fun TestScope.testController(focus: FocusGate = FakeFocusGate()): WarmupControll
     return WarmupController(
         player = player,
         focus = focus,
-        arbiter = ToolArbiter(),
+        arbiter = arbiter,
         scope = backgroundScope,
     )
 }
