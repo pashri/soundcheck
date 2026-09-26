@@ -20,8 +20,8 @@ import org.pashri.soundcheck.warmup.WarmupSettings
 /**
  * Soundcheck's one media session, owned by the app rather than by the playback service, so
  * the headphone button can reach the Metronome as well as the Warm-up. It exists while
- * [HeadphoneButton.needed] (a Programme is loaded or the Metronome's screen shows) and "Play
- * over other audio" is off: Android 12 and later give the button to the app that last
+ * [HeadphoneButton.needed] (a Programme is loaded or the Metronome's screen shows) and the
+ * loaded settings have "Play over other audio" off: Android 12 and later give the button to the app that last
  * played, even to an inactive session, so while mixing there is no session at all. The
  * playback service puts [session] on the lock-screen card while a Programme is loaded; with
  * none loaded the session shows nothing playing (see [resetsSession]). Use from the main
@@ -45,7 +45,10 @@ class MediaButtonSession(
     private val _session = MutableStateFlow<MediaSessionCompat?>(null)
     private var started = false
 
-    /** The session, or null while nothing needs the button or Soundcheck mixes. */
+    /**
+     * The session, or null while nothing needs the button, the settings haven't loaded or
+     * Soundcheck mixes.
+     */
     val session: StateFlow<MediaSessionCompat?> = _session.asStateFlow()
 
     /**

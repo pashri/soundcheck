@@ -84,7 +84,18 @@ class MediaKeysTest {
             sessionChange(hasSession = false, settings = pausing),
         )
         assertEquals(SessionChange.KEEP, sessionChange(hasSession = true, settings = pausing))
-        assertEquals(SessionChange.CREATE, sessionChange(hasSession = false, settings = null))
+    }
+
+    @Test
+    fun `no session is made before the settings say whether to mix, even for the Metronome`() {
+        assertEquals(
+            SessionChange.KEEP,
+            sessionChange(hasSession = false, settings = null, needed = true),
+        )
+        assertEquals(
+            SessionChange.CREATE,
+            sessionChange(hasSession = false, settings = WarmupSettings.DEFAULT, needed = true),
+        )
     }
 
     @Test

@@ -70,20 +70,22 @@ enum class SessionChange {
 /**
  * Whether to create or release the media session. While playing over other audio Soundcheck
  * has no session at all: Android 12 and later route the headphone button to the app that
- * last played audio, even to an inactive session.
+ * last played audio, even to an inactive session. Nor is there one before the settings have
+ * loaded, since they may yet say to mix; a Programme can't load before them.
  *
  * @param hasSession whether the session exists now.
  * @param settings the saved settings, or null before they have loaded.
  * @param needed whether anything can take presses (a Programme is loaded or the
  *     Metronome's screen shows); with nothing, there is no session either.
- * @return the change that makes the session match [takesHeadphoneButton] and [needed].
+ * @return the change that makes the session match the loaded settings,
+ *     [takesHeadphoneButton] and [needed].
  */
 fun sessionChange(
     hasSession: Boolean,
     settings: WarmupSettings?,
     needed: Boolean = true,
 ): SessionChange {
-    val wanted = takesHeadphoneButton(settings) && needed
+    val wanted = settings != null && takesHeadphoneButton(settings) && needed
     return when {
         wanted && !hasSession -> SessionChange.CREATE
         !wanted && hasSession -> SessionChange.RELEASE
