@@ -15,7 +15,10 @@ import org.pashri.soundcheck.MainActivity
 import org.pashri.soundcheck.R
 import org.pashri.soundcheck.ui.components.Tab
 
-/** The Warm-up's notification channel, its notification, and its media session's state. */
+/**
+ * The playback notification channel, the Warm-up's and the Metronome's notifications, and
+ * the media session's state.
+ */
 object PlaybackNotifications {
     /** The notification channel's id. */
     const val CHANNEL_ID: String = "warmup"
@@ -34,8 +37,8 @@ object PlaybackNotifications {
     fun createChannel(context: Context) {
         val channel = NotificationChannelCompat
             .Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_LOW)
-            .setName("Warm-up playback")
-            .setDescription("The Programme playing, with pause, next and stop.")
+            .setName("Playback")
+            .setDescription("The Programme or the Metronome playing, with its controls.")
             .setShowBadge(false)
             .build()
         NotificationManagerCompat.from(context).createNotificationChannel(channel)
@@ -43,16 +46,23 @@ object PlaybackNotifications {
 
     /**
      * The media-style notification for [now], shown on the lock screen with its controls.
-     * With a [session] it is the lock screen's media card; without one (while playing over
-     * other audio) it keeps the same buttons but leaves the media card to the other app.
+     * For the Warm-up with a [session] it is the lock screen's media card; without one
+     * (while playing over other audio) it keeps the same buttons but leaves the media card
+     * to the other app. The Metronome's never carries the session (see [notificationSpec]).
      *
      * @param context the playback service.
      * @param session its media session, or null while it has none.
      * @param now what to show.
+     * @param shows which tool it is about.
      * @return the notification.
      */
-    fun build(context: Context, session: MediaSessionCompat?, now: NowPlaying): Notification {
-        val spec = notificationSpec(now = now, withSession = session != null)
+    fun build(
+        context: Context,
+        session: MediaSessionCompat?,
+        now: NowPlaying,
+        shows: ServiceShows,
+    ): Notification {
+        val spec = notificationSpec(now = now, withSession = session != null, shows = shows)
         val style = MediaStyle().setShowActionsInCompactView(*spec.compactButtons.toIntArray())
         if (spec.attachesSession) session?.let { style.setMediaSession(it.sessionToken) }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -60,10 +70,8 @@ object PlaybackNotifications {
             .setContentTitle(now.title)
             .setContentText(now.text)
             .setSubText(now.subText)
-            .setContentIntent(openApp(context))
-            .setDeleteIntent(
-                serviceIntent(context = context, action = PlaybackService.ACTION_STOP),
-            )
+            .setContentIntent(openApp(context = context, tab = spec.opens))
+            .setDeleteIntent(serviceIntent(context = context, action = spec.dismissAction))
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
             .setOngoing(now.playing)
@@ -139,20 +147,26 @@ object PlaybackNotifications {
         )
 
     /**
-     * Tapping the notification opens the Warm-up tab, on top of the existing task rather than
-     * a second [MainActivity].
+     * Tapping the notification opens [tab], on top of the existing task rather than a second
+     * [MainActivity]. Each tab has its own request code, since extras alone don't tell two
+     * pending intents apart.
      */
-    private fun openApp(context: Context): PendingIntent {
+    private fun openApp(context: Context, tab: Tab): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
             .setAction(Intent.ACTION_MAIN)
             .addCategory(Intent.CATEGORY_LAUNCHER)
-            .putExtra(MainActivity.EXTRA_OPEN_TAB, Tab.WarmUp.route)
+            .putExtra(MainActivity.EXTRA_OPEN_TAB, tab.route)
             .setFlags(
                 Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP,
             )
-        return PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        return PendingIntent.getActivity(
+            context,
+            tab.route.hashCode(),
+            intent,
+            PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private const val SESSION_ACTIONS: Long =

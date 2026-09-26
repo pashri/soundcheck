@@ -3,6 +3,7 @@ package org.pashri.soundcheck.di
 import android.content.Context
 import android.content.Intent
 import android.os.SystemClock
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import java.io.File
@@ -11,6 +12,7 @@ import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
@@ -36,6 +38,7 @@ import org.pashri.soundcheck.data.SharedFiles
 import org.pashri.soundcheck.data.Store
 import org.pashri.soundcheck.data.clipsNamedByBackups
 import org.pashri.soundcheck.data.sweepUnusedClips
+import org.pashri.soundcheck.metronome.MetronomeController
 import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
 import org.pashri.soundcheck.playback.HeadphoneButton
@@ -88,17 +91,25 @@ class AppContainer(context: Context) {
     /** Keeps one tool making sound or listening at a time. */
     val toolArbiter: ToolArbiter = ToolArbiter()
 
-    /** Builds the Metronome screen's view model. */
-    val metronomeViewModelFactory: ViewModelProvider.Factory by lazy {
+    /**
+     * The Metronome; it belongs to the app, not to its screen, so it keeps clicking with the
+     * screen off, held up by the playback service.
+     */
+    val metronome: MetronomeController by lazy {
         // Read during composition, but start() does nothing after its first call.
         mediaButtons.start()
-        MetronomeViewModel.Factory(
+        MetronomeController(
             output = soundOutput,
             focus = audioFocus,
-            clockMs = SystemClock::elapsedRealtime,
             arbiter = toolArbiter,
             headphones = mediaButtons.button,
-        )
+            scope = appScope,
+        ).also { keepServiceWhile(needed = it.status.map { status -> status.running }) }
+    }
+
+    /** Builds the Metronome screen's view model. */
+    val metronomeViewModelFactory: ViewModelProvider.Factory by lazy {
+        MetronomeViewModel.Factory(metronome = metronome, clockMs = SystemClock::elapsedRealtime)
     }
 
     /**
@@ -109,7 +120,7 @@ class AppContainer(context: Context) {
 
     /**
      * The Tuner's own audio focus. Separate from [audioFocus] because the Metronome releases
-     * its focus whenever its tab closes, which would otherwise drop the Tuner's as it opens.
+     * its focus when the Tuner's listening stops it, which would otherwise drop the Tuner's.
      */
     val tunerFocus: FocusGate = AndroidAudioFocus(context)
 
@@ -209,7 +220,7 @@ class AppContainer(context: Context) {
             focus = warmupFocus,
             arbiter = toolArbiter,
             scope = appScope,
-        ).also(::keepServiceWhilePlaying)
+        ).also { keepServiceWhile(needed = it.playback.map { playback -> playback != null }) }
     }
 
     /** Builds the playing screen's view model. */
@@ -357,21 +368,32 @@ class AppContainer(context: Context) {
     private fun playsOverOtherAudio(): Boolean = settings.data.value?.playOverOtherAudio == true
 
     /**
-     * Starts the playback service whenever a Programme is loaded; the service stops itself
-     * when it is unloaded. A Programme is only ever loaded by a tap on a Warm-up screen, so
-     * the app is in the foreground and may start a foreground service.
+     * Starts the playback service whenever [needed] turns true (a Programme loads, or the
+     * Metronome starts); the service stops itself once neither needs it. A Programme only
+     * loads, and the Metronome mostly starts, by a tap on their screens, so the app is in
+     * the foreground and may start a foreground service. A headphone press that starts the
+     * Metronome with the screen off counts as a media button, which Android also allows;
+     * should Android refuse anyway, the Metronome plays on without the service.
      */
-    private fun keepServiceWhilePlaying(controller: WarmupController) {
+    private fun keepServiceWhile(needed: Flow<Boolean>) {
         appScope.launch {
-            controller.playback
-                .map { it != null }
+            needed
                 .distinctUntilChanged()
                 .filter { it }
                 .collect {
                     mediaButtons.start()
-                    val intent = Intent(appContext, PlaybackService::class.java)
-                    ContextCompat.startForegroundService(appContext, intent)
+                    startPlaybackService()
                 }
+        }
+    }
+
+    private fun startPlaybackService() {
+        val intent = Intent(appContext, PlaybackService::class.java)
+        try {
+            ContextCompat.startForegroundService(appContext, intent)
+        } catch (refused: IllegalStateException) {
+            // ForegroundServiceStartNotAllowedException (API 31+) is an IllegalStateException.
+            Log.w(LOG_TAG, "Android refused to start the playback service", refused)
         }
     }
 
@@ -379,5 +401,6 @@ class AppContainer(context: Context) {
         const val LIBRARY_FILE = "library.json"
         const val SETTINGS_FILE = "settings.json"
         const val CLIPS_DIRECTORY = "clips"
+        const val LOG_TAG = "Soundcheck"
     }
 }

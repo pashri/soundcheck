@@ -53,7 +53,10 @@ class MainActivity : ComponentActivity() {
 
     /** Intent extras [MainActivity] understands. */
     companion object {
-        /** The tab to open, by [Tab.route]; the playback notification opens the Warm-up. */
+        /**
+         * The tab to open, by [Tab.route]; the playback notification opens the Warm-up or
+         * the Metronome.
+         */
         const val EXTRA_OPEN_TAB: String = "org.pashri.soundcheck.extra.OPEN_TAB"
     }
 }

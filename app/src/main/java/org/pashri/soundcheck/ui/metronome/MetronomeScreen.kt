@@ -68,9 +68,9 @@ import org.pashri.soundcheck.ui.theme.SoundcheckTheme
 
 /**
  * The Metronome tab, wired to its view model. While the screen shows, the headphone button
- * can start and stop the Metronome. Stops the Metronome and takes the button back when its
- * screen leaves composition (switching tabs) or the app leaves the foreground, but not on a
- * configuration change.
+ * can start and stop the Metronome. Leaving the screen (switching tabs, the screen off, the
+ * app in the background) never stops it: a playing Metronome keeps clicking and keeps the
+ * button, and a stopped one gives the button back. A configuration change isn't leaving.
  *
  * @param factory builds the [MetronomeViewModel].
  */
@@ -80,14 +80,14 @@ fun MetronomeRoute(factory: ViewModelProvider.Factory) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
     LifecycleEventEffect(event = Lifecycle.Event.ON_START) { viewModel.onShown() }
-    // ON_STOP also fires on a config change (rotation, dark-theme toggle); only stop when the
-    // app is actually leaving the screen, not being recreated in place.
+    // ON_STOP also fires on a config change (rotation, dark-theme toggle); only count the
+    // screen as gone when the app is actually leaving it, not being recreated in place.
     LifecycleEventEffect(event = Lifecycle.Event.ON_STOP) {
         if (activity?.isChangingConfigurations != true) viewModel.onHidden()
     }
     // popUpTo(start) { saveState = true } keeps this entry (Metronome is the start
     // destination) on the back stack across tab switches, and the outgoing destination is
-    // normally removed from composition before ON_STOP is delivered, so also stop here.
+    // normally removed from composition before ON_STOP is delivered, so also hide here.
     DisposableEffect(key1 = viewModel) {
         onDispose { if (activity?.isChangingConfigurations != true) viewModel.onHidden() }
     }

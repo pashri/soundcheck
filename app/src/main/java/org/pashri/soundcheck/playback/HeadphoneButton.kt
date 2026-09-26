@@ -21,22 +21,22 @@ enum class PressTarget {
 
 /**
  * Which tool a run of headphone presses goes to: the one sounding now, else the last to
- * start, as long as it can take presses (the Metronome while its screen shows, the Warm-up
- * while a Programme is loaded); otherwise the other one, if it can.
+ * start, as long as it can take presses (the Metronome while its screen shows or it plays,
+ * the Warm-up while a Programme is loaded); otherwise the other one, if it can.
  *
  * @param current the tool holding the sound slot now, or null.
  * @param last the tool that claimed the slot most recently, or null.
- * @param metronomeShown whether the Metronome's screen is showing.
+ * @param metronomeOffered whether the Metronome takes presses: its screen shows or it plays.
  * @param programmeLoaded whether a Programme is playing or paused.
  * @return the target, or null when neither can take presses.
  */
 fun pressTarget(
     current: Tool?,
     last: Tool?,
-    metronomeShown: Boolean,
+    metronomeOffered: Boolean,
     programmeLoaded: Boolean,
 ): PressTarget? {
-    val metronome = PressTarget.METRONOME.takeIf { metronomeShown }
+    val metronome = PressTarget.METRONOME.takeIf { metronomeOffered }
     val warmUp = PressTarget.WARM_UP.takeIf { programmeLoaded }
     return if ((current ?: last) == Tool.METRONOME) metronome ?: warmUp else warmUp ?: metronome
 }
@@ -44,8 +44,8 @@ fun pressTarget(
 /**
  * Where the one media session's headphone and car buttons go: counts presses with a
  * [PressCounter] and hands each run to the tool [pressTarget] picks. The Metronome offers
- * itself while its screen shows. Next and previous keys only ever reach the Warm-up. Call
- * from the main thread.
+ * itself while its screen shows or it plays. Next and previous keys only ever reach the
+ * Warm-up. Call from the main thread.
  *
  * @param arbiter says which tool sounds now and which started last.
  * @param warmup the Warm-up.
@@ -95,7 +95,8 @@ class HeadphoneButton(
     }
 
     /**
-     * The Metronome's screen is showing, so one press can start or stop it.
+     * The Metronome takes presses (its screen shows or it plays), so one press can start or
+     * stop it.
      *
      * @param toggle starts the Metronome if it is stopped and stops it if it is running.
      */
@@ -104,7 +105,7 @@ class HeadphoneButton(
     }
 
     /**
-     * The Metronome's screen has gone, so presses no longer reach it.
+     * The Metronome is stopped and its screen has gone, so presses no longer reach it.
      *
      * @param toggle the function [offerMetronome] was given; any other is ignored.
      */
@@ -123,7 +124,7 @@ class HeadphoneButton(
     private fun target(): PressTarget? = pressTarget(
         current = arbiter.current,
         last = arbiter.last,
-        metronomeShown = metronome.value != null,
+        metronomeOffered = metronome.value != null,
         programmeLoaded = warmup.playback.value != null,
     )
 }

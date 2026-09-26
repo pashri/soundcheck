@@ -1,5 +1,7 @@
 package org.pashri.soundcheck.ui.metronome
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -21,6 +23,7 @@ import org.pashri.soundcheck.audio.Tool
 import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
+import org.pashri.soundcheck.metronome.MetronomeController
 import org.pashri.soundcheck.playback.HeadphoneButton
 import org.pashri.soundcheck.playback.PressCounter
 import org.pashri.soundcheck.warmup.testController
@@ -51,12 +54,21 @@ class MetronomeViewModelTest {
 
     private fun TestScope.viewModel(headphones: HeadphoneButton = newHeadphones()) =
         MetronomeViewModel(
-            output = output,
-            focus = focus,
+            metronome = MetronomeController(
+                output = output,
+                focus = focus,
+                arbiter = arbiter,
+                headphones = headphones,
+                scope = backgroundScope,
+            ),
             clockMs = clock,
-            arbiter = arbiter,
-            headphones = headphones,
         )
+
+    /** Lets a run of headphone presses end and act. */
+    private fun TestScope.runEnds() {
+        advanceTimeBy(PressCounter.WINDOW_MS + 1)
+        runCurrent()
+    }
 
     private fun TestScope.state(viewModel: MetronomeViewModel): MetronomeUiState {
         runCurrent()
@@ -244,5 +256,83 @@ class MetronomeViewModelTest {
             headphones.press()
             advanceTimeBy(PressCounter.WINDOW_MS + 1)
             assertFalse(state(viewModel).running)
+        }
+
+    @Test
+    fun `leaving the screen while it clicks keeps it clicking`() = runTest(context = dispatcher) {
+        val viewModel = viewModel()
+        viewModel.onShown()
+        viewModel.setBpm(120)
+        viewModel.toggle()
+        runCurrent()
+        viewModel.onHidden()
+        advanceTimeBy(2_000)
+        assertTrue(state(viewModel).running)
+        assertTrue(output.running)
+        assertTrue(focus.held)
+        assertTrue(output.scheduled.size >= 4)
+        viewModel.stop()
+    }
+
+    @Test
+    fun `a playing Metronome keeps the headphone button after its screen goes, until it stops`() =
+        runTest(context = dispatcher) {
+            val headphones = newHeadphones()
+            val viewModel = viewModel(headphones = headphones)
+            viewModel.onShown()
+            viewModel.toggle()
+            viewModel.onHidden()
+            runCurrent()
+            assertTrue(headphones.needed.value)
+            headphones.press()
+            runEnds()
+            assertFalse(state(viewModel).running)
+            assertFalse(headphones.needed.value)
+            headphones.press()
+            runEnds()
+            assertFalse(state(viewModel).running)
+        }
+
+    @Test
+    fun `another tool starting stops a Metronome whose screen has gone`() =
+        runTest(context = dispatcher) {
+            val headphones = newHeadphones()
+            val viewModel = viewModel(headphones = headphones)
+            viewModel.onShown()
+            viewModel.toggle()
+            viewModel.onHidden()
+            runCurrent()
+            arbiter.claim(tool = Tool.WARM_UP, onEvicted = {})
+            runCurrent()
+            assertFalse(state(viewModel).running)
+            assertFalse(output.running)
+            assertFalse(focus.held)
+            assertFalse(headphones.needed.value)
+        }
+
+    @Test
+    fun `a Metronome whose screen was cleared away keeps clicking`() =
+        runTest(context = dispatcher) {
+            val metronome = MetronomeController(
+                output = output,
+                focus = focus,
+                arbiter = arbiter,
+                headphones = newHeadphones(),
+                scope = backgroundScope,
+            )
+            val factory = MetronomeViewModel.Factory(metronome = metronome, clockMs = clock)
+            val store = ViewModelStore()
+            val provider = ViewModelProvider(store = store, factory = factory)
+            val first = provider[MetronomeViewModel::class.java]
+            first.onShown()
+            first.toggle()
+            store.clear()
+            advanceTimeBy(1_000)
+            assertTrue(output.running)
+            val second = MetronomeViewModel(metronome = metronome, clockMs = clock)
+            assertTrue(state(second).running)
+            second.toggle()
+            assertFalse(state(second).running)
+            assertFalse(output.running)
         }
 }

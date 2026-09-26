@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.ui.components.Tab
 
 class NotificationSpecTest {
     private fun now(playing: Boolean): NowPlaying =
@@ -46,5 +47,29 @@ class NotificationSpecTest {
         assertEquals(PlaybackService.ACTION_TOGGLE, NotificationButton.PLAY.action)
         assertEquals(PlaybackService.ACTION_NEXT, NotificationButton.NEXT.action)
         assertEquals(PlaybackService.ACTION_STOP, NotificationButton.STOP.action)
+    }
+
+    @Test
+    fun `the Warm-up's notification opens the Warm-up and dismissing it stops the Programme`() {
+        val spec = notificationSpec(now = now(playing = true), withSession = true)
+
+        assertEquals(Tab.WarmUp, spec.opens)
+        assertEquals(PlaybackService.ACTION_STOP, spec.dismissAction)
+    }
+
+    @Test
+    fun `the Metronome's notification only offers Stop, and opens the Metronome`() {
+        val now = NowPlaying(title = "Metronome", text = "96 bpm", subText = "", playing = true)
+        val spec = notificationSpec(now = now, withSession = true, shows = ServiceShows.METRONOME)
+
+        assertEquals(listOf(NotificationButton.STOP_METRONOME), spec.buttons)
+        assertEquals(listOf(0), spec.compactButtons)
+        assertFalse(spec.attachesSession)
+        assertEquals(Tab.Metronome, spec.opens)
+        assertEquals(PlaybackService.ACTION_STOP_METRONOME, spec.dismissAction)
+        assertEquals(
+            PlaybackService.ACTION_STOP_METRONOME,
+            NotificationButton.STOP_METRONOME.action,
+        )
     }
 }

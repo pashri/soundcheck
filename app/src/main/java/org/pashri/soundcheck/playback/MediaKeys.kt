@@ -76,7 +76,7 @@ enum class SessionChange {
  * @param hasSession whether the session exists now.
  * @param settings the saved settings, or null before they have loaded.
  * @param needed whether anything can take presses (a Programme is loaded or the
- *     Metronome's screen shows); with nothing, there is no session either.
+ *     Metronome's screen shows or it plays); with nothing, there is no session either.
  * @return the change that makes the session match the loaded settings,
  *     [takesHeadphoneButton] and [needed].
  */
@@ -95,7 +95,7 @@ fun sessionChange(
 
 /**
  * Whether the media session must be reset to show nothing playing: no title, and paused with
- * only play/pause. The session outlives a Programme while the Metronome's screen shows, and
+ * only play/pause. The session outlives a Programme while the Metronome takes presses, and
  * must not keep a finished Programme's title or its "playing" state, which on Android 11
  * would draw other apps' button presses to it.
  *

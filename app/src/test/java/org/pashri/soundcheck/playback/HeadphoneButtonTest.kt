@@ -51,7 +51,7 @@ class HeadphoneButtonTest {
             pressTarget(
                 current = Tool.METRONOME,
                 last = Tool.METRONOME,
-                metronomeShown = true,
+                metronomeOffered = true,
                 programmeLoaded = true,
             ),
         )
@@ -60,7 +60,7 @@ class HeadphoneButtonTest {
             pressTarget(
                 current = Tool.WARM_UP,
                 last = Tool.WARM_UP,
-                metronomeShown = true,
+                metronomeOffered = true,
                 programmeLoaded = true,
             ),
         )
@@ -69,7 +69,7 @@ class HeadphoneButtonTest {
             pressTarget(
                 current = null,
                 last = Tool.METRONOME,
-                metronomeShown = true,
+                metronomeOffered = true,
                 programmeLoaded = true,
             ),
         )
@@ -78,7 +78,7 @@ class HeadphoneButtonTest {
             pressTarget(
                 current = Tool.TUNER,
                 last = Tool.TUNER,
-                metronomeShown = false,
+                metronomeOffered = false,
                 programmeLoaded = true,
             ),
         )
@@ -91,7 +91,7 @@ class HeadphoneButtonTest {
             pressTarget(
                 current = null,
                 last = Tool.METRONOME,
-                metronomeShown = false,
+                metronomeOffered = false,
                 programmeLoaded = true,
             ),
         )
@@ -100,7 +100,7 @@ class HeadphoneButtonTest {
             pressTarget(
                 current = null,
                 last = Tool.WARM_UP,
-                metronomeShown = true,
+                metronomeOffered = true,
                 programmeLoaded = false,
             ),
         )
@@ -108,7 +108,7 @@ class HeadphoneButtonTest {
             pressTarget(
                 current = null,
                 last = null,
-                metronomeShown = false,
+                metronomeOffered = false,
                 programmeLoaded = false,
             ),
         )
