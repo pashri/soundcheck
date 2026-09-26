@@ -20,6 +20,9 @@ import androidx.compose.ui.graphics.Color
  * @property keyBorder the line between white keys.
  * @property blackKey a black key.
  * @property topKey the key of the Pattern's highest sung note.
+ * @property keyPressed a white key being sung, drawn pressed down: darker than both [key] and
+ *     [keyTint] by at least 1.3:1, so it reads without relying on hue.
+ * @property blackKeyPressed a black key being sung, a little lighter than [blackKey].
  */
 @Immutable
 data class ManuscriptColors(
@@ -37,6 +40,8 @@ data class ManuscriptColors(
     val keyBorder: Color,
     val blackKey: Color,
     val topKey: Color,
+    val keyPressed: Color,
+    val blackKeyPressed: Color,
 )
 
 /** Manuscript by day: warm paper, ink and vermilion. */
@@ -55,6 +60,8 @@ val DayColors: ManuscriptColors = ManuscriptColors(
     keyBorder = Color(0xFF1D1B18),
     blackKey = Color(0xFF1D1B18),
     topKey = Color(0xFFD98A78),
+    keyPressed = Color(0xFFCFBEA9),
+    blackKeyPressed = Color(0xFF4A433B),
 )
 
 /** Manuscript at night: dark ink ground, cream text and a lighter vermilion. */
@@ -73,4 +80,6 @@ val NightColors: ManuscriptColors = ManuscriptColors(
     keyBorder = Color(0xFF1C1A17),
     blackKey = Color(0xFF0F0E0C),
     topKey = Color(0xFFFAC3B3),
+    keyPressed = Color(0xFF8A7A69),
+    blackKeyPressed = Color(0xFF4A433B),
 )

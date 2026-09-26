@@ -3,6 +3,7 @@ package org.pashri.soundcheck.ui.warmup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.music.Pitch
@@ -231,6 +232,40 @@ class WarmupUiStateTest {
     fun `the keyboard names its top note as the staff spells it`() {
         val keyboard = checkNotNull(state(stepIndex = 0, iteration = 6).keyboard)
         assertEquals("Keyboard C3 to B4, key F♯3, top note C♯4", keyboard.description)
+    }
+
+    @Test
+    fun `the keyboard presses the note being sung, in the Demo's key or the Iteration's`() {
+        fun pressed(iteration: Int?, note: Int?): String? = warmupUiState(
+            playback = Playback(
+                programme = programme,
+                range = tenor,
+                stepIndex = 2,
+                iteration = iteration,
+                playing = true,
+            ),
+            programme = programme,
+            range = tenor,
+            sounds = StarterSounds.ALL,
+            note = note,
+        ).keyboard?.pressed?.name
+        assertEquals("E3", pressed(iteration = null, note = 1))
+        assertEquals("E♭3", pressed(iteration = 3, note = 0))
+        assertEquals("G3", pressed(iteration = 3, note = 1))
+        assertEquals("E♭4", pressed(iteration = 3, note = 3))
+        assertNull(pressed(iteration = 3, note = null))
+    }
+
+    @Test
+    fun `a new note presses its key and keeps the keyboard's keys and words`() {
+        val state = state(stepIndex = 2, iteration = 3)
+        val lit = state.withNote(1)
+        val keyboard = checkNotNull(state.keyboard)
+        assertEquals("G3", lit.keyboard?.pressed?.name)
+        assertSame(keyboard.whites, lit.keyboard?.whites)
+        assertSame(keyboard.blacks, lit.keyboard?.blacks)
+        assertEquals(keyboard.description, lit.keyboard?.description)
+        assertNull(lit.withNote(null).keyboard?.pressed)
     }
 
     @Test

@@ -2,6 +2,7 @@ package org.pashri.soundcheck.ui.warmup
 
 import org.pashri.soundcheck.music.HALF_STEPS_PER_OCTAVE
 import org.pashri.soundcheck.music.Pitch
+import org.pashri.soundcheck.warmup.Pattern
 import org.pashri.soundcheck.warmup.Range
 import org.pashri.soundcheck.warmup.SungSpan
 
@@ -43,13 +44,28 @@ data class BlackKey(val pitch: Pitch, val afterWhite: Int, val mark: KeyMark)
  * @property whites the white keys, low to high.
  * @property blacks the black keys, low to high.
  * @property description what TalkBack reads, e.g. "Keyboard C3 to A4, key E♭3, top note
- *     E♭4".
+ *     E♭4". It doesn't name [pressed], so TalkBack doesn't speak up on every note.
+ * @property notes each Pattern note's pitch in the Iteration's key, in order.
+ * @property pressed the key of the note being sung, drawn pressed down, or null.
  */
 data class KeyboardView(
     val whites: List<WhiteKey>,
     val blacks: List<BlackKey>,
     val description: String,
+    val notes: List<Pitch> = emptyList(),
+    val pressed: Pitch? = null,
 )
+
+/**
+ * This keyboard with the key of Pattern note [note] pressed. The keys, the notes and the
+ * description stay the same instances, so a note change is cheap.
+ *
+ * @param note the index of the Pattern note being sung, or null; an index outside the
+ *     Pattern (a moment's lag at a Step change) presses nothing.
+ * @return the keyboard with [note]'s key pressed.
+ */
+fun KeyboardView.pressing(note: Int?): KeyboardView =
+    copy(pressed = note?.let { notes.getOrNull(it) })
 
 /**
  * A keyboard over [range], starting and ending on white keys, with the Iteration's key, its
@@ -60,13 +76,16 @@ data class KeyboardView(
  * @param span the Pattern's sung span.
  * @param topName the top note's name as the staff spells it (e.g. "C♯4" in F♯), so what
  *     TalkBack reads agrees with the staff; null names it as the app names keys ("D♭4").
- * @return the keys and what TalkBack reads.
+ * @param notes each Pattern note's pitch in [key] (from [Pattern.pitchesIn], as the staff
+ *     places them), for [pressing].
+ * @return the keys and what TalkBack reads, with nothing pressed.
  */
 fun keyboardView(
     range: Range,
     key: Pitch,
     span: SungSpan,
     topName: String? = null,
+    notes: List<Pitch> = emptyList(),
 ): KeyboardView {
     val low = if (isBlackKey(range.lowest)) Pitch(range.lowest.midi - 1) else range.lowest
     val high = if (isBlackKey(range.highest)) Pitch(range.highest.midi + 1) else range.highest
@@ -86,6 +105,7 @@ fun keyboardView(
         whites = whites,
         blacks = blacks,
         description = "$ends, key ${key.name}, top note ${topName ?: top.name}",
+        notes = notes,
     )
 }
 

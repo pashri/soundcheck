@@ -9,6 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -78,8 +79,9 @@ fun PatternStaff(view: StaffView, modifier: Modifier = Modifier) {
 
 /**
  * The Step's Range as a keyboard, as the design draws it under the key: the key in
- * vermilion, the top sung note marked, the white keys between tinted. 64 dp high whatever
- * the font size; TalkBack reads it as one sentence.
+ * vermilion, the top sung note marked, the white keys between tinted, and the key of the
+ * note being sung pressed down. 64 dp high whatever the font size; TalkBack reads it as one
+ * sentence.
  *
  * @param view the keys.
  * @param modifier modifier for the drawing.
@@ -97,11 +99,13 @@ fun RangeKeyboard(view: KeyboardView, modifier: Modifier = Modifier) {
         view.whites.forEachIndexed { index, key ->
             val topLeft = Offset(x = index * white, y = 0f)
             val whole = Size(width = white, height = size.height)
+            val pressed = key.pitch == view.pressed
             drawRect(
-                color = whiteColor(mark = key.mark, colors = colors),
+                color = whiteColor(mark = key.mark, pressed = pressed, colors = colors),
                 topLeft = topLeft,
                 size = whole,
             )
+            if (pressed) drawPressShadow(topLeft = topLeft, width = white, alpha = WHITE_SHADOW)
             drawRect(
                 color = colors.keyBorder,
                 topLeft = topLeft,
@@ -114,11 +118,15 @@ fun RangeKeyboard(view: KeyboardView, modifier: Modifier = Modifier) {
         view.blacks.forEach { key ->
             val topLeft = Offset(x = (key.afterWhite + 1) * white - blackWidth / 2, y = 0f)
             val whole = Size(width = blackWidth, height = size.height * BLACK_HEIGHT)
+            val pressed = key.pitch == view.pressed
             drawRect(
-                color = blackColor(mark = key.mark, colors = colors),
+                color = blackColor(mark = key.mark, pressed = pressed, colors = colors),
                 topLeft = topLeft,
                 size = whole,
             )
+            if (pressed) {
+                drawPressShadow(topLeft = topLeft, width = blackWidth, alpha = BLACK_SHADOW)
+            }
             if (key.mark.outlined) drawOutline(topLeft = topLeft, size = whole, colors = colors)
         }
     }
@@ -323,18 +331,41 @@ private fun DrawScope.drawOutline(topLeft: Offset, size: Size, colors: Manuscrip
     )
 }
 
-private fun whiteColor(mark: KeyMark, colors: ManuscriptColors): Color = when (mark) {
-    KeyMark.ROOT -> colors.accent
-    KeyMark.TOP -> colors.topKey
-    KeyMark.SUNG -> colors.keyTint
-    KeyMark.PLAIN -> colors.key
+/**
+ * The inner shadow at the top of a pressed key, as if it had sunk below the keys beside it:
+ * black at [alpha] along the top edge, fading out over [PRESS_SHADOW].
+ */
+private fun DrawScope.drawPressShadow(topLeft: Offset, width: Float, alpha: Float) {
+    val depth = PRESS_SHADOW.toPx()
+    drawRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(Color.Black.copy(alpha = alpha), Color.Transparent),
+            startY = topLeft.y,
+            endY = topLeft.y + depth,
+        ),
+        topLeft = topLeft,
+        size = Size(width = width, height = depth),
+    )
 }
 
-private fun blackColor(mark: KeyMark, colors: ManuscriptColors): Color = when (mark) {
-    KeyMark.ROOT -> colors.accent
-    KeyMark.TOP -> colors.topKey
-    KeyMark.SUNG, KeyMark.PLAIN -> colors.blackKey
-}
+/** A white key's fill; the key and the top note keep theirs when pressed. */
+private fun whiteColor(mark: KeyMark, pressed: Boolean, colors: ManuscriptColors): Color =
+    when {
+        mark == KeyMark.ROOT -> colors.accent
+        mark == KeyMark.TOP -> colors.topKey
+        pressed -> colors.keyPressed
+        mark == KeyMark.SUNG -> colors.keyTint
+        else -> colors.key
+    }
+
+/** A black key's fill; the key and the top note keep theirs when pressed. */
+private fun blackColor(mark: KeyMark, pressed: Boolean, colors: ManuscriptColors): Color =
+    when {
+        mark == KeyMark.ROOT -> colors.accent
+        mark == KeyMark.TOP -> colors.topKey
+        pressed -> colors.blackKeyPressed
+        else -> colors.blackKey
+    }
 
 /** Proportions of the design's staff (a 10-unit gap), as multiples of the gap. */
 private const val HEAD_WIDTH = 1.3f
@@ -384,3 +415,8 @@ private val KEYBOARD_HEIGHT = 64.dp
 private val MARK_OUTLINE = 2.dp
 private const val BLACK_WIDTH = 16f / 26f
 private const val BLACK_HEIGHT = 40f / 64f
+
+/** A pressed key's top shadow: how far it fades and how dark it starts, white and black. */
+private val PRESS_SHADOW = 6.dp
+private const val WHITE_SHADOW = 0.35f
+private const val BLACK_SHADOW = 0.6f

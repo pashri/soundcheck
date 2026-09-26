@@ -78,6 +78,18 @@ class ContrastTest {
         }
     }
 
+    @Test
+    fun `a pressed key differs in lightness from the plain and the tinted keys`() {
+        palettes.forEach { (theme, c) ->
+            val plain = contrastRatio(foreground = c.keyPressed, background = c.key)
+            assertTrue("$theme pressed on plain is ${"%.2f".format(plain)}:1", plain >= 1.3)
+            val tint = contrastRatio(foreground = c.keyPressed, background = c.keyTint)
+            assertTrue("$theme pressed on tint is ${"%.2f".format(tint)}:1", tint >= 1.3)
+            val black = contrastRatio(foreground = c.blackKeyPressed, background = c.blackKey)
+            assertTrue("$theme pressed black is ${"%.2f".format(black)}:1", black >= 1.3)
+        }
+    }
+
     private companion object {
         const val MINIMUM_TEXT_CONTRAST = 4.5
     }

@@ -145,11 +145,41 @@ class WarmupViewModelTest {
                 next = checkNotNull(state(viewModel))
             }
             assertEquals(1, next.staff?.now)
-            assertSame(first.keyboard, next.keyboard)
+            assertSame(first.keyboard?.whites, next.keyboard?.whites)
+            assertSame(first.keyboard?.blacks, next.keyboard?.blacks)
+            assertSame(first.keyboard?.notes, next.keyboard?.notes)
             assertSame(first.iterations, next.iterations)
             assertSame(first.staff?.layout, next.staff?.layout)
-            assertEquals(first.copy(staff = first.staff?.copy(now = 1)), next)
+            val pressed = first.keyboard?.copy(pressed = first.keyboard?.notes?.get(1))
+            assertEquals(
+                first.copy(staff = first.staff?.copy(now = 1), keyboard = pressed),
+                next,
+            )
         }
+
+    @Test
+    fun `the keyboard presses the note being sung, and nothing while paused`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            assertNull(state(viewModel)?.keyboard?.pressed)
+            advanceTimeBy(1_200)
+            assertEquals("C3", state(viewModel)?.keyboard?.pressed?.name)
+            viewModel.playPause()
+            assertNull(state(viewModel)?.staff?.now)
+            assertNull(state(viewModel)?.keyboard?.pressed)
+        }
+
+    @Test
+    fun `the keyboard presses nothing during a Key Chord`() = runTest(context = dispatcher) {
+        val viewModel = viewModel(playing())
+        var now = checkNotNull(state(viewModel))
+        while (now.iterations?.now != 0) {
+            advanceTimeBy(20)
+            now = checkNotNull(state(viewModel))
+        }
+        assertNull(now.staff?.now)
+        assertNull(now.keyboard?.pressed)
+    }
 
     @Test
     fun `a failed output says the sound stopped`() = runTest(context = dispatcher) {

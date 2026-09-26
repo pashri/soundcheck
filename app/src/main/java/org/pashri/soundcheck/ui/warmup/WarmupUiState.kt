@@ -144,6 +144,7 @@ fun warmupUiState(
         },
         keyboard = trip?.let {
             keyboardFor(step = step, range = shownRange, trip = it, now = playback?.iteration)
+                ?.pressing(note)
         },
         iterations = trip?.let {
             iterationView(
@@ -168,13 +169,15 @@ fun warmupUiState(
 }
 
 /**
- * This state with note [note] lit on the staff. Everything else stays the same instance, so
- * the screen redraws only the moving note as the Pattern plays.
+ * This state with note [note] lit on the staff and its key pressed on the keyboard.
+ * Everything else, the keyboard's keys included, stays the same instance, so the screen
+ * redraws only the moving note and the pressed key as the Pattern plays.
  *
  * @param note the index of the Pattern note being sung, or null.
  * @return the state with [note] lit.
  */
-fun WarmupUiState.withNote(note: Int?): WarmupUiState = copy(staff = staff?.lit(note))
+fun WarmupUiState.withNote(note: Int?): WarmupUiState =
+    copy(staff = staff?.lit(note), keyboard = keyboard?.pressing(note))
 
 /**
  * The key and progress for Iteration [now] of a round trip.
@@ -264,7 +267,7 @@ private fun labelOf(id: SoundId, sounds: List<Sound>, fallback: String): String 
 /**
  * The keyboard for Iteration [now] of [step]: its Range with the Range Offset, the key the
  * Iteration is in (the starting key before the first) and the Pattern's sung span, with the
- * top note named as the staff spells it.
+ * top note named as the staff spells it, and nothing pressed.
  */
 private fun keyboardFor(
     step: Step,
@@ -282,6 +285,7 @@ private fun keyboardFor(
             key = key,
             span = step.pattern.span,
             topName = spelledName(pattern = step.pattern, key = key, index = top),
+            notes = step.pattern.pitchesIn(key),
         )
     }
 }

@@ -1,10 +1,13 @@
 package org.pashri.soundcheck.ui.warmup
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.music.Pitch
 import org.pashri.soundcheck.warmup.Range
+import org.pashri.soundcheck.warmup.StarterPatterns
 import org.pashri.soundcheck.warmup.SungSpan
 import org.pashri.soundcheck.warmup.VoiceType
 
@@ -70,5 +73,42 @@ class KeyboardLayoutTest {
     fun `TalkBack hears the ends, the key and the top note`() {
         val view = keyboardView(range = tenor, key = Pitch.parse("E♭3"), span = octave)
         assertEquals("Keyboard C3 to A4, key E♭3, top note E♭4", view.description)
+    }
+
+    @Test
+    fun `the note being sung presses its key, white or black, even on a flattened degree`() {
+        val minor = StarterPatterns.MINOR_FIVE_NOTE_SCALE
+        val c3 = Pitch.parse("C3")
+        val view = keyboardView(
+            range = tenor,
+            key = c3,
+            span = minor.span,
+            notes = minor.pitchesIn(c3),
+        )
+        assertNull(view.pressed)
+        assertEquals("C3", view.pressing(0).pressed?.name)
+        assertEquals("D3", view.pressing(1).pressed?.name)
+        assertEquals("E♭3", view.pressing(2).pressed?.name)
+        assertTrue(isBlackKey(checkNotNull(view.pressing(2).pressed)))
+        assertEquals("G3", view.pressing(4).pressed?.name)
+    }
+
+    @Test
+    fun `no note, or one outside the Pattern, presses nothing and keeps the keys`() {
+        val scale = StarterPatterns.FIVE_NOTE_SCALE
+        val key = Pitch.parse("D3")
+        val view = keyboardView(
+            range = tenor,
+            key = key,
+            span = scale.span,
+            notes = scale.pitchesIn(key),
+        )
+        val pressed = view.pressing(2)
+        assertEquals("F♯3", pressed.pressed?.name)
+        assertNull(pressed.pressing(null).pressed)
+        assertNull(pressed.pressing(scale.notes.size).pressed)
+        assertSame(view.whites, pressed.whites)
+        assertSame(view.blacks, pressed.blacks)
+        assertEquals(view.description, pressed.description)
     }
 }
