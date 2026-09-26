@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -24,6 +25,7 @@ import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.metronome.MAX_BPM
 import org.pashri.soundcheck.metronome.MIN_BPM
 import org.pashri.soundcheck.metronome.MetronomeController
+import org.pashri.soundcheck.metronome.MetronomeStatus
 import org.pashri.soundcheck.playback.HeadphoneButton
 import org.pashri.soundcheck.playback.PressCounter
 import org.pashri.soundcheck.warmup.testController
@@ -52,17 +54,17 @@ class MetronomeViewModelTest {
         scope = backgroundScope,
     )
 
-    private fun TestScope.viewModel(headphones: HeadphoneButton = newHeadphones()) =
-        MetronomeViewModel(
-            metronome = MetronomeController(
-                output = output,
-                focus = focus,
-                arbiter = arbiter,
-                headphones = headphones,
-                scope = backgroundScope,
-            ),
-            clockMs = clock,
+    private fun TestScope.controller(headphones: HeadphoneButton = newHeadphones()) =
+        MetronomeController(
+            output = output,
+            focus = focus,
+            arbiter = arbiter,
+            headphones = headphones,
+            scope = backgroundScope,
         )
+
+    private fun TestScope.viewModel(headphones: HeadphoneButton = newHeadphones()) =
+        MetronomeViewModel(metronome = controller(headphones = headphones), clockMs = clock)
 
     /** Lets a run of headphone presses end and act. */
     private fun TestScope.runEnds() {
@@ -275,22 +277,96 @@ class MetronomeViewModelTest {
     }
 
     @Test
-    fun `a playing Metronome keeps the headphone button after its screen goes, until it stops`() =
+    fun `off screen the headphone button pauses the Metronome and starts it again`() =
         runTest(context = dispatcher) {
             val headphones = newHeadphones()
-            val viewModel = viewModel(headphones = headphones)
-            viewModel.onShown()
-            viewModel.toggle()
-            viewModel.onHidden()
+            val metronome = controller(headphones = headphones)
+            metronome.show()
+            metronome.toggle()
+            metronome.hide()
             runCurrent()
+            headphones.press()
+            runEnds()
+            assertEquals(MetronomeStatus(running = false, paused = true), metronome.status.value)
+            assertFalse(output.running)
             assertTrue(headphones.needed.value)
             headphones.press()
             runEnds()
-            assertFalse(state(viewModel).running)
+            assertEquals(MetronomeStatus(running = true, paused = false), metronome.status.value)
+            assertTrue(output.running)
+            metronome.stop()
+        }
+
+    @Test
+    fun `on screen the headphone button ends the Metronome like the Stop button`() =
+        runTest(context = dispatcher) {
+            val headphones = newHeadphones()
+            val metronome = controller(headphones = headphones)
+            metronome.show()
+            metronome.toggle()
+            headphones.press()
+            runEnds()
+            assertEquals(MetronomeStatus(), metronome.status.value)
+            assertFalse(focus.held)
+            assertNull(arbiter.current)
+        }
+
+    @Test
+    fun `a paused Metronome keeps focus and the slot, like a paused Programme`() =
+        runTest(context = dispatcher) {
+            val metronome = controller()
+            metronome.toggle()
+            metronome.pause()
+            assertTrue(metronome.status.value.paused)
+            assertTrue(focus.held)
+            assertEquals(Tool.METRONOME, arbiter.current)
+        }
+
+    @Test
+    fun `Close ends a paused Metronome and gives the headphone button back`() =
+        runTest(context = dispatcher) {
+            val headphones = newHeadphones()
+            val metronome = controller(headphones = headphones)
+            metronome.toggle()
+            metronome.pause()
+            runCurrent()
+            assertTrue(headphones.needed.value)
+            metronome.stop()
+            runCurrent()
+            assertEquals(MetronomeStatus(), metronome.status.value)
+            assertFalse(focus.held)
+            assertNull(arbiter.current)
             assertFalse(headphones.needed.value)
             headphones.press()
             runEnds()
-            assertFalse(state(viewModel).running)
+            assertFalse(metronome.status.value.running)
+        }
+
+    @Test
+    fun `another tool starting ends a paused Metronome`() = runTest(context = dispatcher) {
+        val headphones = newHeadphones()
+        val metronome = controller(headphones = headphones)
+        metronome.toggle()
+        metronome.pause()
+        arbiter.claim(tool = Tool.TUNER, onEvicted = {})
+        runCurrent()
+        assertEquals(MetronomeStatus(), metronome.status.value)
+        assertFalse(focus.held)
+        assertFalse(headphones.needed.value)
+    }
+
+    @Test
+    fun `the notification's Pause and Play toggle a held Metronome, never a closed one`() =
+        runTest(context = dispatcher) {
+            val metronome = controller()
+            metronome.pauseOrResume()
+            assertEquals(MetronomeStatus(), metronome.status.value)
+            metronome.toggle()
+            metronome.pauseOrResume()
+            assertTrue(metronome.status.value.paused)
+            metronome.pauseOrResume()
+            assertTrue(metronome.status.value.running)
+            metronome.stop()
         }
 
     @Test

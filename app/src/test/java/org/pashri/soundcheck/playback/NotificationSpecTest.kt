@@ -58,18 +58,40 @@ class NotificationSpecTest {
     }
 
     @Test
-    fun `the Metronome's notification only offers Stop, and opens the Metronome`() {
+    fun `a playing Metronome's notification offers Pause and Close, and opens the Metronome`() {
         val now = NowPlaying(title = "Metronome", text = "96 bpm", subText = "", playing = true)
         val spec = notificationSpec(now = now, withSession = true, shows = ServiceShows.METRONOME)
 
-        assertEquals(listOf(NotificationButton.STOP_METRONOME), spec.buttons)
-        assertEquals(listOf(0), spec.compactButtons)
+        assertEquals(
+            listOf(NotificationButton.PAUSE_METRONOME, NotificationButton.CLOSE_METRONOME),
+            spec.buttons,
+        )
+        assertEquals(listOf(0, 1), spec.compactButtons)
         assertFalse(spec.attachesSession)
         assertEquals(Tab.Metronome, spec.opens)
-        assertEquals(PlaybackService.ACTION_STOP_METRONOME, spec.dismissAction)
+        assertEquals(PlaybackService.ACTION_CLOSE_METRONOME, spec.dismissAction)
+    }
+
+    @Test
+    fun `a paused Metronome's notification offers Play and Close`() {
+        val now = NowPlaying(title = "Metronome", text = "96 bpm", subText = "", playing = false)
+        val spec = notificationSpec(now = now, withSession = true, shows = ServiceShows.METRONOME)
+
         assertEquals(
-            PlaybackService.ACTION_STOP_METRONOME,
-            NotificationButton.STOP_METRONOME.action,
+            listOf(NotificationButton.PLAY_METRONOME, NotificationButton.CLOSE_METRONOME),
+            spec.buttons,
+        )
+        assertEquals(
+            PlaybackService.ACTION_TOGGLE_METRONOME,
+            NotificationButton.PLAY_METRONOME.action,
+        )
+        assertEquals(
+            PlaybackService.ACTION_TOGGLE_METRONOME,
+            NotificationButton.PAUSE_METRONOME.action,
+        )
+        assertEquals(
+            PlaybackService.ACTION_CLOSE_METRONOME,
+            NotificationButton.CLOSE_METRONOME.action,
         )
     }
 }

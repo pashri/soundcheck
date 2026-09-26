@@ -31,11 +31,12 @@ import org.pashri.soundcheck.warmup.Playback
  * started when a Programme loads or the Metronome starts, which stops itself once neither
  * needs it ([serviceShows]). While a Programme is loaded its notification carries the app's
  * media session ([MediaButtonSession]), so the lock screen shows the Programme's controls;
- * while only the Metronome plays, the notification gives its tempo and a Stop button. The
+ * while only the Metronome plays or is paused, the notification gives its tempo with Pause
+ * (or Play) and Close. The
  * session itself belongs to the app, so the headphone button reaches the Metronome too;
  * with "Play over other audio" on there is none, and the notification keeps its own
- * buttons. Pulling out headphones (or a headset disconnecting) pauses the Programme and
- * stops the Metronome, so neither switches to the loudspeaker. When the session is made or
+ * buttons. Pulling out headphones (or a headset disconnecting) pauses the Programme and the
+ * Metronome, so neither switches to the loudspeaker. When the session is made or
  * released, the notification switches tool, or notifications are allowed after the first
  * post, a new notification replaces the old one (see [notificationPost]), so the media card
  * appears from the first Start.
@@ -81,7 +82,7 @@ class PlaybackService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> container.warmup.stop()
-            ACTION_STOP_METRONOME -> container.metronome.stop()
+            ACTION_CLOSE_METRONOME -> container.metronome.stop()
         }
         val shows = currentShows()
         if (intent?.action in STOPS) {
@@ -101,6 +102,7 @@ class PlaybackService : Service() {
         when (intent?.action) {
             ACTION_TOGGLE -> container.warmup.toggle()
             ACTION_NEXT -> container.warmup.next()
+            ACTION_TOGGLE_METRONOME -> container.metronome.pauseOrResume()
         }
         if (shows == null) stopSelf()
         return START_NOT_STICKY
@@ -116,21 +118,21 @@ class PlaybackService : Service() {
 
     /**
      * The Metronome's status, with tempo and accent changes settling for a moment while it
-     * runs, so dragging the tempo doesn't flood the notification past Android's rate limit.
-     * Starting and stopping come through at once.
+     * is held, so dragging the tempo doesn't flood the notification past Android's rate
+     * limit. Starting from nothing and ending come through at once.
      */
     @OptIn(FlowPreview::class)
     private fun settledMetronome(): Flow<MetronomeStatus> =
-        container.metronome.status.debounce { if (it.running) SETTLE_MS else 0L }
+        container.metronome.status.debounce { if (it.held) SETTLE_MS else 0L }
 
     private fun currentShows(): ServiceShows? = serviceShows(
         programmeLoaded = container.warmup.playback.value != null,
-        metronomePlaying = container.metronome.status.value.running,
+        metronomeHeld = container.metronome.status.value.held,
     )
 
     private fun show(playback: Playback?, metronome: MetronomeStatus) {
         val shows =
-            serviceShows(programmeLoaded = playback != null, metronomePlaying = metronome.running)
+            serviceShows(programmeLoaded = playback != null, metronomeHeld = metronome.held)
         if (shows != null) {
             showInForeground(playback = playback, metronome = metronome)
         } else if (inForeground) {
@@ -168,7 +170,7 @@ class PlaybackService : Service() {
         sessionChanged: Boolean = false,
     ) {
         val shows =
-            serviceShows(programmeLoaded = playback != null, metronomePlaying = metronome.running)
+            serviceShows(programmeLoaded = playback != null, metronomeHeld = metronome.held)
                 ?: ServiceShows.WARM_UP
         val now = when (shows) {
             ServiceShows.WARM_UP -> nowPlaying(warmupState(playback))
@@ -224,13 +226,17 @@ class PlaybackService : Service() {
 
     /** The intents the notification's buttons send. */
     companion object {
-        /** Stop the Metronome. */
-        const val ACTION_STOP_METRONOME: String = "org.pashri.soundcheck.action.STOP_METRONOME"
+        /** Pause a playing Metronome, or start a paused one again. */
+        const val ACTION_TOGGLE_METRONOME: String =
+            "org.pashri.soundcheck.action.TOGGLE_METRONOME"
+
+        /** End the Metronome. */
+        const val ACTION_CLOSE_METRONOME: String = "org.pashri.soundcheck.action.CLOSE_METRONOME"
 
         /** How long tempo and accent changes settle before the notification shows them. */
         private const val SETTLE_MS: Long = 250L
 
-        private val STOPS = setOf(ACTION_STOP, ACTION_STOP_METRONOME)
+        private val STOPS = setOf(ACTION_STOP, ACTION_CLOSE_METRONOME)
 
         /** Pause or resume. */
         const val ACTION_TOGGLE: String = "org.pashri.soundcheck.action.TOGGLE"

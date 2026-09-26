@@ -28,11 +28,25 @@ enum class NotificationButton(
     /** Stop the Programme. */
     STOP(icon = R.drawable.ic_stop, title = "Stop", action = PlaybackService.ACTION_STOP),
 
-    /** Stop the Metronome. */
-    STOP_METRONOME(
-        icon = R.drawable.ic_stop,
-        title = "Stop",
-        action = PlaybackService.ACTION_STOP_METRONOME,
+    /** Pause the Metronome, keeping its notification. */
+    PAUSE_METRONOME(
+        icon = R.drawable.ic_pause,
+        title = "Pause",
+        action = PlaybackService.ACTION_TOGGLE_METRONOME,
+    ),
+
+    /** Start a paused Metronome again. */
+    PLAY_METRONOME(
+        icon = R.drawable.ic_play,
+        title = "Play",
+        action = PlaybackService.ACTION_TOGGLE_METRONOME,
+    ),
+
+    /** End the Metronome, taking the notification away. */
+    CLOSE_METRONOME(
+        icon = R.drawable.ic_close,
+        title = "Close",
+        action = PlaybackService.ACTION_CLOSE_METRONOME,
     ),
 }
 
@@ -58,8 +72,8 @@ data class NotificationSpec(
 /**
  * The notification's buttons for [now]. The Warm-up's are the same with or without a media
  * session, so pause, next and stop still work while playing over other audio. The
- * Metronome's notification only has Stop and never carries the session: the session's
- * lock-screen play, pause and skip controls belong to the Warm-up.
+ * Metronome's notification has Pause (or Play) and Close, and never carries the session:
+ * the session's lock-screen play, pause and skip controls belong to the Warm-up.
  *
  * @param now what is playing.
  * @param withSession whether the service holds a media session.
@@ -72,12 +86,17 @@ fun notificationSpec(
     shows: ServiceShows = ServiceShows.WARM_UP,
 ): NotificationSpec {
     if (shows == ServiceShows.METRONOME) {
+        val toggle = if (now.playing) {
+            NotificationButton.PAUSE_METRONOME
+        } else {
+            NotificationButton.PLAY_METRONOME
+        }
         return NotificationSpec(
-            buttons = listOf(NotificationButton.STOP_METRONOME),
-            compactButtons = listOf(0),
+            buttons = listOf(toggle, NotificationButton.CLOSE_METRONOME),
+            compactButtons = listOf(0, 1),
             attachesSession = false,
             opens = Tab.Metronome,
-            dismissAction = PlaybackService.ACTION_STOP_METRONOME,
+            dismissAction = PlaybackService.ACTION_CLOSE_METRONOME,
         )
     }
     val toggle = if (now.playing) NotificationButton.PAUSE else NotificationButton.PLAY

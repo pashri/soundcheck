@@ -76,7 +76,7 @@ enum class SessionChange {
  * @param hasSession whether the session exists now.
  * @param settings the saved settings, or null before they have loaded.
  * @param needed whether anything can take presses (a Programme is loaded or the
- *     Metronome's screen shows or it plays); with nothing, there is no session either.
+ *     Metronome's screen shows or it is held); with nothing, there is no session either.
  * @return the change that makes the session match the loaded settings,
  *     [takesHeadphoneButton] and [needed].
  */

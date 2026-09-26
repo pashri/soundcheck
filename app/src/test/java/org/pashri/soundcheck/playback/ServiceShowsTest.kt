@@ -7,11 +7,13 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
 import org.pashri.soundcheck.audio.FakeSoundOutput
 import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.metronome.MetronomeController
+import org.pashri.soundcheck.metronome.MetronomeStatus
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.WarmupController
@@ -23,25 +25,28 @@ class ServiceShowsTest {
     fun `a loaded Programme needs the service and its notification comes first`() {
         assertEquals(
             ServiceShows.WARM_UP,
-            serviceShows(programmeLoaded = true, metronomePlaying = false),
+            serviceShows(programmeLoaded = true, metronomeHeld = false),
         )
         assertEquals(
             ServiceShows.WARM_UP,
-            serviceShows(programmeLoaded = true, metronomePlaying = true),
+            serviceShows(programmeLoaded = true, metronomeHeld = true),
         )
     }
 
     @Test
-    fun `a playing Metronome on its own needs the service, with its own notification`() {
+    fun `a playing or paused Metronome on its own needs the service, with its notification`() {
         assertEquals(
             ServiceShows.METRONOME,
-            serviceShows(programmeLoaded = false, metronomePlaying = true),
+            serviceShows(programmeLoaded = false, metronomeHeld = true),
         )
+        assertTrue(MetronomeStatus(running = false, paused = true).held)
+        assertTrue(MetronomeStatus(running = true).held)
+        assertFalse(MetronomeStatus().held)
     }
 
     @Test
     fun `with neither the service isn't needed`() {
-        assertNull(serviceShows(programmeLoaded = false, metronomePlaying = false))
+        assertNull(serviceShows(programmeLoaded = false, metronomeHeld = false))
     }
 
     private fun TestScope.metronome(arbiter: ToolArbiter, warmup: WarmupController) =
@@ -58,7 +63,7 @@ class ServiceShowsTest {
         )
 
     @Test
-    fun `unplugging headphones stops the Metronome`() = runTest {
+    fun `unplugging headphones pauses the Metronome, as it does the Programme`() = runTest {
         val arbiter = ToolArbiter()
         val warmup = testController(arbiter = arbiter)
         val metronome = metronome(arbiter = arbiter, warmup = warmup)
@@ -68,7 +73,7 @@ class ServiceShowsTest {
         onHeadphonesUnplugged(warmup = warmup, metronome = metronome)
 
         assertFalse(metronome.status.value.running)
-        assertNull(arbiter.current)
+        assertTrue(metronome.status.value.paused)
     }
 
     @Test

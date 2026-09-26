@@ -74,6 +74,15 @@ class NowPlayingTest {
     }
 
     @Test
+    fun `a paused Metronome says so in its title`() {
+        val status = MetronomeStatus(bpm = 96, accentEvery = 4, running = false, paused = true)
+        val now = metronomeNowPlaying(status)
+        assertEquals("Metronome · paused", now.title)
+        assertEquals("96 bpm · accent 4", now.text)
+        assertEquals(false, now.playing)
+    }
+
+    @Test
     fun `a Metronome without an accent says so`() {
         val status = MetronomeStatus(bpm = 72, accentEvery = null, running = true)
         assertEquals("72 bpm · no accent", metronomeNowPlaying(status).text)

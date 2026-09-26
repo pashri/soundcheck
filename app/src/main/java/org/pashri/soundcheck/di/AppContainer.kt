@@ -104,7 +104,7 @@ class AppContainer(context: Context) {
             arbiter = toolArbiter,
             headphones = mediaButtons.button,
             scope = appScope,
-        ).also { keepServiceWhile(needed = it.status.map { status -> status.running }) }
+        ).also { keepServiceWhile(needed = it.status.map { status -> status.held }) }
     }
 
     /** Builds the Metronome screen's view model. */

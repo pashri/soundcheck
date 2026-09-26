@@ -44,15 +44,15 @@ fun nowPlaying(state: WarmupUiState?): NowPlaying {
 }
 
 /**
- * The notification's text while the Metronome plays on its own.
+ * The notification's text while the Metronome plays or is paused on its own.
  *
- * @param status the Metronome's tempo and accent.
- * @return e.g. "Metronome", "96 bpm · accent 4" (or "no accent").
+ * @param status the Metronome's tempo and accent, and whether it is paused.
+ * @return e.g. "Metronome" (or "Metronome · paused"), "96 bpm · accent 4" (or "no accent").
  */
 fun metronomeNowPlaying(status: MetronomeStatus): NowPlaying {
     val accent = status.accentEvery?.let { "accent $it" } ?: "no accent"
     return NowPlaying(
-        title = "Metronome",
+        title = if (status.running) "Metronome" else "Metronome · paused",
         text = "${status.bpm} bpm · $accent",
         subText = "",
         playing = status.running,

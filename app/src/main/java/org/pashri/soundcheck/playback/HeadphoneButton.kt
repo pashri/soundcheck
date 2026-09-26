@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import org.pashri.soundcheck.audio.Tool
 import org.pashri.soundcheck.audio.ToolArbiter
+import org.pashri.soundcheck.metronome.HeadphoneOffer
 import org.pashri.soundcheck.warmup.WarmupController
 
 /** Which tool the headphone button steers. */
@@ -15,18 +16,18 @@ enum class PressTarget {
     /** The Warm-up: 1 press pauses or resumes, 2 go to the next Step, 3 to the previous. */
     WARM_UP,
 
-    /** The Metronome: 1 press starts or stops it. */
+    /** The Metronome: 1 press starts it, or stops it (a pause, off screen). */
     METRONOME,
 }
 
 /**
  * Which tool a run of headphone presses goes to: the one sounding now, else the last to
- * start, as long as it can take presses (the Metronome while its screen shows or it plays,
- * the Warm-up while a Programme is loaded); otherwise the other one, if it can.
+ * start, as long as it can take presses (the Metronome while its screen shows or it plays or
+ * is paused, the Warm-up while a Programme is loaded); otherwise the other one, if it can.
  *
  * @param current the tool holding the sound slot now, or null.
  * @param last the tool that claimed the slot most recently, or null.
- * @param metronomeOffered whether the Metronome takes presses: its screen shows or it plays.
+ * @param metronomeOffered whether the Metronome takes presses: shown, playing or paused.
  * @param programmeLoaded whether a Programme is playing or paused.
  * @return the target, or null when neither can take presses.
  */
@@ -44,7 +45,7 @@ fun pressTarget(
 /**
  * Where the one media session's headphone and car buttons go: counts presses with a
  * [PressCounter] and hands each run to the tool [pressTarget] picks. The Metronome offers
- * itself while its screen shows or it plays. Next and previous keys only ever reach the
+ * itself while its screen shows or it plays or is paused. Next and previous keys only reach the
  * Warm-up. Call from the main thread.
  *
  * @param arbiter says which tool sounds now and which started last.
@@ -57,7 +58,7 @@ class HeadphoneButton(
     private val warmup: WarmupController,
     scope: CoroutineScope,
     windowMs: Long = PressCounter.WINDOW_MS,
-) {
+) : HeadphoneOffer {
     private val metronome = MutableStateFlow<(() -> Unit)?>(null)
     private val counter = PressCounter(scope = scope, windowMs = windowMs, onPresses = ::onPresses)
 
@@ -95,21 +96,21 @@ class HeadphoneButton(
     }
 
     /**
-     * The Metronome takes presses (its screen shows or it plays), so one press can start or
-     * stop it.
+     * The Metronome takes presses (its screen shows, or it plays or is paused), so one press
+     * can start, pause or stop it.
      *
-     * @param toggle starts the Metronome if it is stopped and stops it if it is running.
+     * @param toggle starts the Metronome if it is stopped or paused, and stops it if running.
      */
-    fun offerMetronome(toggle: () -> Unit) {
+    override fun offerMetronome(toggle: () -> Unit) {
         metronome.value = toggle
     }
 
     /**
-     * The Metronome is stopped and its screen has gone, so presses no longer reach it.
+     * The Metronome has ended and its screen has gone, so presses no longer reach it.
      *
      * @param toggle the function [offerMetronome] was given; any other is ignored.
      */
-    fun withdrawMetronome(toggle: () -> Unit) {
+    override fun withdrawMetronome(toggle: () -> Unit) {
         if (metronome.value === toggle) metronome.value = null
     }
 

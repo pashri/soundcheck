@@ -69,8 +69,9 @@ import org.pashri.soundcheck.ui.theme.SoundcheckTheme
 /**
  * The Metronome tab, wired to its view model. While the screen shows, the headphone button
  * can start and stop the Metronome. Leaving the screen (switching tabs, the screen off, the
- * app in the background) never stops it: a playing Metronome keeps clicking and keeps the
- * button, and a stopped one gives the button back. A configuration change isn't leaving.
+ * app in the background) never stops it: a playing or paused Metronome keeps the button,
+ * and a stopped one gives it back. The Stop button ends it; off screen, the headphone
+ * button and the notification pause it instead. A configuration change isn't leaving.
  *
  * @param factory builds the [MetronomeViewModel].
  */

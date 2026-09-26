@@ -68,7 +68,8 @@ class MetronomeViewModel(
 
     /**
      * The screen has gone (another tab, the screen off, the app in the background): the
-     * Metronome keeps clicking, and a stopped one gives the headphone button back.
+     * Metronome keeps clicking or stays paused, and a stopped one gives the headphone
+     * button back.
      */
     fun onHidden() {
         metronome.hide()

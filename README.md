@@ -39,11 +39,14 @@ sing them on), and set your Range from a voice type.
   pauses (one press), skips to the next exercise (two) and goes back (three). The
   Metronome uses the same service, so it keeps clicking with the screen off, in the
   background or on another tab; while it plays on its own the notification shows its
-  tempo and accent with a Stop button, and tapping it opens the Metronome. While a
-  Programme is loaded the Warm-up's notification comes first. The Metronome stops when
-  you press Stop, another tool starts (the Tuner listening, a Programme, a Demo), another
-  app takes audio focus for good, or headphones are unplugged, which also pauses a
-  Programme. Only one tool plays, records or listens at a time.
+  tempo and accent with Pause and Close, and tapping it opens the Metronome. While a
+  Programme is loaded the Warm-up's notification comes first. Off screen, a headphone
+  press or Pause pauses the Metronome and the notification stays, with Play; another press
+  or Play starts it again. Unplugging headphones pauses it too, as it does a Programme.
+  It ends when you press Stop on its screen (or the headphone button while the screen
+  shows), press Close, another tool starts (the Tuner listening, a Programme, a Demo), or
+  another app takes audio focus for good. Only one tool plays, records or listens at a
+  time.
 - The Warm-up's library (Patterns, Sounds and Programmes) and its settings are two small
   JSON files in the app's private storage, rewritten whole, atomically, on every change. A
   fresh install starts with eight Patterns, eight Sounds and a sample Programme. Nothing
@@ -58,13 +61,14 @@ sing them on), and set your Range from a voice type.
 - With "Play over other audio" on, the Warm-up and the Metronome play under a podcast
   instead of pausing it, and the headphone button stays with the podcast app: Soundcheck
   then has no media session at all, only its notification (pause, next and stop for the
-  Warm-up, Stop for the Metronome). Some Bluetooth headsets only send "pause" while any
-  audio is still playing, so they can pause the other app but not resume it. Recording
-  always pauses a podcast, so it isn't recorded under your voice. While the Metronome's
-  tab is open, or while it plays (screen off included), one press of the headphone button
-  starts or stops it; the button goes to whichever of the Metronome and the Warm-up you
-  started last, through Soundcheck's one media session. The press only reaches Soundcheck
-  if it was the last app to play sound; otherwise Android sends it to that app.
+  Warm-up, Pause or Play and Close for the Metronome). Some Bluetooth headsets only send
+  "pause" while any audio is still playing, so they can pause the other app but not resume
+  it. Recording always pauses a podcast, so it isn't recorded under your voice. While the
+  Metronome's tab is open, or while it plays or is paused (screen off included), one press
+  of the headphone button starts or stops it; the button goes to whichever of the
+  Metronome and the Warm-up you started last, through Soundcheck's one media session. The
+  press only reaches Soundcheck if it was the last app to play sound; otherwise Android
+  sends it to that app.
 - The Step and Pattern editors can play a Step's Demo or a Pattern on the piano, using the
   same timeline as the Warm-up, and the Sounds screen plays your recordings; doing either
   pauses a playing Programme.
