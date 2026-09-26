@@ -1,5 +1,6 @@
 package org.pashri.soundcheck.playback
 
+import android.app.Notification
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -11,6 +12,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.view.KeyEvent
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
@@ -31,7 +33,9 @@ import org.pashri.soundcheck.warmup.WarmupSettings
  * headphone button to the app that last played, even to an inactive session), so the button
  * stays with the other app while the notification keeps its own buttons. Pulling
  * out headphones (or a headset disconnecting) pauses the Programme, so the piano never
- * switches to the loudspeaker.
+ * switches to the loudspeaker. When the session is made or released, or notifications are
+ * allowed after the first post, a new notification replaces the old one (see
+ * [notificationPost]), so the media card appears from the first Start.
  */
 class PlaybackService : Service() {
     private val scope = MainScope()
@@ -39,6 +43,8 @@ class PlaybackService : Service() {
     private var session: MediaSessionCompat? = null
     private lateinit var presses: PressCounter
     private var inForeground = false
+    private var notificationId = PlaybackNotifications.NOTIFICATION_ID
+    private var permittedAtLastPost: Boolean? = null
     private val noisy = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) container.warmup.pause()
@@ -74,6 +80,10 @@ class PlaybackService : Service() {
             return START_NOT_STICKY
         }
         val playback = container.warmup.playback.value
+        if (intent?.action == ACTION_REFRESH && playback == null) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         showInForeground(playback)
         when (intent?.action) {
             ACTION_TOGGLE -> container.warmup.toggle()
@@ -104,12 +114,16 @@ class PlaybackService : Service() {
 
     /** Creates or releases the session to match the settings, and redraws the notification. */
     private fun syncSession(settings: WarmupSettings?) {
-        when (sessionChange(hasSession = session != null, settings = settings)) {
+        val change = sessionChange(hasSession = session != null, settings = settings)
+        when (change) {
             SessionChange.CREATE -> session = createSession()
             SessionChange.RELEASE -> releaseSession()
-            SessionChange.KEEP -> return
+            SessionChange.KEEP -> Unit
         }
-        if (inForeground) container.warmup.playback.value?.let(::showInForeground)
+        if (!repostsAfter(change = change, inForeground = inForeground)) return
+        container.warmup.playback.value?.let {
+            showInForeground(playback = it, sessionChanged = true)
+        }
     }
 
     private fun createSession(): MediaSessionCompat =
@@ -127,7 +141,7 @@ class PlaybackService : Service() {
         session = null
     }
 
-    private fun showInForeground(playback: Playback?) {
+    private fun showInForeground(playback: Playback?, sessionChanged: Boolean = false) {
         val state = playback?.let {
             warmupUiState(
                 playback = it,
@@ -139,12 +153,32 @@ class PlaybackService : Service() {
         val now = nowPlaying(state)
         val session = session
         session?.let { PlaybackNotifications.updateSession(session = it, now = now) }
+        val notification =
+            PlaybackNotifications.build(context = this, session = session, now = now)
+        post(notification = notification, sessionChanged = sessionChanged)
+    }
+
+    /**
+     * Puts [notification] up as the foreground notification. A new one (under the other id,
+     * which makes Android drop the old one) goes up when [notificationPost] says so.
+     */
+    private fun post(notification: Notification, sessionChanged: Boolean) {
+        val permittedNow = NotificationManagerCompat.from(this).areNotificationsEnabled()
+        val post = notificationPost(
+            sessionChanged = sessionChanged,
+            permittedAtLastPost = permittedAtLastPost,
+            permittedNow = permittedNow,
+        )
+        val shown = notificationId
+        if (post == NotificationPost.FRESH) notificationId = otherNotificationId(shown)
         ServiceCompat.startForeground(
             this,
-            PlaybackNotifications.NOTIFICATION_ID,
-            PlaybackNotifications.build(context = this, session = session, now = now),
+            notificationId,
+            notification,
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
         )
+        if (shown != notificationId) NotificationManagerCompat.from(this).cancel(shown)
+        permittedAtLastPost = permittedNow
         inForeground = true
     }
 
@@ -203,6 +237,12 @@ class PlaybackService : Service() {
 
         /** Go to the next Step. */
         const val ACTION_NEXT: String = "org.pashri.soundcheck.action.NEXT"
+
+        /**
+         * Redraw the notification, sent when the notification permission is granted so the
+         * media card appears without waiting for the next change.
+         */
+        const val ACTION_REFRESH: String = "org.pashri.soundcheck.action.REFRESH"
 
         /** Stop the Programme. */
         const val ACTION_STOP: String = "org.pashri.soundcheck.action.STOP"

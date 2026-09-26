@@ -23,6 +23,9 @@ object PlaybackNotifications {
     /** The playback notification's id. */
     const val NOTIFICATION_ID: Int = 1
 
+    /** The id a replacement notification takes; see [otherNotificationId]. */
+    const val FRESH_NOTIFICATION_ID: Int = 2
+
     /**
      * Creates the quiet channel the playback notification uses; safe to call again.
      *
