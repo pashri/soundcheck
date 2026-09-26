@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.audio.AndroidAudioFocus
 import org.pashri.soundcheck.audio.AndroidMic
 import org.pashri.soundcheck.audio.AndroidSpeech
+import org.pashri.soundcheck.audio.ExclusiveMic
 import org.pashri.soundcheck.audio.FocusGate
 import org.pashri.soundcheck.audio.MicInput
 import org.pashri.soundcheck.audio.MixingFocusGate
@@ -92,8 +93,11 @@ class AppContainer(context: Context) {
         )
     }
 
-    /** The microphone, for the Tuner; it never goes through [soundOutput]. */
-    val micInput: MicInput = AndroidMic()
+    /**
+     * The microphone, for the Tuner and for recording Sounds; it never goes through
+     * [soundOutput], and only one of them can have it open at a time.
+     */
+    val micInput: MicInput = ExclusiveMic(AndroidMic())
 
     /**
      * The Tuner's own audio focus. Separate from [audioFocus] because the Metronome releases

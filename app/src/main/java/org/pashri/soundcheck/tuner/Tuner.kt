@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.pashri.soundcheck.audio.MicInput
 import org.pashri.soundcheck.audio.MicSession
+import org.pashri.soundcheck.audio.openRetrying
 
 /** What the microphone is doing. */
 enum class MicStatus {
@@ -47,6 +48,9 @@ data class TunerState(val mic: MicStatus = MicStatus.Off, val note: NoteReading?
  * allocates small objects (boxed pitch results, the published TunerState), and
  * publishing briefly takes StateFlow's internal lock. The loop never logs or does
  * file I/O.
+ *
+ * A microphone that won't open is tried again for about 400 ms (the recorder may still be
+ * letting go of it) before [state] says Unavailable.
  *
  * @param mic the microphone.
  * @param scope owns the listening loop; cancelling it stops listening.
@@ -87,7 +91,7 @@ class Tuner(
     }
 
     private suspend fun listen() {
-        val session = mic.open()
+        val session = mic.openRetrying()
         if (!currentCoroutineContext().isActive) {
             session?.close()
             return
