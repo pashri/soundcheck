@@ -3,6 +3,7 @@ package org.pashri.soundcheck.warmup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.music.Pitch
 
 class StarterContentTest {
     private val programme = StarterProgrammes.WARM_UP
@@ -111,5 +112,25 @@ class StarterContentTest {
                 assertTrue(label, sung.all { it.pitch in effective })
             }
         }
+    }
+
+    @Test
+    fun `the double arpeggio climbs a whole octave from the bottom on a tenor`() {
+        val step = programme.steps[4]
+        assertEquals(StarterPatterns.DOUBLE_ARPEGGIO, step.pattern)
+        assertEquals(Direction.START_LOW, step.direction)
+        assertEquals(RangeOffset(top = 10), step.rangeOffset)
+
+        val trip = step.roundTrip(VoiceType.TENOR.range)
+        val fits = trip as RoundTrip.Fits
+        assertEquals(
+            Pitch.parse("C3"),
+            fits.startKey,
+        )
+        assertEquals(
+            Pitch.parse("C4"),
+            fits.turnKey,
+        )
+        assertEquals(25, fits.keys.size)
     }
 }

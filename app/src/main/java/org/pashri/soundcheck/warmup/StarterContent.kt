@@ -144,7 +144,8 @@ object StarterProgrammes {
                 pattern = StarterPatterns.DOUBLE_ARPEGGIO,
                 soundId = StarterSounds.NEH.id,
                 bpm = 110,
-                direction = Direction.START_HIGH,
+                direction = Direction.START_LOW,
+                rangeOffset = RangeOffset(top = 10),
             ),
             Step(
                 pattern = StarterPatterns.NINE_NOTE_SCALE,
