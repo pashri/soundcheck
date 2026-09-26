@@ -32,6 +32,8 @@ import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
 import org.pashri.soundcheck.playback.PlaybackService
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
+import org.pashri.soundcheck.ui.pattern.PatternEditorViewModel
+import org.pashri.soundcheck.ui.pattern.PatternListViewModel
 import org.pashri.soundcheck.ui.programme.ProgrammeEditorViewModel
 import org.pashri.soundcheck.ui.settings.SettingsViewModel
 import org.pashri.soundcheck.ui.step.StepEditorViewModel
@@ -39,6 +41,7 @@ import org.pashri.soundcheck.ui.tuner.TunerViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
 import org.pashri.soundcheck.warmup.Library
+import org.pashri.soundcheck.warmup.PatternId
 import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.ProgrammePlayer
 import org.pashri.soundcheck.warmup.SpokenAnnouncements
@@ -203,6 +206,24 @@ class AppContainer(context: Context) {
      */
     fun stepEditorFactory(ref: StepRef): ViewModelProvider.Factory =
         StepEditorViewModel.Factory(ref = ref, library = library, settings = settings)
+
+    /**
+     * Builds the Patterns list's view model.
+     *
+     * @param pickFor the Step to choose a Pattern for, or null to browse.
+     * @return the factory.
+     */
+    fun patternListFactory(pickFor: StepRef?): ViewModelProvider.Factory =
+        PatternListViewModel.Factory(pickFor = pickFor, library = library, newId = newId)
+
+    /**
+     * Builds a Pattern editor's view model.
+     *
+     * @param id the Pattern.
+     * @return the factory.
+     */
+    fun patternEditorFactory(id: PatternId): ViewModelProvider.Factory =
+        PatternEditorViewModel.Factory(patternId = id, library = library)
 
     /** Whether "Play over other audio" is on; read each time a tool asks for focus. */
     private fun playsOverOtherAudio(): Boolean = settings.data.value?.playOverOtherAudio == true

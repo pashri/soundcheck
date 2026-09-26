@@ -56,6 +56,9 @@ object ManuscriptIcons {
 
     /** A triangle with an exclamation mark: a warning. */
     val Warning: ImageVector = strokeIcon("Warning", "M12 4l9 16H3z", "M12 10v4", "M12 17v.5")
+
+    /** A bin: delete. */
+    val Delete: ImageVector = strokeIcon("Delete", "M5 7h14M10 7V4h4v3", "M7 7l1 13h8l1-13")
 }
 
 private fun strokeIcon(name: String, vararg paths: String): ImageVector =
