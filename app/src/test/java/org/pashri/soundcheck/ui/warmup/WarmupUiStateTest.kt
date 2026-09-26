@@ -12,6 +12,7 @@ import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Playback
 import org.pashri.soundcheck.warmup.Programme
 import org.pashri.soundcheck.warmup.Range
+import org.pashri.soundcheck.warmup.RoundTrip
 import org.pashri.soundcheck.warmup.SoundId
 import org.pashri.soundcheck.warmup.StarterPatterns
 import org.pashri.soundcheck.warmup.StarterProgrammes
@@ -243,5 +244,19 @@ class WarmupUiStateTest {
         assertNull(state.iterations)
         assertNull(state.keyboard)
         assertNull(state.staff)
+    }
+
+    @Test
+    fun `the staff keeps the same room through every Iteration of a Step`() {
+        val trip = programme.steps[2].roundTrip(tenor) as RoundTrip.Fits
+        val bounds = stepStaffBounds(
+            pattern = StarterPatterns.ARPEGGIO_8_HOLD,
+            keys = trip.keys,
+            clef = Clef.TREBLE_8VB,
+        )
+        listOf(null, 0, 3, 12).forEach { iteration ->
+            val staff = checkNotNull(state(stepIndex = 2, iteration = iteration).staff)
+            assertEquals(bounds, staff.reserved)
+        }
     }
 }

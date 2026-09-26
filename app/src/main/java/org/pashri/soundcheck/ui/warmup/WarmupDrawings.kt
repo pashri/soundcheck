@@ -46,24 +46,15 @@ fun PatternStaff(view: StaffView, modifier: Modifier = Modifier) {
     val measurer = rememberTextMeasurer()
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val gap = staffGap(width = maxWidth, notes = view.layout.notes.size)
-        val accidentalStyle = TextStyle(
-            fontSize = with(receiver = density) { (gap * ACCIDENTAL_SIZE).toSp() },
-            color = colors.ink,
-        )
         val eightStyle = TextStyle(
             fontFamily = SerifFamily,
             fontSize = with(receiver = density) { (gap * EIGHT_SIZE).toSp() },
             color = colors.ink,
         )
-        val glyphs = remember(key1 = measurer, key2 = accidentalStyle, key3 = eightStyle) {
-            StaffGlyphs(
-                flat = measurer.measure(text = Accidental.FLAT.symbol, style = accidentalStyle),
-                sharp = measurer.measure(text = Accidental.SHARP.symbol, style = accidentalStyle),
-                natural = measurer.measure(text = NATURAL_SIGN, style = accidentalStyle),
-                eight = measurer.measure(text = "8", style = eightStyle),
-            )
+        val eight = remember(key1 = measurer, key2 = eightStyle) {
+            measurer.measure(text = "8", style = eightStyle)
         }
-        val steps = view.layout.top - view.layout.bottom + 2
+        val steps = view.reserved.last - view.reserved.first + 2
         Canvas(
             modifier = Modifier
                 .fillMaxWidth()
@@ -73,8 +64,9 @@ fun PatternStaff(view: StaffView, modifier: Modifier = Modifier) {
             val painter = StaffPainter(
                 layout = view.layout,
                 now = view.now,
+                top = view.reserved.last,
                 colors = colors,
-                glyphs = glyphs,
+                eight = eight,
                 gap = gap.toPx(),
             )
             with(receiver = painter) { paint() }
@@ -130,23 +122,17 @@ fun RangeKeyboard(view: KeyboardView, modifier: Modifier = Modifier) {
     }
 }
 
-/** The staff's ♭, ♯, ♮ and the treble clef's 8, measured once for its size. */
-private class StaffGlyphs(
-    val flat: TextLayoutResult,
-    val sharp: TextLayoutResult,
-    val natural: TextLayoutResult,
-    val eight: TextLayoutResult,
-)
-
 /**
  * Draws one [StaffLayout], with [gap] pixels between staff lines. Steps become pixels
- * downwards from the layout's top; the clef takes the first [CLEF_GAPS] spaces.
+ * downwards from [top], the highest step the Step's staff keeps room for; the clef takes the
+ * first [CLEF_GAPS] spaces. [eight] is the treble clef's 8, measured for this size.
  */
 private class StaffPainter(
     private val layout: StaffLayout,
     private val now: Int?,
+    private val top: Int,
     private val colors: ManuscriptColors,
-    private val glyphs: StaffGlyphs,
+    private val eight: TextLayoutResult,
     private val gap: Float,
 ) {
     private val headWidth = gap * HEAD_WIDTH
@@ -170,7 +156,7 @@ private class StaffPainter(
 
     private fun colorOf(index: Int): Color = if (index == now) colors.accent else colors.ink
 
-    private fun yOf(step: Int): Float = (layout.top - step + 1) * gap / 2
+    private fun yOf(step: Int): Float = (top - step + 1) * gap / 2
 
     private fun stemX(x: Float): Float = x + headWidth / 2 - gap * STEM_WIDTH / 2
 
@@ -198,7 +184,6 @@ private class StaffPainter(
                 drawTrebleClef(origin = Offset(x = x, y = yOf(TREBLE_CLEF_LINE)))
         }
         if (layout.clef != Clef.TREBLE_8VB) return
-        val eight = glyphs.eight
         val topLeft = Offset(
             x = x + gap * EIGHT_X - eight.size.width / 2f,
             y = yOf(TREBLE_CLEF_LINE) + gap * EIGHT_Y,
@@ -310,20 +295,59 @@ private class StaffPainter(
         )
     }
 
-    /** The ♭ or ♯ before the head, or a courtesy ♮; nothing for a plain natural. */
+    /**
+     * The ♭ or ♯ before the head, or a courtesy ♮, at engraving size and a small gap to the
+     * head's left; nothing for a plain natural.
+     */
     private fun DrawScope.drawAccidental(note: StaffNote, x: Float, y: Float) {
         val glyph = when (note.accidental) {
-            Accidental.FLAT -> glyphs.flat
-            Accidental.SHARP -> glyphs.sharp
-            Accidental.NATURAL -> if (note.courtesyNatural) glyphs.natural else return
+            Accidental.FLAT -> FLAT_GLYPH
+            Accidental.SHARP -> SHARP_GLYPH
+            Accidental.NATURAL -> if (note.courtesyNatural) NATURAL_GLYPH else return
         }
-        val left = x - headWidth / 2 - glyph.size.width - gap * ACCIDENTAL_SPACE
-        drawText(
-            textLayoutResult = glyph,
-            topLeft = Offset(x = left, y = y - glyph.size.height / 2f),
-        )
+        val left = x - headWidth / 2 - gap * (ACCIDENTAL_SPACE + glyph.width)
+        val origin = Offset(x = left, y = y)
+        glyph.lines.forEach { line ->
+            drawLine(
+                color = colors.ink,
+                start = origin + Offset(x = gap * line.x1, y = gap * line.y1),
+                end = origin + Offset(x = gap * line.x2, y = gap * line.y2),
+                strokeWidth = gap * line.width,
+            )
+        }
+        glyph.bowlStart?.let { start ->
+            drawPath(
+                path = clefPath(origin = origin, start = start, curves = glyph.bowl),
+                color = colors.ink,
+                style = Stroke(width = gap * FLAT_BOWL_STROKE, cap = StrokeCap.Round),
+            )
+        }
     }
 }
+
+/**
+ * A straight stroke of an accidental, in staff spaces from the glyph's left edge at its
+ * note's centre line; y grows downwards.
+ */
+private class GlyphLine(
+    val x1: Float,
+    val y1: Float,
+    val x2: Float,
+    val y2: Float,
+    val width: Float,
+)
+
+/**
+ * An accidental drawn as strokes: its [width] in staff spaces, its straight [lines], and for
+ * a ♭ the bowl, from [bowlStart] through the cubic curves in [bowl] (six numbers each).
+ */
+private class AccidentalGlyph(
+    val width: Float,
+    val lines: List<GlyphLine>,
+    val bowlStart: Pair<Float, Float>? = null,
+    val bowl: List<Float> = emptyList(),
+)
+
 
 /**
  * Whether a key's mark gets an outline. At night the key's vermilion and the top note's
@@ -368,11 +392,41 @@ private const val FLAG_REACH = 0.8f
 private const val FLAG_DROP = 1.5f
 private const val FLAG_WIDTH = 0.2f
 private const val LEDGER_REACH = 0.8f
-private const val ACCIDENTAL_SPACE = 0.15f
-private const val ACCIDENTAL_SIZE = 1.6f
+private const val ACCIDENTAL_SPACE = 0.2f
 
-/** The courtesy natural; [Accidental.NATURAL] has no symbol, since a plain note shows none. */
-private const val NATURAL_SIGN = "♮"
+/** A ♯, 2.5 spaces tall: two thin uprights, the left one lower, and two thick rising bars. */
+private val SHARP_GLYPH = AccidentalGlyph(
+    width = 1.0f,
+    lines = listOf(
+        GlyphLine(x1 = 0.3f, y1 = -1.05f, x2 = 0.3f, y2 = 1.25f, width = 0.12f),
+        GlyphLine(x1 = 0.7f, y1 = -1.25f, x2 = 0.7f, y2 = 1.05f, width = 0.12f),
+        GlyphLine(x1 = 0f, y1 = -0.3f, x2 = 1.0f, y2 = -0.6f, width = 0.32f),
+        GlyphLine(x1 = 0f, y1 = 0.6f, x2 = 1.0f, y2 = 0.3f, width = 0.32f),
+    ),
+)
+
+/** A ♭, 2.2 spaces tall: an upright rising well above the note, with a bowl round it. */
+private val FLAT_GLYPH = AccidentalGlyph(
+    width = 0.9f,
+    lines = listOf(GlyphLine(x1 = 0.08f, y1 = -1.75f, x2 = 0.08f, y2 = 0.45f, width = 0.13f)),
+    bowlStart = 0.08f to 0.45f,
+    bowl = listOf(
+        0.55f, 0.15f, 0.95f, -0.25f, 0.7f, -0.5f,
+        0.5f, -0.7f, 0.2f, -0.5f, 0.08f, -0.2f,
+    ),
+)
+private const val FLAT_BOWL_STROKE = 0.17f
+
+/** A ♮, 2.5 spaces tall: offset uprights joined by two thick rising bars. */
+private val NATURAL_GLYPH = AccidentalGlyph(
+    width = 0.72f,
+    lines = listOf(
+        GlyphLine(x1 = 0.08f, y1 = -1.25f, x2 = 0.08f, y2 = 0.5f, width = 0.12f),
+        GlyphLine(x1 = 0.64f, y1 = -0.5f, x2 = 0.64f, y2 = 1.25f, width = 0.12f),
+        GlyphLine(x1 = 0.08f, y1 = -0.2f, x2 = 0.64f, y2 = -0.42f, width = 0.3f),
+        GlyphLine(x1 = 0.08f, y1 = 0.42f, x2 = 0.64f, y2 = 0.2f, width = 0.3f),
+    ),
+)
 
 /** The clefs, in staff spaces from the line each curls round; y grows downwards. */
 private const val CLEF_LEFT = 0.9f

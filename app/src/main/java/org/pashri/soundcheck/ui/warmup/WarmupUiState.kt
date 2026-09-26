@@ -133,6 +133,7 @@ fun warmupUiState(
                 key = it.keys[playback?.iteration ?: 0],
                 clef = clefFor(shownRange),
                 now = note,
+                stepKeys = it.keys,
             )
         },
         keyboard = trip?.let {

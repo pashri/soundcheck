@@ -124,8 +124,16 @@ data class StaffLayout(
  * @property layout where every mark goes.
  * @property now the index of the note being sung, drawn in vermilion, or null.
  * @property description what TalkBack reads, e.g. "Pattern on a staff, bass clef: 1 3 5 8".
+ * @property reserved the steps the drawing keeps room for, from [stepStaffBounds]: the same
+ *     through a whole Step, so the staff and everything under it hold still as the key
+ *     changes. It contains [layout]'s bottom to top.
  */
-data class StaffView(val layout: StaffLayout, val now: Int?, val description: String)
+data class StaffView(
+    val layout: StaffLayout,
+    val now: Int?,
+    val description: String,
+    val reserved: IntRange,
+)
 
 /** How far a stem rises above its note head, in steps: three and a half spaces. */
 const val STEM_STEPS: Int = 7
@@ -192,14 +200,37 @@ fun staffLayout(pattern: Pattern, key: Pitch, clef: Clef): StaffLayout {
  * @param clef the clef, from [clefFor].
  * @param now the index of the note being sung, or null; an index outside the Pattern (a
  *     moment's lag at a Step change) lights nothing.
- * @return the layout, the lit note and what TalkBack reads.
+ * @param stepKeys every key the Step plays in, the Demo's included, so the room the staff
+ *     keeps doesn't change from one Iteration to the next; [key] is added if missing.
+ * @return the layout, the lit note, what TalkBack reads and the room kept.
  */
-fun staffView(pattern: Pattern, key: Pitch, clef: Clef, now: Int?): StaffView = StaffView(
+fun staffView(
+    pattern: Pattern,
+    key: Pitch,
+    clef: Clef,
+    now: Int?,
+    stepKeys: List<Pitch> = listOf(key),
+): StaffView = StaffView(
     layout = staffLayout(pattern = pattern, key = key, clef = clef),
     now = now?.takeIf { it in pattern.notes.indices },
     description = "Pattern on a staff, ${clef.spoken}: " +
         PatternNotation.degrees(notes = pattern.notes),
+    reserved = stepStaffBounds(pattern = pattern, keys = stepKeys + key, clef = clef),
 )
+
+/**
+ * The steps a staff needs to show [pattern] in any of [keys]: the lowest bottom to the
+ * highest top of their layouts.
+ *
+ * @param pattern the Pattern.
+ * @param keys the keys; at least one.
+ * @param clef the clef.
+ * @return the lowest to the highest step anything reaches in any key.
+ */
+fun stepStaffBounds(pattern: Pattern, keys: List<Pitch>, clef: Clef): IntRange {
+    val layouts = keys.distinct().map { staffLayout(pattern = pattern, key = it, clef = clef) }
+    return layouts.minOf { it.bottom }..layouts.maxOf { it.top }
+}
 
 /**
  * A Pattern note's name as the staff spells it in [key]: on the key's letter plus its degree,
@@ -283,19 +314,25 @@ private fun needsCourtesyNatural(
         spellings[earlier].accidental != Accidental.NATURAL
 }
 
-/** Whether a ♭, ♯ or ♮ glyph is drawn before [note]'s head. */
-private fun hasGlyph(note: StaffNote): Boolean =
-    note.accidental != Accidental.NATURAL || note.courtesyNatural
+/**
+ * How far [note]'s ♭, ♯ or ♮ reaches beyond its head's edges, in steps, as (above, below):
+ * a ♭ (2.2 spaces, mostly above its head) 3 above and none below, a ♯ or ♮ (2.5 spaces,
+ * centred) 2 each way, and nothing when no glyph is drawn.
+ */
+private fun glyphReach(note: StaffNote): Pair<Int, Int> = when {
+    note.accidental == Accidental.FLAT -> FLAT_REACH
+    note.accidental == Accidental.SHARP || note.courtesyNatural -> SHARP_REACH
+    else -> 0 to 0
+}
 
 /** The highest step [note] reaches: its stem, or its head and any accidental glyph. */
 private fun topOf(note: StaffNote): Int {
-    val head = note.step + 1 + if (hasGlyph(note)) ACCIDENTAL_REACH else 0
+    val head = note.step + 1 + glyphReach(note).first
     return maxOf(a = note.stemTop ?: head, b = head)
 }
 
 /** The lowest step [note] reaches: its head, or its accidental glyph below it. */
-private fun bottomOf(note: StaffNote): Int =
-    note.step - 1 - if (hasGlyph(note)) ACCIDENTAL_REACH else 0
+private fun bottomOf(note: StaffNote): Int = note.step - 1 - glyphReach(note).second
 
 /** A pitch's letter counted up from C in MIDI's lowest octave: seven letters an octave. */
 private fun letterOf(pitch: Pitch): Int =
@@ -331,8 +368,9 @@ private const val MIDDLE_C = 60
 private const val LOW_G = 55
 private const val LETTERS_PER_OCTAVE = 7
 
-/** How far an accidental glyph reaches beyond its note head, above and below, in steps. */
-private const val ACCIDENTAL_REACH = 2
+/** How far a ♭ and a ♯ (or ♮) reach beyond their note head, (above, below), in steps. */
+private val FLAT_REACH = 3 to 0
+private val SHARP_REACH = 2 to 2
 
 /** The letters, C = 0 to B = 6. */
 private const val LETTER_NAMES = "CDEFGAB"

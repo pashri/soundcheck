@@ -295,7 +295,7 @@ class StaffLayoutTest {
     }
 
     @Test
-    fun `the staff leaves room for an accidental below the lowest note and on a high whole`() {
+    fun `the staff leaves room for full-size accidentals below a low note and above a whole`() {
         val sharp = staffLayout(
             pattern = pattern(notation = "1"),
             key = Pitch.parse("F♯2"),
@@ -313,7 +313,7 @@ class StaffLayoutTest {
             key = Pitch.parse("B♭5"),
             clef = Clef.TREBLE,
         )
-        assertEquals(14, flatWhole.top)
+        assertEquals(15, flatWhole.top)
         val plainWhole = staffLayout(
             pattern = pattern(notation = "1w"),
             key = Pitch.parse("B5"),
@@ -328,5 +328,37 @@ class StaffLayoutTest {
         assertEquals("G♯3", spelledName(pattern = triad, key = Pitch.parse("E3"), index = 1))
         assertEquals("C♯4", spelledName(pattern = triad, key = Pitch.parse("F♯3"), index = 2))
         assertEquals("E♭3", spelledName(pattern = triad, key = Pitch.parse("E♭3"), index = 0))
+    }
+
+    @Test
+    fun `a Step's staff keeps the same room in every key, with each note where it belongs`() {
+        val c3 = Pitch.parse("C3")
+        val eFlat3 = Pitch.parse("E♭3")
+        val keys = listOf(c3, eFlat3)
+        val plain = staffView(
+            pattern = StarterPatterns.ARPEGGIO_8_HOLD,
+            key = c3,
+            clef = Clef.TREBLE_8VB,
+            now = null,
+            stepKeys = keys,
+        )
+        val flats = staffView(
+            pattern = StarterPatterns.ARPEGGIO_8_HOLD,
+            key = eFlat3,
+            clef = Clef.TREBLE_8VB,
+            now = null,
+            stepKeys = keys,
+        )
+        val plainSpan = plain.layout.bottom..plain.layout.top
+        assertTrue(plainSpan != flats.layout.bottom..flats.layout.top)
+        assertEquals(plain.reserved, flats.reserved)
+        assertEquals(minOf(a = plain.layout.bottom, b = flats.layout.bottom), flats.reserved.first)
+        assertEquals(maxOf(a = plain.layout.top, b = flats.layout.top), flats.reserved.last)
+        val expected = staffLayout(
+            pattern = StarterPatterns.ARPEGGIO_8_HOLD,
+            key = eFlat3,
+            clef = Clef.TREBLE_8VB,
+        )
+        assertEquals(expected, flats.layout)
     }
 }
