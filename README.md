@@ -23,8 +23,9 @@ sing them on), and set your Range from a voice type.
   Tuner and the recorder share the microphone and never have it open at the same time;
   each retries for about 400 ms rather than reporting the microphone unavailable while the
   other lets go of it. A Sound you haven't recorded is read by the phone's text-to-speech.
-  A recording that no Sound in the library, or in a `library.json.backup-*` copy an import
-  kept, names any more is deleted the next time the app starts.
+  A recording that no Sound in the library names any more is deleted the next time the app
+  starts, unless a `library.json.backup-*` copy an import kept, or a
+  `library.json.unreadable-*` copy set aside because it couldn't be read, still names it.
 - The Warm-up runs in a foreground service with a media session: the lock screen shows
   pause, next and stop, and the headphone button pauses (one press), skips to the next
   exercise (two) and goes back (three). Only one tool plays, records or listens at a time.

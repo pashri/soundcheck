@@ -24,6 +24,18 @@ value class ClipName(val value: String) {
     init {
         require(value = CLIP_NAME.matches(value)) { "\"$value\" is not a clip file name" }
     }
+
+    /** Finds clip names in text that may not be readable any other way. */
+    companion object {
+        /**
+         * Every clip name that appears anywhere in [text], whatever surrounds it.
+         *
+         * @param text any text, e.g. a library file that can't be decoded.
+         * @return the clip names found.
+         */
+        fun findIn(text: String): Set<ClipName> =
+            CLIP_NAME.findAll(input = text).map { ClipName(value = it.value) }.toSet()
+    }
 }
 
 private val CLIP_NAME = Regex("[A-Za-z0-9-]{1,64}\\.wav")

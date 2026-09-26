@@ -171,7 +171,8 @@ class DocumentStore<T : Any>(
 
     private fun trySetAside(): Boolean =
         try {
-            val aside = File(file.absoluteFile.parentFile, "${file.name}.unreadable-${clockMs()}")
+            val name = "${file.name}$UNREADABLE_MARK${clockMs()}"
+            val aside = File(file.absoluteFile.parentFile, name)
             Files.move(file.toPath(), aside.toPath())
             true
         } catch (e: IOException) {

@@ -123,4 +123,40 @@ class ClipSweepTest {
         File(folder.root, "library.json.backup-43").writeText("#garbled")
         assertNull(clipsNamedByBackups(libraryFile = libraryFile))
     }
+
+    @Test
+    fun `clips named by an unreadable library set aside at an earlier start are kept`() =
+        runTest {
+            oldClip("mim-take.wav")
+            oldClip("in-the-set-aside-library.wav")
+            oldClip("deleted-sound.wav")
+            val libraryFile = File(folder.root, "library.json")
+            File(folder.root, "library.json.unreadable-42")
+                .writeText("{\"sounds\":[{\"clip\":\"in-the-set-aside-library.wav\"")
+            val backedUp = clipsNamedByBackups(libraryFile = libraryFile)
+            assertEquals(1, sweep(store = FakeStore(recorded), backedUp = backedUp))
+            assertEquals(setOf("mim-take.wav", "in-the-set-aside-library.wav"), files())
+        }
+
+    @Test
+    fun `an unreadable library with garbage around a clip name still pins it`() {
+        val libraryFile = File(folder.root, "library.json")
+        File(folder.root, "library.json.unreadable-42")
+            .writeText("\u0000#{]]\"take-1.wav\" ~~ ::\u0007")
+        assertEquals(
+            setOf(ClipName("take-1.wav")),
+            clipsNamedByBackups(libraryFile = libraryFile),
+        )
+    }
+
+    @Test
+    fun `clips no library or set-aside copy names are still swept`() = runTest {
+        oldClip("mim-take.wav")
+        oldClip("named-nowhere.wav")
+        val libraryFile = File(folder.root, "library.json")
+        File(folder.root, "library.json.unreadable-42").writeText("#garbled, no clips")
+        val backedUp = clipsNamedByBackups(libraryFile = libraryFile)
+        assertEquals(1, sweep(store = FakeStore(recorded), backedUp = backedUp))
+        assertEquals(setOf("mim-take.wav"), files())
+    }
 }
