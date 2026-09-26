@@ -6,10 +6,23 @@ Metronome, for Android.
 [**Download Soundcheck 1.0.0 (APK)**](https://github.com/pashri/soundcheck/releases/latest)
 · Android 11 or later · free and open source ([MIT](LICENSE)), with no ads or accounts
 
+## Screenshots
+
 <p align="center">
-  <img src="docs/screenshots/tuner.png" width="240" alt="The Tuner reading a note: its name, octave, needle and cents">
-  <img src="docs/screenshots/metronome.png" width="240" alt="The Metronome running">
-  <img src="docs/screenshots/warmup-playing.png" width="240" alt="The Warm-up playing a Step: the Pattern on a staff with the note being sung in vermilion, and a keyboard below">
+  <img src="docs/screenshots/tuner.png" width="200" alt="The Tuner reading a note: its name, octave, needle and cents">
+  <img src="docs/screenshots/metronome.png" width="200" alt="The Metronome running">
+  <img src="docs/screenshots/warmup-playing.png" width="200" alt="The Starter warm-up playing: the Pattern on a staff with the note being sung in vermilion, and a keyboard below">
+  <img src="docs/screenshots/warmup-playing-night.png" width="200" alt="The Starter warm-up playing at night, in F sharp major">
+</p>
+<p align="center">
+  <img src="docs/screenshots/warmup-home.png" width="200" alt="The Warm-up home: your range, your Programmes and your library">
+  <img src="docs/screenshots/programme-editor.png" width="200" alt="A Programme's editor, listing its Steps">
+  <img src="docs/screenshots/step-editor.png" width="200" alt="A Step's editor: tempo, direction, range offset, pattern and sound">
+</p>
+<p align="center">
+  <img src="docs/screenshots/pattern-editor.png" width="200" alt="A Pattern's editor: its notes, lengths, accidentals and key chord">
+  <img src="docs/screenshots/sounds.png" width="200" alt="The Sounds library: recorded and phone-voice cues">
+  <img src="docs/screenshots/settings.png" width="200" alt="Settings: range, voice type and play over other audio">
 </p>
 
 ## About
@@ -97,20 +110,6 @@ Everything stays on your phone. There are no accounts, ads or analytics, and the
 ask for internet access. You can back up your library and settings to one small file, on
 Drive or in Downloads, and restore it later or on a new phone. Recordings aren't included
 in the backup.
-
-## Screenshots
-
-<p align="center">
-  <img src="docs/screenshots/warmup-playing-night.png" width="200" alt="The Warm-up playing at night, in F sharp major">
-  <img src="docs/screenshots/warmup-home.png" width="200" alt="The Warm-up home: your range, your Programmes and your library">
-  <img src="docs/screenshots/programme-editor.png" width="200" alt="A Programme's editor, listing its Steps">
-  <img src="docs/screenshots/step-editor.png" width="200" alt="A Step's editor: tempo, direction, range offset, pattern and sound">
-</p>
-<p align="center">
-  <img src="docs/screenshots/pattern-editor.png" width="200" alt="A Pattern's editor: its notes, lengths, accidentals and key chord">
-  <img src="docs/screenshots/sounds.png" width="200" alt="The Sounds library: recorded and phone-voice cues">
-  <img src="docs/screenshots/settings.png" width="200" alt="Settings: range, voice type and play over other audio">
-</p>
 
 ## Download and install
 
