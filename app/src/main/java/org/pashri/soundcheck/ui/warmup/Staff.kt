@@ -202,6 +202,23 @@ fun staffView(pattern: Pattern, key: Pitch, clef: Clef, now: Int?): StaffView = 
 )
 
 /**
+ * A Pattern note's name as the staff spells it in [key]: on the key's letter plus its degree,
+ * so the 3rd in E is G♯3 where the app's key names would say A♭3.
+ *
+ * @param pattern the Pattern.
+ * @param key the Iteration's key.
+ * @param index the note's index in the Pattern.
+ * @return the letter, its accidental and the octave, e.g. "G♯3".
+ */
+fun spelledName(pattern: Pattern, key: Pitch, index: Int): String {
+    val note = pattern.notes[index]
+    val spelled = spelling(note = note, key = key, pitch = key + note.halfSteps)
+    val letter = LETTER_NAMES[spelled.letter % LETTERS_PER_OCTAVE]
+    val octave = spelled.letter / LETTERS_PER_OCTAVE - 1
+    return "$letter${spelled.accidental.symbol}$octave"
+}
+
+/**
  * The space between two staff lines for a drawing [width] wide: the design's [STAFF_GAP],
  * or less for a long Pattern, so the clef keeps [CLEF_GAPS] spaces and each note
  * [GAPS_PER_NOTE].
@@ -316,6 +333,9 @@ private const val LETTERS_PER_OCTAVE = 7
 
 /** How far an accidental glyph reaches beyond its note head, above and below, in steps. */
 private const val ACCIDENTAL_REACH = 2
+
+/** The letters, C = 0 to B = 6. */
+private const val LETTER_NAMES = "CDEFGAB"
 
 /** Each letter's natural pitch class, C = 0 to B = 11. */
 private val NATURAL_OF = listOf(0, 2, 4, 5, 7, 9, 11)

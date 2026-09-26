@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -118,5 +119,13 @@ class WarmupViewModelTest {
         store.clear()
         runCurrent()
         assertEquals(true, controller.playback.value?.playing)
+    }
+
+    @Test
+    fun `the note being sung lights up on the staff`() = runTest(context = dispatcher) {
+        val viewModel = viewModel(playing())
+        assertNull(state(viewModel)?.staff?.now)
+        advanceTimeBy(1_200)
+        assertEquals(0, state(viewModel)?.staff?.now)
     }
 }

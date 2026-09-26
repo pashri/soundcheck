@@ -58,9 +58,16 @@ data class KeyboardView(
  * @param range the Range the Step sings in, with its Range Offset applied.
  * @param key the Iteration's key.
  * @param span the Pattern's sung span.
+ * @param topName the top note's name as the staff spells it (e.g. "C♯4" in F♯), so what
+ *     TalkBack reads agrees with the staff; null names it as the app names keys ("D♭4").
  * @return the keys and what TalkBack reads.
  */
-fun keyboardView(range: Range, key: Pitch, span: SungSpan): KeyboardView {
+fun keyboardView(
+    range: Range,
+    key: Pitch,
+    span: SungSpan,
+    topName: String? = null,
+): KeyboardView {
     val low = if (isBlackKey(range.lowest)) Pitch(range.lowest.midi - 1) else range.lowest
     val high = if (isBlackKey(range.highest)) Pitch(range.highest.midi + 1) else range.highest
     val top = key + span.highest
@@ -78,7 +85,7 @@ fun keyboardView(range: Range, key: Pitch, span: SungSpan): KeyboardView {
     return KeyboardView(
         whites = whites,
         blacks = blacks,
-        description = "$ends, key ${key.name}, top note ${top.name}",
+        description = "$ends, key ${key.name}, top note ${topName ?: top.name}",
     )
 }
 

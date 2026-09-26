@@ -15,6 +15,11 @@ import androidx.compose.ui.graphics.Color
  * @property onAccent text drawn on an [accent] fill.
  * @property accentText vermilion used as text on [paper].
  * @property raised what dialogs, menus and text fields sit on, a step off the page.
+ * @property key a white key on the playing screen's keyboard.
+ * @property keyTint a white key between the lowest and highest notes being sung.
+ * @property keyBorder the line between white keys.
+ * @property blackKey a black key.
+ * @property topKey the key of the Pattern's highest sung note.
  */
 @Immutable
 data class ManuscriptColors(
@@ -27,6 +32,11 @@ data class ManuscriptColors(
     val onAccent: Color,
     val accentText: Color,
     val raised: Color,
+    val key: Color,
+    val keyTint: Color,
+    val keyBorder: Color,
+    val blackKey: Color,
+    val topKey: Color,
 )
 
 /** Manuscript by day: warm paper, ink and vermilion. */
@@ -40,6 +50,11 @@ val DayColors: ManuscriptColors = ManuscriptColors(
     onAccent = Color(0xFFFFF8F0),
     accentText = Color(0xFFA8321C),
     raised = Color(0xFFFFFDF8),
+    key = Color(0xFFFFFDF8),
+    keyTint = Color(0xFFEADCCB),
+    keyBorder = Color(0xFF1D1B18),
+    blackKey = Color(0xFF1D1B18),
+    topKey = Color(0xFFD98A78),
 )
 
 /** Manuscript at night: dark ink ground, cream text and a lighter vermilion. */
@@ -53,4 +68,9 @@ val NightColors: ManuscriptColors = ManuscriptColors(
     onAccent = Color(0xFF1C1A17),
     accentText = Color(0xFFF0785D),
     raised = Color(0xFF2A2622),
+    key = Color(0xFFBFB5A4),
+    keyTint = Color(0xFFA08E7C),
+    keyBorder = Color(0xFF1C1A17),
+    blackKey = Color(0xFF0F0E0C),
+    topKey = Color(0xFFC9826F),
 )

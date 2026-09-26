@@ -56,6 +56,16 @@ class ContrastTest {
         }
     }
 
+    @Test
+    fun `black keys and key edges stand out against white keys in both themes`() {
+        palettes.forEach { (theme, c) ->
+            val ratio = contrastRatio(foreground = c.blackKey, background = c.key)
+            assertTrue("$theme black on white key is ${"%.2f".format(ratio)}:1", ratio >= 3.0)
+            val edge = contrastRatio(foreground = c.keyBorder, background = c.key)
+            assertTrue("$theme key edge is ${"%.2f".format(edge)}:1", edge >= 3.0)
+        }
+    }
+
     private companion object {
         const val MINIMUM_TEXT_CONTRAST = 4.5
     }

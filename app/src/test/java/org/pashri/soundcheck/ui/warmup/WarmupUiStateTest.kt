@@ -11,7 +11,9 @@ import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Playback
 import org.pashri.soundcheck.warmup.Programme
+import org.pashri.soundcheck.warmup.Range
 import org.pashri.soundcheck.warmup.SoundId
+import org.pashri.soundcheck.warmup.StarterPatterns
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StarterSounds
 import org.pashri.soundcheck.warmup.Step
@@ -175,5 +177,71 @@ class WarmupUiStateTest {
         assertEquals("Starts C3, turns at A3, back to C3", spokenTurn(view))
         val highStart = checkNotNull(state(stepIndex = 3, iteration = 0).iterations)
         assertEquals("Starts D4, turns at C3, back to D4", spokenTurn(highStart))
+    }
+
+    @Test
+    fun `the staff shows the Step's Pattern and the note being sung`() {
+        val playback = Playback(
+            programme = programme,
+            range = tenor,
+            stepIndex = 2,
+            iteration = 3,
+            playing = true,
+        )
+        val state = warmupUiState(
+            playback = playback,
+            programme = programme,
+            range = tenor,
+            sounds = StarterSounds.ALL,
+            note = 4,
+        )
+        val staff = checkNotNull(state.staff)
+        val expected = staffLayout(
+            pattern = StarterPatterns.ARPEGGIO_8_HOLD,
+            key = Pitch.parse("E♭3"),
+            clef = Clef.TREBLE_8VB,
+        )
+        assertEquals(expected, staff.layout)
+        assertEquals(4, staff.now)
+        assertEquals(
+            "Pattern on a staff, treble clef, an octave lower: 1 3 5 8 8 8 8 5 3 1",
+            staff.description,
+        )
+    }
+
+    @Test
+    fun `the keyboard spans the Step's Range and marks the key and its top note`() {
+        val keyboard = checkNotNull(state(stepIndex = 2, iteration = 3).keyboard)
+        assertEquals("C3", keyboard.whites.first().pitch.name)
+        assertEquals("A4", keyboard.whites.last().pitch.name)
+        assertEquals("E♭3", keyboard.blacks.single { it.mark == KeyMark.ROOT }.pitch.name)
+        assertEquals("E♭4", keyboard.blacks.single { it.mark == KeyMark.TOP }.pitch.name)
+    }
+
+    @Test
+    fun `a Range Offset widens the keyboard with the Step's Range`() {
+        val keyboard = checkNotNull(state(stepIndex = 0, iteration = null).keyboard)
+        assertEquals("B4", keyboard.whites.last().pitch.name)
+        assertEquals("C3", keyboard.whites.single { it.mark == KeyMark.ROOT }.pitch.name)
+    }
+
+    @Test
+    fun `the keyboard names its top note as the staff spells it`() {
+        val keyboard = checkNotNull(state(stepIndex = 0, iteration = 6).keyboard)
+        assertEquals("Keyboard C3 to B4, key F♯3, top note C♯4", keyboard.description)
+    }
+
+    @Test
+    fun `a Step that doesn't fit has no staff and no keyboard`() {
+        val narrow = Range(lowest = Pitch.parse("C4"), highest = Pitch.parse("D4"))
+        val state = warmupUiState(
+            playback = null,
+            programme = programme,
+            range = narrow,
+            sounds = StarterSounds.ALL,
+        )
+        assertNull(state.iterations)
+        assertNull(state.keyboard)
+        assertNull(state.staff)
     }
 }

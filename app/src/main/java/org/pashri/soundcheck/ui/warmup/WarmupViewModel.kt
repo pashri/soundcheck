@@ -26,12 +26,17 @@ class WarmupViewModel(
     val uiState: StateFlow<WarmupUiState?> = combine(
         flow = controller.playback,
         flow2 = library,
-    ) { now, saved ->
-        playingState(playback = now, library = saved)
+        flow3 = controller.note,
+    ) { now, saved, note ->
+        playingState(playback = now, library = saved, note = note)
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
-        initialValue = playingState(playback = controller.playback.value, library = library.value),
+        initialValue = playingState(
+            playback = controller.playback.value,
+            library = library.value,
+            note = controller.note.value,
+        ),
     )
 
     override fun playPause() {
@@ -66,12 +71,13 @@ class WarmupViewModel(
     }
 }
 
-private fun playingState(playback: Playback?, library: Library?): WarmupUiState? =
+private fun playingState(playback: Playback?, library: Library?, note: Int?): WarmupUiState? =
     playback?.let {
         warmupUiState(
             playback = it,
             programme = it.programme,
             range = it.range,
             sounds = library?.sounds.orEmpty(),
+            note = note,
         )
     }

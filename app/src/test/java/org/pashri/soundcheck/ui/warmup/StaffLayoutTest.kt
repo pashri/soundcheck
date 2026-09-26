@@ -321,4 +321,12 @@ class StaffLayoutTest {
         )
         assertEquals(12, plainWhole.top)
     }
+
+    @Test
+    fun `a note is named as the staff spells it, from the key's letter`() {
+        val triad = pattern("1 3 5")
+        assertEquals("G♯3", spelledName(pattern = triad, key = Pitch.parse("E3"), index = 1))
+        assertEquals("C♯4", spelledName(pattern = triad, key = Pitch.parse("F♯3"), index = 2))
+        assertEquals("E♭3", spelledName(pattern = triad, key = Pitch.parse("E♭3"), index = 0))
+    }
 }

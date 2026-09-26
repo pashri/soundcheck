@@ -9,6 +9,7 @@ import org.pashri.soundcheck.warmup.Range
 import org.pashri.soundcheck.warmup.RoundTrip
 import org.pashri.soundcheck.warmup.Sound
 import org.pashri.soundcheck.warmup.SoundId
+import org.pashri.soundcheck.warmup.Step
 import org.pashri.soundcheck.warmup.firstStep
 import org.pashri.soundcheck.warmup.nextStep
 
@@ -45,7 +46,11 @@ data class IterationView(
  * @property stepCount how many Steps the Programme has.
  * @property soundLabel what to sing, e.g. "mim".
  * @property stepDetail the Pattern and Direction, e.g. "on Arpeggio 8-hold, starting low".
+ * @property staff the Step's Pattern on a staff in the Iteration's key and the Range's
+ *     clef, with the note being sung, or null if the Step doesn't fit the Range.
  * @property iterations the key and progress, or null if the Step doesn't fit the Range.
+ * @property keyboard the Step's Range as a keyboard with the key marked, or null if the Step
+ *     doesn't fit the Range.
  * @property nextSound the next Step's Sound, or null on the last Step.
  * @property nextDetail the next Step's Pattern, e.g. "on Double arpeggio", or null.
  * @property active whether a Programme is playing or paused.
@@ -57,7 +62,9 @@ data class WarmupUiState(
     val stepCount: Int,
     val soundLabel: String,
     val stepDetail: String,
+    val staff: StaffView?,
     val iterations: IterationView?,
+    val keyboard: KeyboardView?,
     val nextSound: String?,
     val nextDetail: String?,
     val active: Boolean,
@@ -98,6 +105,7 @@ interface WarmupActions {
  * @param programme the Programme to offer when nothing is playing; it has at least one Step.
  * @param range the Range to offer it on.
  * @param sounds the Sound library, for labels.
+ * @param note the index of the Pattern note being sung, or null.
  * @return what to show.
  */
 fun warmupUiState(
@@ -105,6 +113,7 @@ fun warmupUiState(
     programme: Programme,
     range: Range,
     sounds: List<Sound>,
+    note: Int? = null,
 ): WarmupUiState {
     val shown = playback?.programme ?: programme
     val shownRange = playback?.range ?: range
@@ -118,6 +127,17 @@ fun warmupUiState(
         stepCount = shown.steps.size,
         soundLabel = labelOf(id = step.soundId, sounds = sounds, fallback = step.soundLabel),
         stepDetail = "on ${step.pattern.name}, ${startingText(step.direction)}",
+        staff = trip?.let {
+            staffView(
+                pattern = step.pattern,
+                key = it.keys[playback?.iteration ?: 0],
+                clef = clefFor(shownRange),
+                now = note,
+            )
+        },
+        keyboard = trip?.let {
+            keyboardFor(step = step, range = shownRange, trip = it, now = playback?.iteration)
+        },
         iterations = trip?.let {
             iterationView(
                 trip = it,
@@ -216,6 +236,30 @@ fun keyLabel(key: Pitch, chord: KeyChord): String = when (chord) {
 
 private fun labelOf(id: SoundId, sounds: List<Sound>, fallback: String): String =
     sounds.firstOrNull { it.id == id }?.label ?: fallback
+
+/**
+ * The keyboard for Iteration [now] of [step]: its Range with the Range Offset, the key the
+ * Iteration is in (the starting key before the first) and the Pattern's sung span, with the
+ * top note named as the staff spells it.
+ */
+private fun keyboardFor(
+    step: Step,
+    range: Range,
+    trip: RoundTrip.Fits,
+    now: Int?,
+): KeyboardView? {
+    val key = trip.keys[now ?: 0]
+    val notes = step.pattern.notes
+    val top = notes.indices.maxBy { notes[it].halfSteps }
+    return range.offsetBy(step.rangeOffset)?.let { sung ->
+        keyboardView(
+            range = sung,
+            key = key,
+            span = step.pattern.span,
+            topName = spelledName(pattern = step.pattern, key = key, index = top),
+        )
+    }
+}
 
 private fun startingText(direction: Direction): String =
     if (direction == Direction.START_LOW) "starting low" else "starting high"
