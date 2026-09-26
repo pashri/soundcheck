@@ -29,6 +29,12 @@ class StarterContentTest {
     }
 
     @Test
+    fun `the arpeggio 8-hold moves in eighths and ends on a quarter`() {
+        val lengths = StarterPatterns.ARPEGGIO_8_HOLD.notes.map { it.length }
+        assertEquals(List(size = 9) { NoteLength.EIGHTH } + NoteLength.QUARTER, lengths)
+    }
+
+    @Test
     fun `the starter patterns have the documented spans lengths and key chords`() {
         val all = StarterPatterns.ALL
         assertEquals(
@@ -39,7 +45,7 @@ class StarterContentTest {
             all.map { it.name },
         )
         assertEquals(listOf(7, 12, 19, 7, 7, 7, 14, 12), all.map { it.span.halfSteps })
-        assertEquals(listOf(12, 10, 16, 16, 12, 12, 20, 12), all.map { it.lengthInEighths })
+        assertEquals(listOf(12, 11, 16, 16, 12, 12, 20, 12), all.map { it.lengthInEighths })
         assertEquals(
             listOf(
                 KeyChord.MAJOR, KeyChord.MAJOR, KeyChord.MAJOR, KeyChord.ROOT_ONLY,
