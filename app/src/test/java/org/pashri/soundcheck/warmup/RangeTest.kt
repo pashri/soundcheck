@@ -46,7 +46,13 @@ class RangeTest {
             range("B♭3", "B♭3"),
             tenor.offsetBy(RangeOffset(bottom = -10, top = -11)),
         )
-        assertNull(tenor.offsetBy(RangeOffset(top = 100)))
+    }
+
+    @Test
+    fun `an offset past the piano stops at its last key`() {
+        assertEquals(range("C3", "C8"), tenor.offsetBy(RangeOffset(top = 100)))
+        assertEquals(range("A0", "E4"), VoiceType.BASS.range.offsetBy(RangeOffset(bottom = 30)))
+        assertEquals(range("A0", "C8"), Range.PIANO)
     }
 
     @Test

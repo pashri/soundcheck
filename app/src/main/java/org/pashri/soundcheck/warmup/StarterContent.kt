@@ -4,6 +4,7 @@ package org.pashri.soundcheck.warmup
 object StarterPatterns {
     /** Up and down the first five notes of the major scale. */
     val FIVE_NOTE_SCALE: Pattern = starter(
+        id = "five-note-scale",
         name = "5-note scale",
         notation = "1 2 3 4 5 4 3 2 1h",
         defaultLength = NoteLength.EIGHTH,
@@ -12,6 +13,7 @@ object StarterPatterns {
 
     /** A major arpeggio that holds the octave over four quick notes. */
     val ARPEGGIO_8_HOLD: Pattern = starter(
+        id = "arpeggio-8-hold",
         name = "Arpeggio 8-hold",
         notation = "1 3 5 8e 8e 8e 8e 5 3 1h",
         defaultLength = NoteLength.QUARTER,
@@ -20,6 +22,7 @@ object StarterPatterns {
 
     /** A major arpeggio up to the twelfth, then down the scale. */
     val DOUBLE_ARPEGGIO: Pattern = starter(
+        id = "double-arpeggio",
         name = "Double arpeggio",
         notation = "1 3 5 8 10 12 11 9 7 5 4 2 1h",
         defaultLength = NoteLength.EIGHTH,
@@ -28,6 +31,7 @@ object StarterPatterns {
 
     /** A slow slide from the root to the fifth and back, over a single note. */
     val SIREN_1_5_1: Pattern = starter(
+        id = "siren-1-5-1",
         name = "1-5-1 siren",
         notation = "1 5 1w",
         defaultLength = NoteLength.HALF,
@@ -36,6 +40,7 @@ object StarterPatterns {
 
     /** Up and down a major triad. */
     val TRIAD: Pattern = starter(
+        id = "triad",
         name = "Triad",
         notation = "1 3 5 3 1h",
         defaultLength = NoteLength.QUARTER,
@@ -44,6 +49,7 @@ object StarterPatterns {
 
     /** The 5-note scale in minor. */
     val MINOR_FIVE_NOTE_SCALE: Pattern = starter(
+        id = "minor-five-note-scale",
         name = "Minor 5-note scale",
         notation = "1 2 ♭3 4 5 4 ♭3 2 1h",
         defaultLength = NoteLength.EIGHTH,
@@ -52,6 +58,7 @@ object StarterPatterns {
 
     /** Up the major scale to the ninth and back down. */
     val NINE_NOTE_SCALE: Pattern = starter(
+        id = "nine-note-scale",
         name = "9-note scale",
         notation = "1 2 3 4 5 6 7 8 9 8 7 6 5 4 3 2 1h",
         defaultLength = NoteLength.EIGHTH,
@@ -60,6 +67,7 @@ object StarterPatterns {
 
     /** A dominant-seventh arpeggio to the octave and back. */
     val DOMINANT_ARPEGGIO: Pattern = starter(
+        id = "dominant-arpeggio",
         name = "Dominant arpeggio",
         notation = "1 3 5 ♭7 8 ♭7 5 3 1h",
         defaultLength = NoteLength.EIGHTH,
@@ -111,59 +119,92 @@ object StarterSounds {
 
 /** The sample Programme a fresh install ships with. */
 object StarterProgrammes {
-    /** Six Steps from a gentle lip trill to a wide 9-note scale. */
-    val WARM_UP: Programme = Programme(
+    /** Six Steps from a gentle lip trill to a wide 9-note scale, as the library saves them. */
+    val SAVED_WARM_UP: SavedProgramme = SavedProgramme(
+        id = ProgrammeId("starter-warm-up"),
         name = "Starter warm-up",
         steps = listOf(
-            Step(
+            starterStep(
+                number = 1,
                 pattern = StarterPatterns.FIVE_NOTE_SCALE,
-                soundId = StarterSounds.LIP_TRILL.id,
+                sound = StarterSounds.LIP_TRILL,
                 bpm = 90,
-                direction = Direction.START_LOW,
                 rangeOffset = RangeOffset(top = 2),
             ),
-            Step(
-                pattern = StarterPatterns.TRIAD,
-                soundId = StarterSounds.HUM.id,
-                bpm = 90,
-                direction = Direction.START_LOW,
-            ),
-            Step(
+            starterStep(number = 2, pattern = StarterPatterns.TRIAD, sound = StarterSounds.HUM),
+            starterStep(
+                number = 3,
                 pattern = StarterPatterns.ARPEGGIO_8_HOLD,
-                soundId = StarterSounds.MIM.id,
+                sound = StarterSounds.MIM,
                 bpm = 100,
-                direction = Direction.START_LOW,
             ),
-            Step(
+            starterStep(
+                number = 4,
                 pattern = StarterPatterns.SIREN_1_5_1,
-                soundId = StarterSounds.OO.id,
+                sound = StarterSounds.OO,
                 bpm = 80,
                 direction = Direction.START_HIGH,
             ),
-            Step(
+            starterStep(
+                number = 5,
                 pattern = StarterPatterns.DOUBLE_ARPEGGIO,
-                soundId = StarterSounds.NEH.id,
+                sound = StarterSounds.NEH,
                 bpm = 110,
-                direction = Direction.START_LOW,
                 rangeOffset = RangeOffset(top = 10),
             ),
-            Step(
+            starterStep(
+                number = 6,
                 pattern = StarterPatterns.NINE_NOTE_SCALE,
-                soundId = StarterSounds.MAH.id,
+                sound = StarterSounds.MAH,
                 bpm = 100,
-                direction = Direction.START_LOW,
             ),
         ),
+    )
+
+    /** The same Programme, ready to play. */
+    val WARM_UP: Programme = Programme(
+        name = SAVED_WARM_UP.name,
+        steps = SAVED_WARM_UP.steps.map { saved ->
+            saved.toStep(pattern = StarterPatterns.ALL.first { it.id == saved.patternId })
+        },
+    )
+}
+
+/** What the library holds on a fresh install. */
+object StarterLibrary {
+    /** The eight starter Patterns, the eight starter Sounds and the sample Programme. */
+    val LIBRARY: Library = Library(
+        patterns = StarterPatterns.ALL,
+        sounds = StarterSounds.ALL,
+        programmes = listOf(StarterProgrammes.SAVED_WARM_UP),
     )
 }
 
 private fun starter(
+    id: String,
     name: String,
     notation: String,
     defaultLength: NoteLength,
     keyChord: KeyChord,
 ): Pattern = Pattern(
+    id = PatternId(id),
     name = name,
     notes = PatternNotation.parse(notation, defaultLength = defaultLength),
     keyChord = keyChord,
+)
+
+private fun starterStep(
+    number: Int,
+    pattern: Pattern,
+    sound: Sound,
+    bpm: Int = 90,
+    direction: Direction = Direction.START_LOW,
+    rangeOffset: RangeOffset = RangeOffset.NONE,
+): SavedStep = SavedStep(
+    key = StepKey("starter-$number"),
+    patternId = pattern.id,
+    soundId = sound.id,
+    bpm = bpm,
+    direction = direction,
+    rangeOffset = rangeOffset,
 )

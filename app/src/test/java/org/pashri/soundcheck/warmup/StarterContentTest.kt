@@ -133,4 +133,27 @@ class StarterContentTest {
         )
         assertEquals(25, fits.keys.size)
     }
+
+    @Test
+    fun `the starter patterns have distinct ids`() {
+        assertEquals(
+            listOf(
+                "five-note-scale", "arpeggio-8-hold", "double-arpeggio", "siren-1-5-1",
+                "triad", "minor-five-note-scale", "nine-note-scale", "dominant-arpeggio",
+            ),
+            StarterPatterns.ALL.map { it.id.value },
+        )
+    }
+
+    @Test
+    fun `the starter library holds the eight Patterns, the eight Sounds and the Programme`() {
+        val library = StarterLibrary.LIBRARY
+        assertEquals(StarterPatterns.ALL, library.patterns)
+        assertEquals(StarterSounds.ALL, library.sounds)
+        assertEquals(listOf(StarterProgrammes.SAVED_WARM_UP), library.programmes)
+        assertEquals(
+            (1..6).map { "starter-$it" },
+            StarterProgrammes.SAVED_WARM_UP.steps.map { it.key.value },
+        )
+    }
 }

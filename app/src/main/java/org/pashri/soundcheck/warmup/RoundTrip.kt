@@ -46,7 +46,8 @@ sealed interface RoundTrip {
 /**
  * Plans a Step's round trip: a half-step per Iteration from its starting end to the far end
  * of the Range and back, turning when the Pattern's highest (or lowest) sung note reaches
- * the edge, so no sung note falls outside the Range.
+ * the edge, so no sung note falls outside the Range. Every key stays inside MIDI 0–127; a
+ * Pattern so high or low that no key is left doesn't fit either, though its span would.
  *
  * @param range the app's Range.
  * @param offset the Step's Range Offset.
@@ -68,8 +69,14 @@ fun planRoundTrip(
             availableHalfSteps = available,
         )
     }
-    val lowestKey = effective.lowest.midi - span.lowest
-    val highestKey = effective.highest.midi - span.highest
+    val lowestKey = maxOf(effective.lowest.midi - span.lowest, Pitch.MIDI_NOTES.first)
+    val highestKey = minOf(effective.highest.midi - span.highest, Pitch.MIDI_NOTES.last)
+    if (lowestKey > highestKey) {
+        return RoundTrip.DoesNotFit(
+            neededHalfSteps = span.halfSteps,
+            availableHalfSteps = available,
+        )
+    }
     return RoundTrip.Fits(
         keys = tripKeys(lowestKey = lowestKey, highestKey = highestKey, direction = direction)
             .map(::Pitch),

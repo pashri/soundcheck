@@ -13,7 +13,7 @@ class PatternTest {
     ): PatternNote = PatternNote(degree = degree, length = length, accidental = accidental)
 
     private fun pattern(notes: List<PatternNote>): Pattern =
-        Pattern(name = "Test", notes = notes, keyChord = KeyChord.MAJOR)
+        Pattern(id = PatternId("test"), name = "Test", notes = notes, keyChord = KeyChord.MAJOR)
 
     @Test
     fun `the double arpeggio spans 19 half-steps from its root`() {

@@ -21,6 +21,7 @@ class RoundTripTest {
     )
 
     private fun pattern(notation: String): Pattern = Pattern(
+        id = PatternId(notation),
         name = notation,
         notes = PatternNotation.parse(notation),
         keyChord = KeyChord.MAJOR,
@@ -161,5 +162,23 @@ class RoundTripTest {
     @Test
     fun `a Fits with no keys throws`() {
         assertThrows(IllegalArgumentException::class.java) { RoundTrip.Fits(emptyList()) }
+    }
+
+    @Test
+    fun `a single note so high that no key can reach it does not fit`() {
+        val trip = planRoundTrip(
+            range = tenor,
+            offset = RangeOffset.NONE,
+            span = pattern("99").span,
+            direction = Direction.START_LOW,
+        )
+        assertTrue("$trip", trip is RoundTrip.DoesNotFit)
+    }
+
+    @Test
+    fun `a high-only Pattern whose offset reaches A0 starts on the lowest MIDI key`() {
+        val trip = fits(pattern("15"), Direction.START_LOW, offset = RangeOffset(bottom = 30))
+        assertEquals(Pitch(0), trip.startKey)
+        assertTrue(trip.keys.all { it.midi >= 0 })
     }
 }

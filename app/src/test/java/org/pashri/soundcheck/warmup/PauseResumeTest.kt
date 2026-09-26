@@ -7,6 +7,7 @@ import org.junit.Test
 
 class PauseResumeTest {
     private val arpeggio8Hold = Pattern(
+        id = PatternId("arpeggio-8-hold"),
         name = "Arpeggio 8-hold",
         notes = PatternNotation.parse("1 3 5 8e 8e 8e 8e 5 3 1h", NoteLength.QUARTER),
         keyChord = KeyChord.MAJOR,
