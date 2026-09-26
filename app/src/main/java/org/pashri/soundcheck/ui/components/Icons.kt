@@ -50,6 +50,12 @@ object ManuscriptIcons {
 
     /** A pencil: rename. */
     val Edit: ImageVector = strokeIcon("Edit", "M4 20h4L19 9l-4-4L4 16z", "M13 7l4 4")
+
+    /** Three bars: drag to reorder. */
+    val Handle: ImageVector = strokeIcon("Handle", "M6 8h12M6 12h12M6 16h12")
+
+    /** A triangle with an exclamation mark: a warning. */
+    val Warning: ImageVector = strokeIcon("Warning", "M12 4l9 16H3z", "M12 10v4", "M12 17v.5")
 }
 
 private fun strokeIcon(name: String, vararg paths: String): ImageVector =

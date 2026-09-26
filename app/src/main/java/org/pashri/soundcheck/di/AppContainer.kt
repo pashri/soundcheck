@@ -32,11 +32,13 @@ import org.pashri.soundcheck.piano.AssetPianoSource
 import org.pashri.soundcheck.piano.Piano
 import org.pashri.soundcheck.playback.PlaybackService
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
+import org.pashri.soundcheck.ui.programme.ProgrammeEditorViewModel
 import org.pashri.soundcheck.ui.settings.SettingsViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
 import org.pashri.soundcheck.warmup.Library
+import org.pashri.soundcheck.warmup.ProgrammeId
 import org.pashri.soundcheck.warmup.ProgrammePlayer
 import org.pashri.soundcheck.warmup.SpokenAnnouncements
 import org.pashri.soundcheck.warmup.StarterLibrary
@@ -175,6 +177,21 @@ class AppContainer(context: Context) {
     val settingsViewModelFactory: ViewModelProvider.Factory by lazy {
         SettingsViewModel.Factory(settings = settings)
     }
+
+    /**
+     * Builds a Programme editor's view model.
+     *
+     * @param id the Programme.
+     * @return the factory.
+     */
+    fun programmeEditorFactory(id: ProgrammeId): ViewModelProvider.Factory =
+        ProgrammeEditorViewModel.Factory(
+            programmeId = id,
+            controller = warmup,
+            library = library,
+            settings = settings,
+            newId = newId,
+        )
 
     /** Whether "Play over other audio" is on; read each time a tool asks for focus. */
     private fun playsOverOtherAudio(): Boolean = settings.data.value?.playOverOtherAudio == true
