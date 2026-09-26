@@ -28,13 +28,18 @@ value class ClipName(val value: String) {
     /** Finds clip names in text that may not be readable any other way. */
     companion object {
         /**
-         * Every clip name that appears anywhere in [text], whatever surrounds it.
+         * Every clip name that appears anywhere in [text], whatever surrounds it. Damage that
+         * runs into a name can't hide it: each match's shorter endings count as names too.
          *
          * @param text any text, e.g. a library file that can't be decoded.
          * @return the clip names found.
          */
         fun findIn(text: String): Set<ClipName> =
-            CLIP_NAME.findAll(input = text).map { ClipName(value = it.value) }.toSet()
+            CLIP_NAME.findAll(input = text)
+                .flatMap { match -> match.value.indices.map { match.value.substring(it) } }
+                .filter { CLIP_NAME.matches(input = it) }
+                .map { ClipName(value = it) }
+                .toSet()
     }
 }
 

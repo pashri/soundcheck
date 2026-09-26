@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -143,10 +144,18 @@ class ClipSweepTest {
         val libraryFile = File(folder.root, "library.json")
         File(folder.root, "library.json.unreadable-42")
             .writeText("\u0000#{]]\"take-1.wav\" ~~ ::\u0007")
-        assertEquals(
-            setOf(ClipName("take-1.wav")),
-            clipsNamedByBackups(libraryFile = libraryFile),
-        )
+        val pinned = clipsNamedByBackups(libraryFile = libraryFile).orEmpty()
+        assertTrue(ClipName("take-1.wav") in pinned)
+    }
+
+    @Test
+    fun `damage running into a clip name still pins the name itself`() = runTest {
+        oldClip("mim-take.wav")
+        val libraryFile = File(folder.root, "library.json")
+        File(folder.root, "library.json.unreadable-42").writeText("\u0000xyzmim-take.wav\"")
+        val backedUp = clipsNamedByBackups(libraryFile = libraryFile)
+        assertEquals(0, sweep(store = FakeStore(StarterLibrary.LIBRARY), backedUp = backedUp))
+        assertEquals(setOf("mim-take.wav"), files())
     }
 
     @Test
