@@ -6,10 +6,15 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.music.Pitch
+import org.pashri.soundcheck.ui.components.spokenMusic
+import org.pashri.soundcheck.warmup.Direction
 import org.pashri.soundcheck.warmup.KeyChord
 import org.pashri.soundcheck.warmup.Playback
+import org.pashri.soundcheck.warmup.Programme
+import org.pashri.soundcheck.warmup.SoundId
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StarterSounds
+import org.pashri.soundcheck.warmup.Step
 import org.pashri.soundcheck.warmup.VoiceType
 
 class WarmupUiStateTest {
@@ -107,6 +112,32 @@ class WarmupUiStateTest {
     }
 
     @Test
+    fun `a deleted Sound keeps the label its Step started with, not its raw id`() {
+        val step = Step(
+            pattern = programme.steps[2].pattern,
+            soundId = SoundId("uuid-of-a-deleted-sound"),
+            bpm = 90,
+            direction = Direction.START_LOW,
+            soundLabel = "vroom",
+        )
+        val deleted = Programme(name = programme.name, steps = listOf(step))
+        val playback = Playback(
+            programme = deleted,
+            range = tenor,
+            stepIndex = 0,
+            iteration = 0,
+            playing = true,
+        )
+        val state = warmupUiState(
+            playback = playback,
+            programme = deleted,
+            range = tenor,
+            sounds = emptyList(),
+        )
+        assertEquals("vroom", state.soundLabel)
+    }
+
+    @Test
     fun `Key Chords are named as a singer reads them`() {
         val eFlat = Pitch.parse("E♭3")
         assertEquals(
@@ -117,22 +148,25 @@ class WarmupUiStateTest {
 
     @Test
     fun `a key label is spoken with its symbols spelled out`() {
-        assertEquals("E flat major", spokenKeyLabel("E♭ major"))
-        assertEquals("E flat", spokenKeyLabel("E♭"))
-        assertEquals("C major", spokenKeyLabel("C major"))
-        assertEquals("F sharp7", spokenKeyLabel("F♯7"))
+        assertEquals("E flat major", spokenMusic("E♭ major"))
+        assertEquals("E flat", spokenMusic("E♭"))
+        assertEquals("C major", spokenMusic("C major"))
+        assertEquals("F sharp 7", spokenMusic("F♯7"))
     }
 
     @Test
     fun `progress is spoken as an Iteration, a direction, the Demo or not started`() {
         val playing = checkNotNull(state(stepIndex = 2, iteration = 3).iterations)
-        assertEquals("Iteration 4 of 19, going up", spokenProgress(playing, active = true))
+        assertEquals("Iteration 4 of 19, going up", spokenProgress(view = playing, active = true))
         val homeward = checkNotNull(state(stepIndex = 2, iteration = 12).iterations)
-        assertEquals("Iteration 13 of 19, going down", spokenProgress(homeward, active = true))
+        assertEquals(
+            "Iteration 13 of 19, going down",
+            spokenProgress(view = homeward, active = true),
+        )
         val demo = checkNotNull(state(stepIndex = 2, iteration = null).iterations)
-        assertEquals("Demo", spokenProgress(demo, active = true))
+        assertEquals("Demo", spokenProgress(view = demo, active = true))
         val notStarted = checkNotNull(state(stepIndex = null, iteration = null).iterations)
-        assertEquals("not started", spokenProgress(notStarted, active = false))
+        assertEquals("not started", spokenProgress(view = notStarted, active = false))
     }
 
     @Test

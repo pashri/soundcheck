@@ -1,9 +1,10 @@
 # Soundcheck
 
 A Tuner and a Metronome for any instrument, and a hands-free vocal Warm-up, for Android.
-All three work today: the Warm-up plays a built-in Programme on a sampled grand piano, with
-the phone's voice announcing each exercise, and keeps going with the screen off. Editing
-Programmes and choosing your Range are on the way.
+The Warm-up plays your Programmes on a sampled grand piano, with the phone's voice
+announcing each exercise, and keeps going with the screen off. You build Programmes from
+Patterns (the notes to sing) and Sounds (what to sing them on), and set your Range from a
+voice type. Recording your own announcements is on the way.
 
 ## How it's built
 
@@ -18,6 +19,17 @@ Programmes and choosing your Range are on the way.
 - The Warm-up runs in a foreground service with a media session: the lock screen shows
   pause, next and stop, and the headphone button pauses (one press), skips to the next
   exercise (two) and goes back (three). Only one tool plays or listens at a time.
+- The Warm-up's library (Patterns, Sounds and Programmes) and its settings are two small
+  JSON files in the app's private storage, rewritten whole, atomically, on every change. A
+  fresh install starts with eight Patterns, eight Sounds and a sample Programme. Nothing
+  leaves the phone: there are no accounts and no sync.
+- With "Play over other audio" on, the Warm-up and the Metronome play under a podcast
+  instead of pausing it, and the headphone button stays with the podcast app: the Warm-up
+  then has no media session at all, only a notification with pause, next and stop. Some
+  Bluetooth headsets only send "pause" while any audio is still playing, so they can pause
+  the other app but not resume it.
+- The Step and Pattern editors can play a Step's Demo or a Pattern on the piano, using the
+  same timeline as the Warm-up; doing so pauses a playing Programme.
 
 ## Building
 

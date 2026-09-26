@@ -24,18 +24,21 @@ class RangeTest {
 
     @Test
     fun `a positive top offset widens the top of the Range`() {
-        assertEquals(range("C3", "B4"), tenor.offsetBy(RangeOffset(top = 2)))
+        assertEquals(range(lowest = "C3", highest = "B4"), tenor.offsetBy(RangeOffset(top = 2)))
     }
 
     @Test
     fun `a positive bottom offset widens the bottom of the Range`() {
-        assertEquals(range("B♭2", "A4"), tenor.offsetBy(RangeOffset(bottom = 2)))
+        assertEquals(
+            range(lowest = "B♭2", highest = "A4"),
+            tenor.offsetBy(RangeOffset(bottom = 2)),
+        )
     }
 
     @Test
     fun `a negative offset narrows that end`() {
         val narrowed = tenor.offsetBy(RangeOffset(top = -3))
-        assertEquals(range("C3", "F♯4"), narrowed)
+        assertEquals(range(lowest = "C3", highest = "F♯4"), narrowed)
         assertEquals(18, narrowed?.halfSteps)
     }
 
@@ -43,15 +46,24 @@ class RangeTest {
     fun `an offset that closes the Range leaves no Range`() {
         assertNull(tenor.offsetBy(RangeOffset(bottom = -11, top = -11)))
         assertEquals(
-            range("B♭3", "B♭3"),
+            range(lowest = "B♭3", highest = "B♭3"),
             tenor.offsetBy(RangeOffset(bottom = -10, top = -11)),
         )
-        assertNull(tenor.offsetBy(RangeOffset(top = 100)))
+    }
+
+    @Test
+    fun `an offset past the piano stops at its last key`() {
+        assertEquals(range(lowest = "C3", highest = "C8"), tenor.offsetBy(RangeOffset(top = 100)))
+        assertEquals(
+            range(lowest = "A0", highest = "E4"),
+            VoiceType.BASS.range.offsetBy(RangeOffset(bottom = 30)),
+        )
+        assertEquals(range(lowest = "A0", highest = "C8"), Range.PIANO)
     }
 
     @Test
     fun `a Range whose top is below its bottom is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) { range("D3", "C3") }
+        assertThrows(IllegalArgumentException::class.java) { range(lowest = "D3", highest = "C3") }
     }
 
     @Test

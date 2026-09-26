@@ -13,7 +13,7 @@ class PatternTest {
     ): PatternNote = PatternNote(degree = degree, length = length, accidental = accidental)
 
     private fun pattern(notes: List<PatternNote>): Pattern =
-        Pattern(name = "Test", notes = notes, keyChord = KeyChord.MAJOR)
+        Pattern(id = PatternId("test"), name = "Test", notes = notes, keyChord = KeyChord.MAJOR)
 
     @Test
     fun `the double arpeggio spans 19 half-steps from its root`() {
@@ -25,7 +25,7 @@ class PatternTest {
 
     @Test
     fun `a flattened root reaches below the root`() {
-        val span = pattern(listOf(note(1, accidental = Accidental.FLAT), note(5))).span
+        val span = pattern(listOf(note(degree = 1, accidental = Accidental.FLAT), note(5))).span
         assertEquals(SungSpan(lowest = -1, highest = 7), span)
         assertEquals(8, span.halfSteps)
     }
@@ -35,9 +35,16 @@ class PatternTest {
         val q = NoteLength.QUARTER
         val e = NoteLength.EIGHTH
         val notes = listOf(
-            note(1, q), note(3, q), note(5, q),
-            note(8, e), note(8, e), note(8, e), note(8, e),
-            note(5, q), note(3, q), note(1, NoteLength.HALF),
+            note(degree = 1, length = q),
+            note(degree = 3, length = q),
+            note(degree = 5, length = q),
+            note(degree = 8, length = e),
+            note(degree = 8, length = e),
+            note(degree = 8, length = e),
+            note(degree = 8, length = e),
+            note(degree = 5, length = q),
+            note(degree = 3, length = q),
+            note(degree = 1, length = NoteLength.HALF),
         )
         assertEquals(18, pattern(notes).lengthInEighths)
     }

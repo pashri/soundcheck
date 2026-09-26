@@ -23,6 +23,9 @@ object PlaybackNotifications {
     /** The playback notification's id. */
     const val NOTIFICATION_ID: Int = 1
 
+    /** The id a replacement notification takes; see [otherNotificationId]. */
+    const val FRESH_NOTIFICATION_ID: Int = 2
+
     /**
      * Creates the quiet channel the playback notification uses; safe to call again.
      *
@@ -40,50 +43,34 @@ object PlaybackNotifications {
 
     /**
      * The media-style notification for [now], shown on the lock screen with its controls.
+     * With a [session] it is the lock screen's media card; without one (while playing over
+     * other audio) it keeps the same buttons but leaves the media card to the other app.
      *
      * @param context the playback service.
-     * @param session its media session.
+     * @param session its media session, or null while it has none.
      * @param now what to show.
      * @return the notification.
      */
-    fun build(context: Context, session: MediaSessionCompat, now: NowPlaying): Notification {
-        val toggle = if (now.playing) {
-            action(context = context, icon = R.drawable.ic_pause, title = "Pause")
-        } else {
-            action(context = context, icon = R.drawable.ic_play, title = "Play")
-        }
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+    fun build(context: Context, session: MediaSessionCompat?, now: NowPlaying): Notification {
+        val spec = notificationSpec(now = now, withSession = session != null)
+        val style = MediaStyle().setShowActionsInCompactView(*spec.compactButtons.toIntArray())
+        if (spec.attachesSession) session?.let { style.setMediaSession(it.sessionToken) }
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(now.title)
             .setContentText(now.text)
             .setSubText(now.subText)
             .setContentIntent(openApp(context))
-            .setDeleteIntent(serviceIntent(context, PlaybackService.ACTION_STOP))
+            .setDeleteIntent(
+                serviceIntent(context = context, action = PlaybackService.ACTION_STOP),
+            )
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setSilent(true)
             .setOngoing(now.playing)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .addAction(toggle)
-            .addAction(
-                NotificationCompat.Action(
-                    R.drawable.ic_next,
-                    "Next",
-                    serviceIntent(context, PlaybackService.ACTION_NEXT),
-                ),
-            )
-            .addAction(
-                NotificationCompat.Action(
-                    R.drawable.ic_stop,
-                    "Stop",
-                    serviceIntent(context, PlaybackService.ACTION_STOP),
-                ),
-            )
-            .setStyle(
-                MediaStyle()
-                    .setMediaSession(session.sessionToken)
-                    .setShowActionsInCompactView(0, 1),
-            )
-            .build()
+            .setStyle(style)
+        spec.buttons.forEach { builder.addAction(action(context = context, button = it)) }
+        return builder.build()
     }
 
     /**
@@ -115,10 +102,12 @@ object PlaybackNotifications {
         )
     }
 
-    private fun action(context: Context, icon: Int, title: String): NotificationCompat.Action {
-        val intent = serviceIntent(context, PlaybackService.ACTION_TOGGLE)
-        return NotificationCompat.Action(icon, title, intent)
-    }
+    private fun action(context: Context, button: NotificationButton): NotificationCompat.Action =
+        NotificationCompat.Action(
+            button.icon,
+            button.title,
+            serviceIntent(context = context, action = button.action),
+        )
 
     private fun serviceIntent(context: Context, action: String): PendingIntent =
         PendingIntent.getService(

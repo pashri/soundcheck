@@ -1,6 +1,7 @@
 package org.pashri.soundcheck.playback
 
 import android.view.KeyEvent
+import org.pashri.soundcheck.warmup.WarmupSettings
 
 /** What a media key event means for a playing Programme. */
 enum class MediaKeyAction {
@@ -42,4 +43,44 @@ fun mediaKeyAction(keyCode: Int, action: Int, repeatCount: Int): MediaKeyAction 
         else -> return MediaKeyAction.IGNORE
     }
     return if (action == KeyEvent.ACTION_DOWN && repeatCount == 0) role else MediaKeyAction.CONSUME
+}
+
+/**
+ * Whether the Warm-up's media session should take the headphone button. With "Play over
+ * other audio" on, the button stays with the other app.
+ *
+ * @param settings the saved settings, or null before they have loaded.
+ * @return false only while playing over other audio.
+ */
+fun takesHeadphoneButton(settings: WarmupSettings?): Boolean =
+    settings?.playOverOtherAudio != true
+
+/** What the playback service does with its media session when the settings change. */
+enum class SessionChange {
+    /** Make a session, so the headphone button reaches the Warm-up. */
+    CREATE,
+
+    /** Release the session, so the headphone button stays with the other app. */
+    RELEASE,
+
+    /** Leave things as they are. */
+    KEEP,
+}
+
+/**
+ * Whether to create or release the media session. While playing over other audio Soundcheck
+ * has no session at all: Android 12 and later route the headphone button to the app that
+ * last played audio, even to an inactive session.
+ *
+ * @param hasSession whether the service holds a session now.
+ * @param settings the saved settings, or null before they have loaded.
+ * @return the change that makes the session match [takesHeadphoneButton].
+ */
+fun sessionChange(hasSession: Boolean, settings: WarmupSettings?): SessionChange {
+    val wanted = takesHeadphoneButton(settings)
+    return when {
+        wanted && !hasSession -> SessionChange.CREATE
+        !wanted && hasSession -> SessionChange.RELEASE
+        else -> SessionChange.KEEP
+    }
 }

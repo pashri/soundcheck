@@ -13,25 +13,25 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
-import org.pashri.soundcheck.audio.FakeSoundOutput
-import org.pashri.soundcheck.audio.ToolArbiter
-import org.pashri.soundcheck.piano.FakePianoSource
-import org.pashri.soundcheck.piano.Piano
-import org.pashri.soundcheck.warmup.FakeAnnouncements
-import org.pashri.soundcheck.warmup.ProgrammePlayer
+import org.pashri.soundcheck.data.FakeStore
+import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StarterProgrammes
 import org.pashri.soundcheck.warmup.StarterSounds
 import org.pashri.soundcheck.warmup.VoiceType
 import org.pashri.soundcheck.warmup.WarmupController
+import org.pashri.soundcheck.warmup.renameSound
+import org.pashri.soundcheck.warmup.testController
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WarmupViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val focus = FakeFocusGate()
+    private val library = FakeStore(StarterLibrary.LIBRARY)
 
     @Before
     fun setUp() {
@@ -43,84 +43,78 @@ class WarmupViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun TestScope.controller(): WarmupController {
-        val output = FakeSoundOutput(clockMs = { testScheduler.currentTime })
-        val player = ProgrammePlayer(
-            output = output,
-            piano = Piano(source = FakePianoSource(), output = output),
-            announcements = FakeAnnouncements(),
-            scope = backgroundScope,
-        )
-        return WarmupController(
-            player = player,
-            focus = focus,
-            arbiter = ToolArbiter(),
-            scope = backgroundScope,
-        )
+    private fun factory(controller: WarmupController): ViewModelProvider.Factory =
+        WarmupViewModel.Factory(controller = controller, library = library.data)
+
+    private fun TestScope.playing(): WarmupController = testController(focus).also {
+        it.play(programme = StarterProgrammes.WARM_UP, range = VoiceType.TENOR.range)
+        runCurrent()
     }
 
-    private fun factory(controller: WarmupController): ViewModelProvider.Factory =
-        WarmupViewModel.Factory(
-            controller = controller,
-            programme = StarterProgrammes.WARM_UP,
-            range = VoiceType.TENOR.range,
-            sounds = StarterSounds.ALL,
-        )
+    private fun viewModel(controller: WarmupController): WarmupViewModel =
+        factory(controller).create(WarmupViewModel::class.java)
 
-    private fun TestScope.viewModel(): WarmupViewModel =
-        factory(controller()).create(WarmupViewModel::class.java)
-
-    private fun TestScope.state(viewModel: WarmupViewModel): WarmupUiState {
+    private fun TestScope.state(viewModel: WarmupViewModel): WarmupUiState? {
         runCurrent()
         return viewModel.uiState.value
     }
 
     @Test
-    fun `it opens on the starter Programme, ready to start`() = runTest(dispatcher) {
-        val state = state(viewModel())
-        assertEquals("Starter warm-up", state.programmeName)
-        assertFalse(state.active)
-        assertEquals("Start", state.playLabel)
+    fun `it shows nothing while no Programme is loaded`() = runTest(context = dispatcher) {
+        assertNull(state(viewModel(testController(focus))))
     }
 
     @Test
-    fun `the play button starts, pauses and resumes the Programme`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        viewModel.playPause()
-        assertTrue(state(viewModel).playing)
-        viewModel.playPause()
-        assertFalse(state(viewModel).playing)
-        assertTrue(state(viewModel).active)
-        viewModel.playPause()
-        assertTrue(state(viewModel).playing)
+    fun `it shows the Programme the controller is playing`() = runTest(context = dispatcher) {
+        val state = state(viewModel(playing()))
+        assertEquals("Starter warm-up", state?.programmeName)
+        assertEquals("lip trill", state?.soundLabel)
+        assertEquals(true, state?.playing)
     }
 
     @Test
-    fun `next moves to the second Step`() = runTest(dispatcher) {
-        val viewModel = viewModel()
+    fun `the play button pauses and resumes the Programme`() = runTest(context = dispatcher) {
+        val viewModel = viewModel(playing())
         viewModel.playPause()
-        runCurrent()
+        assertEquals(false, state(viewModel)?.playing)
+        assertEquals(true, state(viewModel)?.active)
+        viewModel.playPause()
+        assertEquals(true, state(viewModel)?.playing)
+    }
+
+    @Test
+    fun `next moves to the second Step`() = runTest(context = dispatcher) {
+        val viewModel = viewModel(playing())
         viewModel.next()
-        assertEquals(2, state(viewModel).stepNumber)
+        assertEquals(2, state(viewModel)?.stepNumber)
     }
 
     @Test
-    fun `stop ends the Programme and hands focus back`() = runTest(dispatcher) {
-        val viewModel = viewModel()
-        viewModel.playPause()
-        runCurrent()
-        viewModel.stop()
-        assertFalse(state(viewModel).active)
-        assertFalse(focus.held)
+    fun `stop ends the Programme, hands focus back and shows nothing`() =
+        runTest(context = dispatcher) {
+            val viewModel = viewModel(playing())
+            viewModel.stop()
+            assertNull(state(viewModel))
+            assertFalse(focus.held)
+        }
+
+    @Test
+    fun `a renamed Sound shows on the playing screen`() = runTest(context = dispatcher) {
+        val viewModel = viewModel(playing())
+        library.edit { it.renameSound(id = StarterSounds.LIP_TRILL.id, label = "brr") }
+        assertEquals("brr", state(viewModel)?.soundLabel)
     }
 
     @Test
-    fun `closing the screen leaves the Programme playing`() = runTest(dispatcher) {
-        val controller = controller()
+    fun `closing the screen leaves the Programme playing`() = runTest(context = dispatcher) {
+        val controller = playing()
         val store = ViewModelStore()
-        val viewModel = ViewModelProvider(store, factory(controller))[WarmupViewModel::class.java]
-        viewModel.playPause()
+        val viewModel = ViewModelProvider(
+            store = store,
+            factory = factory(controller),
+        )[WarmupViewModel::class.java]
         runCurrent()
+        assertTrue(viewModel.uiState.value?.playing == true)
         store.clear()
         runCurrent()
         assertEquals(true, controller.playback.value?.playing)

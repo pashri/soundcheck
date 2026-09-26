@@ -7,13 +7,21 @@ import org.junit.Test
 class ProgrammeNavigationTest {
     private val tenor = VoiceType.TENOR.range
     private val arpeggio8Hold = Pattern(
+        id = PatternId("arpeggio-8-hold"),
         name = "Arpeggio 8-hold",
-        notes = PatternNotation.parse("1 3 5 8e 8e 8e 8e 5 3 1h", NoteLength.QUARTER),
+        notes = PatternNotation.parse(
+            text = "1 3 5 8e 8e 8e 8e 5 3 1h",
+            defaultLength = NoteLength.QUARTER,
+        ),
         keyChord = KeyChord.MAJOR,
     )
     private val doubleArpeggio = Pattern(
+        id = PatternId("double-arpeggio"),
         name = "Double arpeggio",
-        notes = PatternNotation.parse("1 3 5 8 10 12 11 9 7 5 4 2 1h", NoteLength.EIGHTH),
+        notes = PatternNotation.parse(
+            text = "1 3 5 8 10 12 11 9 7 5 4 2 1h",
+            defaultLength = NoteLength.EIGHTH,
+        ),
         keyChord = KeyChord.MAJOR,
     )
 

@@ -1,11 +1,5 @@
 package org.pashri.soundcheck.ui.warmup
 
-import android.Manifest
-import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,13 +25,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -52,12 +45,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.edit
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.pashri.soundcheck.ui.components.ManuscriptIcons
 import org.pashri.soundcheck.ui.components.ScreenHeader
+import org.pashri.soundcheck.ui.components.spokenMusic
 import org.pashri.soundcheck.ui.theme.Manuscript
 import org.pashri.soundcheck.ui.theme.ManuscriptType
 import org.pashri.soundcheck.ui.theme.SerifFamily
@@ -68,52 +61,24 @@ import org.pashri.soundcheck.warmup.StarterSounds
 import org.pashri.soundcheck.warmup.VoiceType
 
 /**
- * The Warm-up tab, wired to its view model. Unlike the Metronome and the Tuner, leaving the
- * tab or the app doesn't stop anything: a Programme keeps playing in the background. On
- * Android 13 and later, the first Start ever asks to show notifications, for the lock-screen
- * controls; playback goes ahead whatever the answer, and the question is never repeated.
+ * The playing screen, wired to its view model. Leaving it doesn't stop anything: a Programme
+ * keeps playing in the background. When no Programme is loaded (it was stopped, it ended, or
+ * a stale notification opened this screen) it closes itself.
  *
  * @param factory builds the [WarmupViewModel].
+ * @param onFinished closes this screen.
  */
 @Composable
-fun WarmupRoute(factory: ViewModelProvider.Factory) {
+fun WarmupRoute(factory: ViewModelProvider.Factory, onFinished: () -> Unit) {
     val viewModel: WarmupViewModel = viewModel(factory = factory)
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val notifications =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    val actions = remember(viewModel, notifications, context) {
-        object : WarmupActions by viewModel {
-            override fun playPause() {
-                if (!viewModel.uiState.value.active && shouldAskForNotifications(context)) {
-                    notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                viewModel.playPause()
-            }
-        }
+    val shown = state
+    if (shown == null) {
+        LaunchedEffect(key1 = Unit) { onFinished() }
+        return
     }
-    WarmupScreen(state = state, actions = actions)
+    WarmupScreen(state = shown, actions = viewModel)
 }
-
-/**
- * True once ever, on Android 13 and later without the notification permission: a flag in
- * [PROMPT_PREFS] remembers that the question was asked, across launches.
- */
-private fun shouldAskForNotifications(context: Context): Boolean {
-    if (!needsNotificationPermission(context)) return false
-    val prefs = context.getSharedPreferences(PROMPT_PREFS, Context.MODE_PRIVATE)
-    if (prefs.getBoolean(ASKED_NOTIFICATIONS, false)) return false
-    prefs.edit { putBoolean(ASKED_NOTIFICATIONS, true) }
-    return true
-}
-
-private fun needsNotificationPermission(context: Context): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-        PackageManager.PERMISSION_GRANTED
-
-private const val PROMPT_PREFS = "permission_prompts"
-private const val ASKED_NOTIFICATIONS = "asked_notifications"
 
 /**
  * The playing Programme in the Manuscript design: the Sound, the key, the Iterations, the
@@ -124,9 +89,9 @@ private const val ASKED_NOTIFICATIONS = "asked_notifications"
  */
 @Composable
 fun WarmupScreen(state: WarmupUiState, actions: WarmupActions) {
-    Column(Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
+    Column(modifier = Modifier.fillMaxSize().background(Manuscript.colors.paper)) {
         ScreenHeader(title = state.programmeName, trailing = state.stepLabel)
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -149,7 +114,7 @@ fun WarmupScreen(state: WarmupUiState, actions: WarmupActions) {
 @Composable
 private fun StepHeading(state: WarmupUiState) {
     val colors = Manuscript.colors
-    val size = with(LocalDensity.current) { SOUND_LABEL_SIZE.toSp() }
+    val size = with(receiver = LocalDensity.current) { SOUND_LABEL_SIZE.toSp() }
     Text(
         text = state.soundLabel,
         style = ManuscriptType.displayItalic.copy(fontSize = size, lineHeight = size),
@@ -161,7 +126,7 @@ private fun StepHeading(state: WarmupUiState) {
 @Composable
 private fun IterationPanel(view: IterationView, active: Boolean) {
     val colors = Manuscript.colors
-    val keySize = with(LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
+    val keySize = with(receiver = LocalDensity.current) { KEY_LABEL_SIZE.toSp() }
     Spacer(Modifier.height(24.dp))
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -173,16 +138,16 @@ private fun IterationPanel(view: IterationView, active: Boolean) {
             style = ManuscriptType.displayNumber.copy(fontSize = keySize),
             color = colors.ink,
             modifier = Modifier
-                .weight(1f, fill = false)
+                .weight(weight = 1f, fill = false)
                 .paddingFromBaseline(top = KEY_ABOVE_BASELINE, bottom = KEY_BELOW_BASELINE)
-                .clearAndSetSemantics { contentDescription = spokenKeyLabel(view.keyLabel) },
+                .clearAndSetSemantics { contentDescription = spokenMusic(view.keyLabel) },
         )
         Text(
             text = view.progressLabel,
             style = ManuscriptType.label,
             color = colors.muted,
             modifier = Modifier.clearAndSetSemantics {
-                contentDescription = spokenProgress(view, active)
+                contentDescription = spokenProgress(view = view, active = active)
             },
         )
     }
@@ -224,12 +189,12 @@ private fun IterationCells(view: IterationView) {
             .semantics(mergeDescendants = true) { contentDescription = description },
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        repeat(view.count) { index ->
+        repeat(times = view.count) { index ->
             val look = when {
                 now != null && index == now -> Modifier.background(colors.accent)
                 now != null && index < now -> Modifier.background(colors.faint)
-                index == view.turnIndex -> Modifier.border(2.dp, colors.ink)
-                else -> Modifier.border(1.dp, colors.ink)
+                index == view.turnIndex -> Modifier.border(width = 2.dp, color = colors.ink)
+                else -> Modifier.border(width = 1.dp, color = colors.ink)
             }
             Box(Modifier.weight(1f).height(CELL_HEIGHT).then(look))
         }
@@ -251,7 +216,7 @@ private fun NextStep(state: WarmupUiState) {
             fontSize = 20.sp,
             color = colors.ink,
         )
-        withStyle(soundStyle) { append(sound) }
+        withStyle(style = soundStyle) { append(sound) }
         append(" ${state.nextDetail.orEmpty()}")
     }
     Text(text = text, style = ManuscriptType.body, color = colors.muted)
@@ -302,7 +267,7 @@ private fun Transport(state: WarmupUiState, actions: WarmupActions) {
                     color = colors.onAccent,
                     softWrap = false,
                     maxLines = 1,
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.weight(weight = 1f, fill = false),
                 )
             }
             SkipButton(
@@ -323,7 +288,7 @@ private fun SkipButton(icon: ImageVector, description: String, onClick: () -> Un
         modifier = Modifier
             .size(width = 64.dp, height = 60.dp)
             .clip(shape)
-            .border(1.dp, colors.ink, shape)
+            .border(width = 1.dp, color = colors.ink, shape = shape)
             .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
@@ -370,7 +335,7 @@ private fun previewState(iteration: Int?, playing: Boolean): WarmupUiState = war
 @Composable
 private fun WarmupDayPreview() {
     SoundcheckTheme(dark = false) {
-        WarmupScreen(previewState(iteration = 3, playing = true), PreviewActions)
+        WarmupScreen(state = previewState(iteration = 3, playing = true), actions = PreviewActions)
     }
 }
 
@@ -378,7 +343,10 @@ private fun WarmupDayPreview() {
 @Composable
 private fun WarmupNightPreview() {
     SoundcheckTheme(dark = true) {
-        WarmupScreen(previewState(iteration = null, playing = false), PreviewActions)
+        WarmupScreen(
+            state = previewState(iteration = null, playing = false),
+            actions = PreviewActions,
+        )
     }
 }
 

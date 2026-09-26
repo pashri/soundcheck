@@ -110,13 +110,13 @@ fun warmupUiState(
     val shownRange = playback?.range ?: range
     val index = playback?.stepIndex ?: shown.firstStep(shownRange) ?: 0
     val step = shown.steps[index]
-    val next = shown.nextStep(index, shownRange)?.let { shown.steps[it] }
+    val next = shown.nextStep(current = index, range = shownRange)?.let { shown.steps[it] }
     val trip = step.roundTrip(shownRange) as? RoundTrip.Fits
     return WarmupUiState(
         programmeName = shown.name,
         stepNumber = index + 1,
         stepCount = shown.steps.size,
-        soundLabel = labelOf(id = step.soundId, sounds = sounds),
+        soundLabel = labelOf(id = step.soundId, sounds = sounds, fallback = step.soundLabel),
         stepDetail = "on ${step.pattern.name}, ${startingText(step.direction)}",
         iterations = trip?.let {
             iterationView(
@@ -126,7 +126,9 @@ fun warmupUiState(
                 now = playback?.iteration,
             )
         },
-        nextSound = next?.let { labelOf(id = it.soundId, sounds = sounds) },
+        nextSound = next?.let {
+            labelOf(id = it.soundId, sounds = sounds, fallback = it.soundLabel)
+        },
         nextDetail = next?.let { "on ${it.pattern.name}" },
         active = playback != null,
         playing = playback?.playing == true,
@@ -164,23 +166,6 @@ fun iterationView(
         endLabel = "$homeward ${trip.startKey.name}",
         arrowUp = now?.let { arrow == UP },
     )
-}
-
-/**
- * A key label read aloud, with its symbols spelled out: a bundled font glyph such as "♭"
- * doesn't always speak.
- *
- * @param label a key label from [keyLabel], e.g. "E♭ major" or "E♭".
- * @return the label with "♭" read as " flat" and "♯" as " sharp", e.g. "E flat major".
- */
-internal fun spokenKeyLabel(label: String): String {
-    val letter = label.take(1)
-    val rest = label.drop(1)
-    return when {
-        rest.startsWith("♭") -> "$letter flat${rest.drop(1)}"
-        rest.startsWith("♯") -> "$letter sharp${rest.drop(1)}"
-        else -> "$letter$rest"
-    }
 }
 
 /**
@@ -229,8 +214,8 @@ fun keyLabel(key: Pitch, chord: KeyChord): String = when (chord) {
     else -> "${key.pitchClassName}${chord.label}"
 }
 
-private fun labelOf(id: SoundId, sounds: List<Sound>): String =
-    sounds.firstOrNull { it.id == id }?.label ?: id.value
+private fun labelOf(id: SoundId, sounds: List<Sound>, fallback: String): String =
+    sounds.firstOrNull { it.id == id }?.label ?: fallback
 
 private fun startingText(direction: Direction): String =
     if (direction == Direction.START_LOW) "starting low" else "starting high"

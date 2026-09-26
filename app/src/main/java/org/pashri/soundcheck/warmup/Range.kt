@@ -11,7 +11,7 @@ import org.pashri.soundcheck.music.Pitch
  */
 data class Range(val lowest: Pitch, val highest: Pitch) {
     init {
-        require(lowest <= highest) { "Range $lowest – $highest is upside down" }
+        require(value = lowest <= highest) { "Range $lowest – $highest is upside down" }
     }
 
     /** Half-steps from [lowest] to [highest]. */
@@ -27,16 +27,22 @@ data class Range(val lowest: Pitch, val highest: Pitch) {
     operator fun contains(pitch: Pitch): Boolean = pitch >= lowest && pitch <= highest
 
     /**
-     * This Range with a Step's Range Offset applied.
+     * This Range with a Step's Range Offset applied. An end the offset would push past the
+     * piano stops at the piano's last key, A0 or C8.
      *
      * @param offset half-steps added to (or, when negative, taken off) each end.
-     * @return the effective Range, or null if the offset closes it or leaves MIDI 0–127.
+     * @return the effective Range, or null if the offset closes it.
      */
     fun offsetBy(offset: RangeOffset): Range? {
-        val low = lowest.midi - offset.bottom
-        val high = highest.midi + offset.top
-        val valid = low <= high && low in Pitch.MIDI_NOTES && high in Pitch.MIDI_NOTES
-        return if (valid) Range(lowest = Pitch(low), highest = Pitch(high)) else null
+        val low = maxOf(a = lowest.midi - offset.bottom, b = PIANO.lowest.midi)
+        val high = minOf(a = highest.midi + offset.top, b = PIANO.highest.midi)
+        return if (low <= high) Range(lowest = Pitch(low), highest = Pitch(high)) else null
+    }
+
+    /** The piano's compass. */
+    companion object {
+        /** A0 to C8, MIDI 21 to 108: every key of the sampled piano. */
+        val PIANO: Range = Range(lowest = Pitch(21), highest = Pitch(108))
     }
 }
 

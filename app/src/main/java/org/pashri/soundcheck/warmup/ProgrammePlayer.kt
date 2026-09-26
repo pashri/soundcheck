@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.pashri.soundcheck.audio.SampleIds
 import org.pashri.soundcheck.audio.SoundOutput
 import org.pashri.soundcheck.audio.msToFrames
 import org.pashri.soundcheck.piano.Piano
@@ -71,6 +72,7 @@ class ProgrammePlayer(
     fun play(programme: Programme, range: Range): Boolean {
         val first = programme.firstStep(range) ?: return false
         preparing?.cancel()
+        announcements.keep(fittingLabels(programme = programme, range = range))
         preparing = scope.launch { prepareAnnouncements(programme = programme, range = range) }
         val start = Playback(
             programme = programme,
@@ -117,14 +119,20 @@ class ProgrammePlayer(
     /** Plays the next Step that fits from its Announcement, or stops after the last Step. */
     fun next() {
         val current = _playback.value ?: return
-        val target = current.programme.nextStep(stepNow(current), current.range) ?: return stop()
+        val target = current.programme.nextStep(
+            current = stepNow(current),
+            range = current.range,
+        ) ?: return stop()
         startAt(base = current, point = ResumePoint(step = target, frame = 0L))
     }
 
     /** Plays the previous Step that fits from its Announcement; on the first, restarts it. */
     fun previous() {
         val current = _playback.value ?: return
-        val target = current.programme.previousStep(stepNow(current), current.range)
+        val target = current.programme.previousStep(
+            current = stepNow(current),
+            range = current.range,
+        )
         startAt(base = current, point = ResumePoint(step = target, frame = 0L))
     }
 
@@ -143,6 +151,7 @@ class ProgrammePlayer(
         }
         resumeAt = null
         _playback.value = null
+        announcements.keep(emptySet())
     }
 
     private fun startAt(base: Playback, point: ResumePoint): Boolean {
@@ -230,13 +239,16 @@ class ProgrammePlayer(
         val last = segments.last()
         val nextOrigin = last.endFrame + msToFrames(STEP_GAP_MS)
         if (last.isFinal || nextOrigin >= horizon) return
-        val step = base.programme.nextStep(last.step, base.range)
+        val step = base.programme.nextStep(current = last.step, range = base.range)
         val prepared = step?.let { prepareStep(base = base, index = it) }
         if (step == null || prepared == null) {
             last.isFinal = true
             return
         }
-        val origin = maxOf(nextOrigin, output.framePosition() + msToFrames(START_MARGIN_MS))
+        val origin = maxOf(
+            a = nextOrigin,
+            b = output.framePosition() + msToFrames(START_MARGIN_MS),
+        )
         segments.addLast(Segment(step = step, prepared = prepared, origin = origin, from = 0L))
     }
 
@@ -255,16 +267,8 @@ class ProgrammePlayer(
                 output.schedule(id = it.id, frame = frame, gain = ANNOUNCEMENT_GAIN)
             }
 
-            is PianoNoteEvent -> {
-                val key = piano.keyFor(event.pitch)
-                output.schedule(
-                    id = key.id,
-                    frame = frame,
-                    gain = gainOf(event.part),
-                    rate = key.rate,
-                    lengthFrames = event.lengthFrames,
-                )
-            }
+            is PianoNoteEvent ->
+                output.schedulePianoNote(piano = piano, event = event, origin = segment.origin)
         }
     }
 
@@ -288,12 +292,15 @@ class ProgrammePlayer(
         val now = output.framePosition()
         val segment = currentSegment(now)
         val timeline = segment.prepared.timeline
-        val frame = timeline.resumeFrame(maxOf(now - segment.origin, segment.from))
+        val frame = timeline.resumeFrame(maxOf(a = now - segment.origin, b = segment.from))
         if (frame < timeline.lengthFrames) {
             val iteration = timeline.iterationAt(frame)?.index
             return ResumePoint(step = segment.step, frame = frame, iteration = iteration)
         }
-        val next = current.programme.nextStep(segment.step, current.range) ?: return null
+        val next = current.programme.nextStep(
+            current = segment.step,
+            range = current.range,
+        ) ?: return null
         return ResumePoint(step = next, frame = 0L)
     }
 
@@ -306,7 +313,7 @@ class ProgrammePlayer(
 
     private suspend fun prepareStep(base: Playback, index: Int): PreparedStep? {
         val step = base.programme.steps[index]
-        val clip = announcements.prepare(step.soundId)
+        val clip = announcements.prepare(soundId = step.soundId, fallbackLabel = step.soundLabel)
         val timeline = buildStepTimeline(
             step = step,
             range = base.range,
@@ -318,15 +325,24 @@ class ProgrammePlayer(
     private suspend fun prepareAnnouncements(programme: Programme, range: Range) {
         programme.steps
             .filter { it.roundTrip(range) is RoundTrip.Fits }
-            .map { it.soundId }
-            .distinct()
-            .forEach { announcements.prepare(it) }
+            .distinctBy { it.soundId }
+            .take(SampleIds.ANNOUNCEMENT_SLOTS - 1)
+            .forEach { announcements.prepare(soundId = it.soundId, fallbackLabel = it.soundLabel) }
     }
 
-    private fun gainOf(part: PianoPart): Float = when (part) {
-        PianoPart.KEY_CHORD -> CHORD_GAIN
-        PianoPart.DEMO, PianoPart.GUIDE_MELODY -> MELODY_GAIN
-    }
+    /**
+     * The labels of every Sound a Step of [programme] fitting [range] uses, so [play] can pin
+     * their Announcements' slots for as long as the Programme keeps them.
+     *
+     * @param programme the Programme starting.
+     * @param range the Range it plays through.
+     * @return the labels to keep.
+     */
+    private fun fittingLabels(programme: Programme, range: Range): Set<String> =
+        programme.steps
+            .filter { it.roundTrip(range) is RoundTrip.Fits }
+            .map { it.soundLabel }
+            .toSet()
 
     /** Timing and loudness. */
     companion object {
@@ -373,5 +389,5 @@ private class Segment(
         get() = origin + prepared.timeline.lengthFrames
 
     fun iterationAt(now: Long): Int? =
-        prepared.timeline.iterationAt(maxOf(now - origin, from))?.index
+        prepared.timeline.iterationAt(maxOf(a = now - origin, b = from))?.index
 }

@@ -10,8 +10,10 @@ import org.pashri.soundcheck.audio.ToolArbiter
 /**
  * Runs the Warm-up for the screen, the notification and the headphone button. While a
  * Programme is playing or paused it holds audio focus (so a podcast stays paused) and the
- * one sound-making slot; it hands both back when the Programme stops or ends. Call from the
- * main thread.
+ * one sound-making slot; it hands both back when the Programme stops or ends. While "Play
+ * over other audio" is on, [focus] is a `MixingFocusGate`, so "holds audio focus" instead
+ * means "is allowed to play": focus is granted at once without being requested from the
+ * system, and no podcast is paused. Call from the main thread.
  *
  * @param player plays the Programme.
  * @param focus the Warm-up's own audio focus.
@@ -35,15 +37,18 @@ class WarmupController(
     }
 
     /**
-     * Plays [programme] from the start, pausing any other tool.
+     * Plays [programme] from its first Step that fits, pausing any other tool.
      *
      * @param programme the Programme.
      * @param range the Range it plays through.
+     * @return what happened; anything but [StartOutcome.PLAYING] is something to explain.
      */
-    fun play(programme: Programme, range: Range) {
-        if (!takeOver()) return
-        player.play(programme, range)
+    fun play(programme: Programme, range: Range): StartOutcome {
+        if (programme.firstStep(range) == null) return StartOutcome.NOTHING_FITS
+        if (!takeOver()) return StartOutcome.AUDIO_BUSY
+        val started = player.play(programme = programme, range = range)
         if (player.playback.value == null) handBack()
+        return if (started) StartOutcome.PLAYING else StartOutcome.OUTPUT_FAILED
     }
 
     /** Pauses a playing Programme, or resumes a paused one. */
@@ -98,7 +103,7 @@ class WarmupController(
     }
 
     private fun takeOver(): Boolean {
-        arbiter.claim(Tool.WARM_UP, onEvicted = ::onEvicted)
+        arbiter.claim(tool = Tool.WARM_UP, onEvicted = ::onEvicted)
         if (!holdsFocus) {
             holdsFocus = focus.acquire(onLost = ::onFocusLost, onRegained = ::onFocusRegained)
         }
@@ -128,4 +133,38 @@ class WarmupController(
     private fun onFocusRegained() {
         if (pausedByFocus) resume()
     }
+}
+
+/** What pressing Start on a Programme led to. */
+enum class StartOutcome {
+    /** The Programme is playing. */
+    PLAYING,
+
+    /** No Step fits the Range, or there are no Steps, so nothing plays. */
+    NOTHING_FITS,
+
+    /** Another app wouldn't give up the audio, so nothing plays. */
+    AUDIO_BUSY,
+
+    /** The sound output wouldn't start; the Programme waits, paused, on its first Step. */
+    OUTPUT_FAILED,
+}
+
+/**
+ * Plays a saved Programme, as it is saved now, on the Range from Settings: the one Start
+ * behind the Warm-up home and the Programme editor.
+ *
+ * @param library the saved library, or null before it has loaded.
+ * @param settings the saved settings, or null before they have loaded.
+ * @param id the Programme.
+ * @return what happened, or null (nothing tried) before loading or for a missing Programme.
+ */
+fun WarmupController.playSaved(
+    library: Library?,
+    settings: WarmupSettings?,
+    id: ProgrammeId,
+): StartOutcome? {
+    val programme = library?.programmeToPlay(id) ?: return null
+    val range = settings?.range ?: return null
+    return play(programme = programme, range = range)
 }

@@ -17,4 +17,12 @@ class TabTest {
         assertNull(tabForRoute("nonsense"))
         assertNull(tabForRoute(null))
     }
+
+    @Test
+    fun `a screen inside the Warm-up belongs to the Warm-up tab`() {
+        val editor = sequenceOf("warmup/programme/{programme}", "warmup", null)
+        assertEquals(Tab.WarmUp, tabFor(editor))
+        assertEquals(Tab.Metronome, tabFor(sequenceOf("metronome", null)))
+        assertNull(tabFor(emptySequence()))
+    }
 }

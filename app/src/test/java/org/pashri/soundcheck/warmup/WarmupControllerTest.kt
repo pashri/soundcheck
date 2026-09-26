@@ -63,7 +63,7 @@ class WarmupControllerTest {
     @Test
     fun `playing takes audio focus and the tool slot`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runCurrent()
         assertTrue(focus.held)
         assertEquals(Tool.WARM_UP, arbiter.current)
@@ -74,7 +74,7 @@ class WarmupControllerTest {
     fun `with focus refused nothing plays and the slot is free`() = runTest {
         focus.grant = false
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runCurrent()
         assertNull(rig.playback)
         assertNull(arbiter.current)
@@ -84,7 +84,7 @@ class WarmupControllerTest {
     @Test
     fun `one press pauses and resumes, two go to the next Step, three go back`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runUntil(1_000)
         rig.controller.onPresses(1)
         assertEquals(false, rig.playback?.playing)
@@ -101,7 +101,7 @@ class WarmupControllerTest {
     @Test
     fun `a phone call pauses the Programme and it resumes when the call ends`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runUntil(10_600)
         focus.loseFocus()
         assertEquals(false, rig.playback?.playing)
@@ -115,7 +115,7 @@ class WarmupControllerTest {
     @Test
     fun `regaining focus does not resume a Programme the user paused`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runUntil(1_000)
         rig.controller.pause()
         focus.loseFocus()
@@ -126,9 +126,9 @@ class WarmupControllerTest {
     @Test
     fun `another tool starting pauses the Programme and stops the output at once`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runUntil(1_000)
-        arbiter.claim(Tool.METRONOME, onEvicted = {})
+        arbiter.claim(tool = Tool.METRONOME, onEvicted = {})
         assertEquals(false, rig.playback?.playing)
         assertFalse(rig.output.running)
     }
@@ -136,10 +136,10 @@ class WarmupControllerTest {
     @Test
     fun `resuming takes the slot back from the other tool`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runUntil(1_000)
         var evicted = false
-        arbiter.claim(Tool.TUNER, onEvicted = { evicted = true })
+        arbiter.claim(tool = Tool.TUNER, onEvicted = { evicted = true })
         rig.controller.resume()
         assertTrue(evicted)
         assertEquals(Tool.WARM_UP, arbiter.current)
@@ -149,7 +149,7 @@ class WarmupControllerTest {
     @Test
     fun `stopping hands focus back and frees the slot`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runCurrent()
         rig.controller.stop()
         assertFalse(focus.held)
@@ -160,7 +160,7 @@ class WarmupControllerTest {
     @Test
     fun `a Programme that ends by itself hands focus back`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runUntil(61_000)
         assertNull(rig.playback)
         assertFalse(focus.held)
@@ -184,11 +184,11 @@ class WarmupControllerTest {
             // scheduled by the Programme's fading pause would otherwise silence the
             // Metronome's own clicks a moment after it started.
             val rig = rig()
-            rig.controller.play(programme, range)
+            rig.controller.play(programme = programme, range = range)
             runUntil(1_000)
             rig.controller.pause()
-            val metronome = Metronome(rig.output, backgroundScope)
-            arbiter.claim(Tool.METRONOME, onEvicted = { metronome.stop() })
+            val metronome = Metronome(output = rig.output, scope = backgroundScope)
+            arbiter.claim(tool = Tool.METRONOME, onEvicted = { metronome.stop() })
             rig.output.start()
             metronome.start(bpm = 120, accentEvery = 4)
             runCurrent()
@@ -203,10 +203,10 @@ class WarmupControllerTest {
             // The notification's Stop can reach a Programme another tool paused; the shared
             // output now belongs to that tool.
             val rig = rig()
-            rig.controller.play(programme, range)
+            rig.controller.play(programme = programme, range = range)
             runUntil(1_000)
-            val metronome = Metronome(rig.output, backgroundScope)
-            arbiter.claim(Tool.METRONOME, onEvicted = { metronome.stop() })
+            val metronome = Metronome(output = rig.output, scope = backgroundScope)
+            arbiter.claim(tool = Tool.METRONOME, onEvicted = { metronome.stop() })
             rig.output.start()
             metronome.start(bpm = 120, accentEvery = 4)
             runCurrent()
@@ -221,7 +221,7 @@ class WarmupControllerTest {
     @Test
     fun `stopping a playing Programme silences and stops the output`() = runTest {
         val rig = rig()
-        rig.controller.play(programme, range)
+        rig.controller.play(programme = programme, range = range)
         runUntil(1_000)
         rig.controller.stop()
         assertFalse(rig.output.running)
@@ -232,12 +232,89 @@ class WarmupControllerTest {
     fun `a call-paused Programme stays paused when the Tuner took the slot during the call`() =
         runTest {
             val rig = rig()
-            rig.controller.play(programme, range)
+            rig.controller.play(programme = programme, range = range)
             runUntil(10_600)
             focus.loseFocus()
-            arbiter.claim(Tool.TUNER, onEvicted = {})
+            arbiter.claim(tool = Tool.TUNER, onEvicted = {})
             focus.regainFocus()
             assertEquals(false, rig.playback?.playing)
             assertEquals(Tool.TUNER, arbiter.current)
+        }
+
+    @Test
+    fun `a Programme that starts reports that it is playing`() = runTest {
+        assertEquals(
+            StartOutcome.PLAYING,
+            rig().controller.play(programme = programme, range = range),
+        )
+    }
+
+    @Test
+    fun `a Programme with no Step that fits reports it and takes nothing`() = runTest {
+        val rig = rig()
+        val wide = Programme(
+            name = "Wide",
+            steps = listOf(triad.copy(pattern = StarterPatterns.DOUBLE_ARPEGGIO)),
+        )
+        val empty = Programme(name = "Empty", steps = emptyList())
+        assertEquals(
+            StartOutcome.NOTHING_FITS,
+            rig.controller.play(programme = wide, range = range),
+        )
+        assertEquals(
+            StartOutcome.NOTHING_FITS,
+            rig.controller.play(programme = empty, range = range),
+        )
+        assertEquals(0, focus.acquireCount)
+        assertNull(arbiter.current)
+        assertNull(rig.playback)
+    }
+
+    @Test
+    fun `refused focus reports the audio as busy`() = runTest {
+        focus.grant = false
+        assertEquals(
+            StartOutcome.AUDIO_BUSY,
+            rig().controller.play(programme = programme, range = range),
+        )
+    }
+
+    @Test
+    fun `an output that won't start reports it and waits paused on the first Step`() = runTest {
+        val rig = rig()
+        rig.output.startResult = false
+        assertEquals(
+            StartOutcome.OUTPUT_FAILED,
+            rig.controller.play(programme = programme, range = range),
+        )
+        assertEquals(false, rig.playback?.playing)
+        assertEquals(0, rig.playback?.stepIndex)
+    }
+
+    @Test
+    fun `a saved Programme plays as saved on the saved Range`() = runTest {
+        val rig = rig()
+        val outcome = rig.controller.playSaved(
+            library = StarterLibrary.LIBRARY,
+            settings = WarmupSettings.DEFAULT,
+            id = StarterProgrammes.SAVED_WARM_UP.id,
+        )
+        assertEquals(StartOutcome.PLAYING, outcome)
+        assertEquals(StarterProgrammes.WARM_UP, rig.playback?.programme)
+        assertEquals(VoiceType.TENOR.range, rig.playback?.range)
+    }
+
+    @Test
+    fun `nothing plays before the library and settings load or for a missing Programme`() =
+        runTest {
+            val controller = rig().controller
+            val id = StarterProgrammes.SAVED_WARM_UP.id
+            val library = StarterLibrary.LIBRARY
+            val settings = WarmupSettings.DEFAULT
+            assertNull(controller.playSaved(library = null, settings = settings, id = id))
+            assertNull(controller.playSaved(library = library, settings = null, id = id))
+            val missing = ProgrammeId("x")
+            assertNull(controller.playSaved(library = library, settings = settings, id = missing))
+            assertEquals(0, focus.acquireCount)
         }
 }

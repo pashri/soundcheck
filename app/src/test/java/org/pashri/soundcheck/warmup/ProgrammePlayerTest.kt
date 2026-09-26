@@ -81,16 +81,16 @@ class ProgrammePlayerTest {
     @Test
     fun `playing starts the first Step's Announcement one start margin ahead`() = runTest {
         val rig = rig()
-        assertTrue(rig.player.play(programme, range))
+        assertTrue(rig.player.play(programme = programme, range = range))
         runCurrent()
-        assertEquals(listOf(announcement(mim, 4_800)), rig.output.scheduled)
+        assertEquals(listOf(announcement(sound = mim, frame = 4_800)), rig.output.scheduled)
     }
 
     @Test
     fun `the Demo's first note follows the Announcement and the gap, held for its length`() =
         runTest {
             val rig = rig()
-            rig.player.play(programme, range)
+            rig.player.play(programme = programme, range = range)
             runUntil(200)
             val c4 = rig.piano.keyFor(Pitch(60))
             val expected = Scheduled(
@@ -106,7 +106,7 @@ class ProgrammePlayerTest {
     @Test
     fun `only the sounds within the next second are handed to the engine`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runCurrent()
         assertEquals(listOf(4_800L), rig.output.frames)
         runUntil(100)
@@ -129,7 +129,10 @@ class ProgrammePlayerTest {
             val timeline = requireNotNull(
                 buildStepTimeline(step = step, range = tenor, announcementFrames = 24_000),
             )
-            rig.player.play(Programme(name = "Long", steps = listOf(step)), tenor)
+            rig.player.play(
+                programme = Programme(name = "Long", steps = listOf(step)),
+                range = tenor,
+            )
             runUntil((4_800 + timeline.lengthFrames) / 48 - 10)
             assertEquals(258, rig.output.scheduled.size)
             assertEquals(timeline.events.map { 4_800 + it.startFrame }, rig.output.frames)
@@ -140,9 +143,9 @@ class ProgrammePlayerTest {
     fun `Steps play in order, skipping one that does not fit, with a gap between them`() =
         runTest {
             val rig = rig()
-            rig.player.play(programme, range)
+            rig.player.play(programme = programme, range = range)
             runUntil(30_200)
-            assertTrue(announcement(hum, 1_444_800) in rig.output.scheduled)
+            assertTrue(announcement(sound = hum, frame = 1_444_800) in rig.output.scheduled)
             assertTrue(rig.output.scheduled.none { it.id == announcements.clipOf(neh).id })
             assertEquals(2, rig.player.playback.value?.stepIndex)
         }
@@ -150,7 +153,7 @@ class ProgrammePlayerTest {
     @Test
     fun `the Programme stops by itself after its last Step`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(60_000)
         assertEquals(2, rig.player.playback.value?.stepIndex)
         runUntil(61_000)
@@ -161,7 +164,7 @@ class ProgrammePlayerTest {
     @Test
     fun `playback reports the Step and Iteration sounding now`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runCurrent()
         assertEquals(at(step = 0, iteration = null, playing = true), rig.player.playback.value)
         runUntil(10_600)
@@ -172,7 +175,7 @@ class ProgrammePlayerTest {
     fun `pausing mid-Iteration and resuming replays that Iteration from its Key Chord`() =
         runTest {
             val rig = rig()
-            rig.player.play(programme, range)
+            rig.player.play(programme = programme, range = range)
             runUntil(10_600)
             rig.player.pause()
             assertEquals(at(step = 0, iteration = 1, playing = false), rig.player.playback.value)
@@ -198,7 +201,7 @@ class ProgrammePlayerTest {
     @Test
     fun `pausing just after resuming keeps the Iteration it resumed`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(10_600)
         rig.player.pause()
         runUntil(20_000)
@@ -211,7 +214,7 @@ class ProgrammePlayerTest {
     @Test
     fun `pausing before a resumed Programme first schedules keeps the Iteration`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(10_600)
         rig.player.pause()
         runUntil(20_000)
@@ -226,7 +229,7 @@ class ProgrammePlayerTest {
     @Test
     fun `pausing during the Demo resumes the whole Step from its Announcement`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(2_000)
         rig.player.pause()
         assertEquals(at(step = 0, iteration = null, playing = false), rig.player.playback.value)
@@ -234,13 +237,13 @@ class ProgrammePlayerTest {
         val before = rig.output.scheduled.size
         rig.player.resume()
         runCurrent()
-        assertEquals(announcement(mim, 108_000), rig.output.scheduled[before])
+        assertEquals(announcement(sound = mim, frame = 108_000), rig.output.scheduled[before])
     }
 
     @Test
     fun `pausing in the gap between Steps resumes on the next Step`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(29_500)
         rig.player.pause()
         assertEquals(at(step = 2, iteration = null, playing = false), rig.player.playback.value)
@@ -249,18 +252,18 @@ class ProgrammePlayerTest {
     @Test
     fun `next plays the following Step that fits at once`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(10_600)
         rig.player.next()
         runCurrent()
-        assertEquals(announcement(hum, 513_600), rig.output.scheduled.last())
+        assertEquals(announcement(sound = hum, frame = 513_600), rig.output.scheduled.last())
         assertEquals(at(step = 2, iteration = null, playing = true), rig.player.playback.value)
     }
 
     @Test
     fun `next on the last Step ends the Programme`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(10_600)
         rig.player.next()
         runCurrent()
@@ -272,31 +275,31 @@ class ProgrammePlayerTest {
     @Test
     fun `previous goes back over a Step that does not fit`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(1_000)
         rig.player.next()
         runUntil(2_000)
         rig.player.previous()
         runCurrent()
         assertEquals(0, rig.player.playback.value?.stepIndex)
-        assertEquals(announcement(mim, 100_800), rig.output.scheduled.last())
+        assertEquals(announcement(sound = mim, frame = 100_800), rig.output.scheduled.last())
     }
 
     @Test
     fun `previous on the first Step restarts it`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(10_600)
         rig.player.previous()
         runCurrent()
         assertEquals(at(step = 0, iteration = null, playing = true), rig.player.playback.value)
-        assertEquals(announcement(mim, 513_600), rig.output.scheduled.last())
+        assertEquals(announcement(sound = mim, frame = 513_600), rig.output.scheduled.last())
     }
 
     @Test
     fun `a pause without fading silences and stops the output at once`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(1_000)
         rig.player.pause(fade = false)
         assertFalse(rig.output.running)
@@ -306,7 +309,7 @@ class ProgrammePlayerTest {
     @Test
     fun `the delayed stop after a pause never stops a resumed Programme`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(1_000)
         rig.player.pause()
         runUntil(1_050)
@@ -319,7 +322,7 @@ class ProgrammePlayerTest {
     @Test
     fun `a failed output pauses the Programme and playing again restarts it`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(1_000)
         rig.output.failed = true
         runUntil(1_100)
@@ -334,7 +337,7 @@ class ProgrammePlayerTest {
         runTest {
             val rig = rig()
             rig.output.startResult = false
-            assertFalse(rig.player.play(programme, range))
+            assertFalse(rig.player.play(programme = programme, range = range))
             val expected = at(step = 0, iteration = null, playing = false)
             assertEquals(expected, rig.player.playback.value)
             rig.output.startResult = true
@@ -345,7 +348,8 @@ class ProgrammePlayerTest {
     @Test
     fun `a Programme where no Step fits does not play`() = runTest {
         val rig = rig()
-        assertFalse(rig.player.play(Programme(name = "Wide", steps = listOf(tooWide)), range))
+        val wide = Programme(name = "Wide", steps = listOf(tooWide))
+        assertFalse(rig.player.play(programme = wide, range = range))
         assertNull(rig.player.playback.value)
     }
 
@@ -353,7 +357,7 @@ class ProgrammePlayerTest {
     fun `with no voice a Step plays without its Announcement`() = runTest {
         val rig = rig()
         announcements.voice = false
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runCurrent()
         assertEquals(listOf(28_800L), rig.output.frames)
     }
@@ -361,7 +365,7 @@ class ProgrammePlayerTest {
     @Test
     fun `starting prepares the Announcement of every Step that fits`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runCurrent()
         assertEquals(setOf(mim, hum), announcements.prepared)
     }
@@ -370,7 +374,7 @@ class ProgrammePlayerTest {
     fun `pause without fade cancels a pending fade tail so it never stops later playback`() =
         runTest {
             val rig = rig()
-            rig.player.play(programme, range)
+            rig.player.play(programme = programme, range = range)
             runUntil(1_000)
             rig.player.pause()
             runUntil(1_050)
@@ -384,7 +388,7 @@ class ProgrammePlayerTest {
     @Test
     fun `pause without fade leaves an already-finished tail alone`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         runUntil(1_000)
         rig.player.pause()
         runUntil(1_300)
@@ -396,9 +400,26 @@ class ProgrammePlayerTest {
     @Test
     fun `stop cancels the announcement preparation started by play`() = runTest {
         val rig = rig()
-        rig.player.play(programme, range)
+        rig.player.play(programme = programme, range = range)
         rig.player.stop()
         runCurrent()
         assertTrue(announcements.prepared.isEmpty())
+    }
+
+    @Test
+    fun `play keeps the Announcements of the Sounds that fit, by their labels`() = runTest {
+        val labelled = programme.copy(
+            steps = programme.steps.map { it.copy(soundLabel = "${it.soundId.value} said") },
+        )
+        rig().player.play(programme = labelled, range = range)
+        assertEquals(setOf("mim said", "hum said"), announcements.kept)
+    }
+
+    @Test
+    fun `stop lets go of the Programme's Announcements`() = runTest {
+        val rig = rig()
+        rig.player.play(programme = programme, range = range)
+        rig.player.stop()
+        assertTrue(announcements.kept.isEmpty())
     }
 }

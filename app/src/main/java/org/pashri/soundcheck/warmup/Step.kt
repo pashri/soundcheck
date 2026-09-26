@@ -29,6 +29,9 @@ data class Sound(val id: SoundId, val label: String)
  * @property direction which end of the Range the Step starts from.
  * @property rangeOffset the Step's adjustment to the Range.
  * @property guideMelody whether the piano plays the Pattern with you.
+ * @property soundLabel [soundId]'s label when the Programme was prepared to play. Kept as a
+ *     fallback for the Announcement and the screen if the Sound is later renamed away or
+ *     deleted mid-Programme.
  */
 data class Step(
     val pattern: Pattern,
@@ -37,9 +40,10 @@ data class Step(
     val direction: Direction,
     val rangeOffset: RangeOffset = RangeOffset.NONE,
     val guideMelody: Boolean = true,
+    val soundLabel: String = soundId.value,
 ) {
     init {
-        require(bpm in MIN_BPM..MAX_BPM) { "Tempo $bpm is outside $MIN_BPM–$MAX_BPM bpm" }
+        require(value = bpm in MIN_BPM..MAX_BPM) { "Tempo $bpm is outside $MIN_BPM–$MAX_BPM bpm" }
     }
 
     /**

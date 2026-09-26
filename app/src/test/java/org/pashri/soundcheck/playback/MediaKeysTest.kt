@@ -2,7 +2,10 @@ package org.pashri.soundcheck.playback
 
 import android.view.KeyEvent
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.pashri.soundcheck.warmup.WarmupSettings
 
 class MediaKeysTest {
     private fun down(keyCode: Int): MediaKeyAction =
@@ -52,5 +55,35 @@ class MediaKeysTest {
     fun `other keys are left to the system`() {
         assertEquals(MediaKeyAction.IGNORE, down(KeyEvent.KEYCODE_VOLUME_UP))
         assertEquals(MediaKeyAction.IGNORE, down(KeyEvent.KEYCODE_MEDIA_STOP))
+    }
+
+    @Test
+    fun `the headphone button is taken unless Soundcheck plays over other audio`() {
+        assertTrue(takesHeadphoneButton(WarmupSettings.DEFAULT))
+        assertTrue(takesHeadphoneButton(null))
+        assertFalse(takesHeadphoneButton(WarmupSettings.DEFAULT.copy(playOverOtherAudio = true)))
+    }
+
+    @Test
+    fun `turning Play over other audio on releases the session`() {
+        val mixing = WarmupSettings.DEFAULT.copy(playOverOtherAudio = true)
+
+        assertEquals(
+            SessionChange.RELEASE,
+            sessionChange(hasSession = true, settings = mixing),
+        )
+        assertEquals(SessionChange.KEEP, sessionChange(hasSession = false, settings = mixing))
+    }
+
+    @Test
+    fun `turning Play over other audio off creates the session`() {
+        val pausing = WarmupSettings.DEFAULT
+
+        assertEquals(
+            SessionChange.CREATE,
+            sessionChange(hasSession = false, settings = pausing),
+        )
+        assertEquals(SessionChange.KEEP, sessionChange(hasSession = true, settings = pausing))
+        assertEquals(SessionChange.CREATE, sessionChange(hasSession = false, settings = null))
     }
 }

@@ -21,6 +21,7 @@ class RoundTripTest {
     )
 
     private fun pattern(notation: String): Pattern = Pattern(
+        id = PatternId(notation),
         name = notation,
         notes = PatternNotation.parse(notation),
         keyChord = KeyChord.MAJOR,
@@ -44,7 +45,7 @@ class RoundTripTest {
 
     @Test
     fun `the arpeggio 8-hold from low on a tenor turns at A3 after 19 iterations`() {
-        val trip = fits(arpeggio8Hold, Direction.START_LOW)
+        val trip = fits(pattern = arpeggio8Hold, direction = Direction.START_LOW)
         assertEquals(
             listOf(
                 "C3", "D♭3", "D3", "E♭3", "E3", "F3", "F♯3", "G3", "A♭3", "A3",
@@ -58,7 +59,7 @@ class RoundTripTest {
 
     @Test
     fun `starting high begins at the top key and turns at the bottom`() {
-        val trip = fits(doubleArpeggio, Direction.START_HIGH)
+        val trip = fits(pattern = doubleArpeggio, direction = Direction.START_HIGH)
         assertEquals(listOf("D3", "D♭3", "C3", "D♭3", "D3"), trip.keys.map { it.name })
         assertEquals(Pitch.parse("C3"), trip.turnKey)
     }
@@ -68,7 +69,11 @@ class RoundTripTest {
         patterns.forEach { pattern ->
             VoiceType.entries.forEach { voice ->
                 Direction.entries.forEach { direction ->
-                    val keys = fits(pattern, direction, range = voice.range).keys
+                    val keys = fits(
+                        pattern = pattern,
+                        direction = direction,
+                        range = voice.range,
+                    ).keys
                     val label = "${pattern.name} ${voice.label} $direction"
                     assertEquals(label, keys.first(), keys.last())
                     assertEquals(label, 1, keys.size % 2)
@@ -89,7 +94,12 @@ class RoundTripTest {
                 offsets.forEach { offset ->
                     Direction.entries.forEach { direction ->
                         val effective = requireNotNull(voice.range.offsetBy(offset))
-                        val trip = fits(pattern, direction, range = voice.range, offset = offset)
+                        val trip = fits(
+                            pattern = pattern,
+                            direction = direction,
+                            range = voice.range,
+                            offset = offset,
+                        )
                         val sung = trip.keys.flatMap { pattern.pitchesIn(it) }
                         val label = "${pattern.name} ${voice.label} $offset $direction"
                         assertTrue(label, sung.all { it in effective })
@@ -103,7 +113,7 @@ class RoundTripTest {
 
     @Test
     fun `a note below the root starts the trip above the bottom of the Range`() {
-        val trip = fits(belowTheRoot, Direction.START_LOW)
+        val trip = fits(pattern = belowTheRoot, direction = Direction.START_LOW)
         assertEquals(Pitch.parse("D♭3"), trip.startKey)
         assertEquals(Pitch.parse("A3"), trip.turnKey)
         assertEquals(Pitch.parse("C3"), belowTheRoot.pitchesIn(trip.startKey).min())
@@ -153,7 +163,11 @@ class RoundTripTest {
 
     @Test
     fun `a Range Offset moves where the trip turns`() {
-        val trip = fits(arpeggio8Hold, Direction.START_LOW, offset = RangeOffset(top = 2))
+        val trip = fits(
+            pattern = arpeggio8Hold,
+            direction = Direction.START_LOW,
+            offset = RangeOffset(top = 2),
+        )
         assertEquals(Pitch.parse("B3"), trip.turnKey)
         assertEquals(23, trip.keys.size)
     }
@@ -161,5 +175,27 @@ class RoundTripTest {
     @Test
     fun `a Fits with no keys throws`() {
         assertThrows(IllegalArgumentException::class.java) { RoundTrip.Fits(emptyList()) }
+    }
+
+    @Test
+    fun `a single note so high that no key can reach it does not fit`() {
+        val trip = planRoundTrip(
+            range = tenor,
+            offset = RangeOffset.NONE,
+            span = pattern("99").span,
+            direction = Direction.START_LOW,
+        )
+        assertTrue("$trip", trip is RoundTrip.DoesNotFit)
+    }
+
+    @Test
+    fun `a high-only Pattern whose offset reaches A0 starts on the lowest MIDI key`() {
+        val trip = fits(
+            pattern = pattern("15"),
+            direction = Direction.START_LOW,
+            offset = RangeOffset(bottom = 30),
+        )
+        assertEquals(Pitch(0), trip.startKey)
+        assertTrue(trip.keys.all { it.midi >= 0 })
     }
 }

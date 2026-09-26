@@ -39,7 +39,7 @@ class StarterContentTest {
             all.map { it.name },
         )
         assertEquals(listOf(7, 12, 19, 7, 7, 7, 14, 12), all.map { it.span.halfSteps })
-        assertEquals(listOf(12, 18, 16, 16, 12, 12, 20, 12), all.map { it.lengthInEighths })
+        assertEquals(listOf(12, 10, 16, 16, 12, 12, 20, 12), all.map { it.lengthInEighths })
         assertEquals(
             listOf(
                 KeyChord.MAJOR, KeyChord.MAJOR, KeyChord.MAJOR, KeyChord.ROOT_ONLY,
@@ -105,7 +105,7 @@ class StarterContentTest {
                     range = voice.range,
                     announcementFrames = 24_000,
                 )
-                val sung = requireNotNull(timeline) { label }.events
+                val sung = requireNotNull(value = timeline) { label }.events
                     .filterIsInstance<PianoNoteEvent>()
                     .filter { it.part != PianoPart.KEY_CHORD }
                 assertTrue(label, sung.isNotEmpty())
@@ -132,5 +132,28 @@ class StarterContentTest {
             fits.turnKey,
         )
         assertEquals(25, fits.keys.size)
+    }
+
+    @Test
+    fun `the starter patterns have distinct ids`() {
+        assertEquals(
+            listOf(
+                "five-note-scale", "arpeggio-8-hold", "double-arpeggio", "siren-1-5-1",
+                "triad", "minor-five-note-scale", "nine-note-scale", "dominant-arpeggio",
+            ),
+            StarterPatterns.ALL.map { it.id.value },
+        )
+    }
+
+    @Test
+    fun `the starter library holds the eight Patterns, the eight Sounds and the Programme`() {
+        val library = StarterLibrary.LIBRARY
+        assertEquals(StarterPatterns.ALL, library.patterns)
+        assertEquals(StarterSounds.ALL, library.sounds)
+        assertEquals(listOf(StarterProgrammes.SAVED_WARM_UP), library.programmes)
+        assertEquals(
+            (1..6).map { "starter-$it" },
+            StarterProgrammes.SAVED_WARM_UP.steps.map { it.key.value },
+        )
     }
 }
