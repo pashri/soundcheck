@@ -76,5 +76,3 @@ by Alexander Holm, used under the
 [Creative Commons Attribution 3.0](https://creativecommons.org/licenses/by/3.0/) licence.
 Each sample was mixed to mono and shortened to 4.5 seconds, and Soundcheck retunes the keys
 as it plays them. The per-key tuning comes from the "Retuned" SFZ mapping by Markus Fiedler.
-</content>
-</invoke>
