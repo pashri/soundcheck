@@ -16,8 +16,8 @@ value class SampleId(val value: Int)
 
 /**
  * Sample slots reserved by each tool: 0–15 the Metronome, 16–47 Announcements (shared
- * least-recently-used by label, one Sound's clip per slot, up to [ANNOUNCEMENT_SLOTS] at
- * once) and 64–95 the piano.
+ * least-recently-used, one Sound's clip per slot, up to [ANNOUNCEMENT_SLOTS] at once), 48 a
+ * recorded clip played from the Sounds list, and 64–95 the piano.
  */
 object SampleIds {
     /** The Metronome's ordinary click. */
@@ -25,6 +25,9 @@ object SampleIds {
 
     /** The Metronome's accented click. */
     val METRONOME_ACCENT: SampleId = SampleId(1)
+
+    /** The slot a Sound's recorded clip plays from when you tap its play button. */
+    val PREVIEW: SampleId = SampleId(48)
 
     /** How many Sounds can have an Announcement loaded. */
     const val ANNOUNCEMENT_SLOTS: Int = 32

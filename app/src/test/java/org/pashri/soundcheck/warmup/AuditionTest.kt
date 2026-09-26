@@ -12,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.pashri.soundcheck.audio.FakeFocusGate
 import org.pashri.soundcheck.audio.FakeSoundOutput
+import org.pashri.soundcheck.audio.SampleIds
 import org.pashri.soundcheck.audio.Tool
 import org.pashri.soundcheck.audio.ToolArbiter
 import org.pashri.soundcheck.piano.FakePianoSource
@@ -167,5 +168,71 @@ class AuditionTest {
         focus.loseFocus()
         assertFalse(rig.audition.playing.value)
         assertNull(arbiter.current)
+    }
+
+    @Test
+    fun `a recorded clip plays once from a moment after the tap, then hands back`() = runTest {
+        val rig = rig()
+        val word = FloatArray(size = 9_600) { 0.5f }
+        assertTrue(rig.audition.playClip(name = ClipName("mim.wav"), pcm = word))
+        runCurrent()
+        assertTrue(rig.output.loaded.getValue(SampleIds.PREVIEW) === word)
+        assertEquals(
+            listOf(FakeSoundOutput.Scheduled(id = SampleIds.PREVIEW, frame = 4_800L, gain = 1f)),
+            rig.output.scheduled,
+        )
+        advanceTimeBy(700)
+        runCurrent()
+        assertFalse(rig.audition.playing.value)
+        assertNull(arbiter.current)
+        assertFalse(focus.held)
+    }
+
+    @Test
+    fun `the same clip played again is not loaded again`() = runTest {
+        val rig = rig()
+        val first = FloatArray(size = 4_800) { 0.5f }
+        rig.audition.playClip(name = ClipName("mim.wav"), pcm = first)
+        runCurrent()
+        rig.audition.playClip(name = ClipName("mim.wav"), pcm = FloatArray(size = 4_800))
+        runCurrent()
+        assertTrue(rig.output.loaded.getValue(SampleIds.PREVIEW) === first)
+        val other = FloatArray(size = 4_800) { 0.25f }
+        rig.audition.playClip(name = ClipName("hum.wav"), pcm = other)
+        runCurrent()
+        assertTrue(rig.output.loaded.getValue(SampleIds.PREVIEW) === other)
+    }
+
+    @Test
+    fun `playing a recorded clip pauses a playing Programme`() = runTest {
+        val rig = rig()
+        playingProgramme(rig)
+        assertTrue(rig.audition.playClip(name = ClipName("mim.wav"), pcm = FloatArray(4_800)))
+        assertEquals(false, rig.controller.playback.value?.playing)
+        assertEquals(Tool.AUDITION, arbiter.current)
+    }
+
+    @Test
+    fun `a clip that fails to load is not remembered as loaded`() = runTest {
+        val rig = rig()
+        rig.output.loadResult = false
+        val bad = FloatArray(size = 4_800) { 0.5f }
+        rig.audition.playClip(name = ClipName("mim.wav"), pcm = bad)
+        runCurrent()
+        assertFalse(rig.audition.playing.value)
+        rig.output.loadResult = true
+        val good = FloatArray(size = 4_800) { 0.25f }
+        rig.audition.playClip(name = ClipName("mim.wav"), pcm = good)
+        runCurrent()
+        assertTrue(rig.output.loaded.getValue(SampleIds.PREVIEW) === good)
+    }
+
+    @Test
+    fun `an empty clip plays nothing and changes nothing`() = runTest {
+        val rig = rig()
+        playingProgramme(rig)
+        assertFalse(rig.audition.playClip(name = ClipName("mim.wav"), pcm = FloatArray(0)))
+        assertEquals(true, rig.controller.playback.value?.playing)
+        assertEquals(Tool.WARM_UP, arbiter.current)
     }
 }
