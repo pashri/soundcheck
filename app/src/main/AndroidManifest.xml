@@ -10,7 +10,7 @@
         android:name=".SoundcheckApplication"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        android:theme="@style/Theme.Soundcheck">
 
         <activity
             android:name=".MainActivity"
