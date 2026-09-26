@@ -34,6 +34,7 @@ import org.pashri.soundcheck.playback.PlaybackService
 import org.pashri.soundcheck.ui.metronome.MetronomeViewModel
 import org.pashri.soundcheck.ui.programme.ProgrammeEditorViewModel
 import org.pashri.soundcheck.ui.settings.SettingsViewModel
+import org.pashri.soundcheck.ui.step.StepEditorViewModel
 import org.pashri.soundcheck.ui.tuner.TunerViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupHomeViewModel
 import org.pashri.soundcheck.ui.warmup.WarmupViewModel
@@ -43,6 +44,7 @@ import org.pashri.soundcheck.warmup.ProgrammePlayer
 import org.pashri.soundcheck.warmup.SpokenAnnouncements
 import org.pashri.soundcheck.warmup.StarterLibrary
 import org.pashri.soundcheck.warmup.StarterSounds
+import org.pashri.soundcheck.warmup.StepRef
 import org.pashri.soundcheck.warmup.WarmupController
 import org.pashri.soundcheck.warmup.WarmupSettings
 
@@ -192,6 +194,15 @@ class AppContainer(context: Context) {
             settings = settings,
             newId = newId,
         )
+
+    /**
+     * Builds a Step editor's view model.
+     *
+     * @param ref the Step.
+     * @return the factory.
+     */
+    fun stepEditorFactory(ref: StepRef): ViewModelProvider.Factory =
+        StepEditorViewModel.Factory(ref = ref, library = library, settings = settings)
 
     /** Whether "Play over other audio" is on; read each time a tool asks for focus. */
     private fun playsOverOtherAudio(): Boolean = settings.data.value?.playOverOtherAudio == true

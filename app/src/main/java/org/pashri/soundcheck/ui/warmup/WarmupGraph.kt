@@ -13,7 +13,11 @@ import org.pashri.soundcheck.ui.components.Tab
 import org.pashri.soundcheck.ui.programme.ProgrammeEditorRoute
 import org.pashri.soundcheck.ui.programme.ProgrammeLinks
 import org.pashri.soundcheck.ui.settings.SettingsRoute
+import org.pashri.soundcheck.ui.step.StepEditorRoute
+import org.pashri.soundcheck.ui.step.StepLinks
 import org.pashri.soundcheck.warmup.ProgrammeId
+import org.pashri.soundcheck.warmup.StepKey
+import org.pashri.soundcheck.warmup.StepRef
 
 /**
  * The Warm-up tab's screens, nested under the tab's route so the tab bar stays on the
@@ -63,7 +67,27 @@ fun NavGraphBuilder.warmupGraph(container: AppContainer, navController: NavHostC
                 links = ProgrammeLinks(
                     back = closing(WarmupRoutes.PROGRAMME),
                     openPlaying = openPlaying,
+                    editStep = { key ->
+                        val ref = StepRef(programmeId = id, key = key)
+                        navController.navigate(WarmupRoutes.step(ref))
+                    },
                 ),
+            )
+        }
+        composable(
+            route = WarmupRoutes.STEP,
+            arguments = listOf(
+                requiredArg(WarmupRoutes.ARG_PROGRAMME),
+                requiredArg(WarmupRoutes.ARG_STEP),
+            ),
+        ) { entry ->
+            val ref = StepRef(
+                programmeId = ProgrammeId(entry.requireArg(WarmupRoutes.ARG_PROGRAMME)),
+                key = StepKey(entry.requireArg(WarmupRoutes.ARG_STEP)),
+            )
+            StepEditorRoute(
+                factory = container.stepEditorFactory(ref),
+                links = StepLinks(back = closing(WarmupRoutes.STEP)),
             )
         }
     }
